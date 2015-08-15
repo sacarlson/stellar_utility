@@ -1,0 +1,208 @@
+(08:24:00 AM) The topic for #stellar-dev is: Stellar is public infrastructure for money: http://stellar.org http://github.com/stellar http://twitter.com/StellarOrg http://facebook.com/stellarfoundation | logs at https://botbot.me/freenode/stellar-dev/ | slack channel at http://slack.stellar.org/
+(08:24:00 AM) Topic for #stellar-dev set by irisli!sid39514@gateway/web/irccloud.com/x-jgxnwffjseywxoou at 08:37:24 AM on 03/26/2015
+(08:25:47 AM) sacarlson: I also looked at your link and the pull/18 changes you made.  love to see new docs reflecting the present thanks @matschaffer
+(08:26:38 AM) stellar-slack: <matschaffer> me too, sorry they got a little lax there
+(08:26:56 AM) stellar-slack: <matschaffer> anyway, we don’t have a proper apt repo yet, but we do push debs to a public S3 bucket
+(08:27:01 AM) stellar-slack: <matschaffer> ``` ❯ curl -s https://s3.amazonaws.com/stellar.org/releases/stellar-core/latest stellar-core-0.0.1-76-2ee44180_amd64.deb ```
+(08:27:15 AM) stellar-slack: <matschaffer> so https://s3.amazonaws.com/stellar.org/releases/stellar-core/stellar-core-0.0.1-76-2ee44180_amd64.deb
+(08:27:22 AM) stellar-slack: <matschaffer> just fpm, nothing fancy
+(08:27:26 AM) stellar-slack: <matschaffer> but it’s at least pre-built
+(08:28:03 AM) sacarlson: wonderfull I'll try that first to see how that goes
+(08:29:00 AM) sacarlson: see if I have any depedancy problems if so then I will consider docker
+(08:32:08 AM) stellar-slack: <matschaffer> I think libc should be the only dependency, but the version is particular
+(08:32:31 AM) stellar-slack: <matschaffer> or glibc or something along those lines anyway. I can seldom keep that whole chain straight
+(08:32:38 AM) sacarlson: only 26mb I'm looking at the deb now
+(08:36:22 AM) sacarlson: It shows all dependencies found but I think it might be missing the dependacy list
+(08:36:33 AM) sacarlson: i've already installed it
+(08:37:51 AM) stellar-slack: <matschaffer> sweet. I’m still somewhat novice when it comes to deb packaging (always just lean on fpm or something similar) so let me know if there’s something amiss.
+(08:38:09 AM) stellar-slack: <matschaffer> I tried to learn how to repackage nginx months ago. I didn’t turn out well
+(08:38:32 AM) sacarlson: as I expected stellar-core: /usr/lib/x86_64-linux-gnu/libstdc++.so.6: version `GLIBCXX_3.4.20' not found (required by stellar-core)
+(08:39:09 AM) sacarlson: I've only done one deb package myself maybe I can add to this one the needed deps
+(08:40:20 AM) stellar-slack: <matschaffer> I’m basically doing this: ``` make install DESTDIR="${DEST}"  fpm -s dir -t deb -n stellar-core -v "${STELLAR_CORE_VERSION}" -C "${DEST}" \     -p stellar-core-VERSION_ARCH.deb \       usr/local/bin/stellar-core ```
+(08:47:14 AM) sacarlson: it apears I already have libstdc++-4.8-dev installed on my system but I guess this is looking for the older version 3.4.20?  I don't see that available in my repository
+(08:54:39 AM) sacarlson: I'm reinstalling this sudo apt-get install libstdc++6
+(08:56:10 AM) sacarlson: nope no go same
+(08:57:52 AM) stellar-slack: <matschaffer> huh… odd. https://github.com/stellar/docker-stellar-core/blob/master/install is the setup we use on top of debian:jessie for the docker containers
+(08:58:01 AM) stellar-slack: <matschaffer> maybe that will help clear up what to do on mint?
+(08:58:28 AM) sacarlson: debian may use older libs than ubuntu?
+(08:58:40 AM) sacarlson: ya I'll just try compile it
+(08:59:47 AM) stellar-slack: <matschaffer> https://github.com/matschaffer/docker-stellar-core/tree/containered-build/build might help in that case
+(09:00:21 AM) stellar-slack: <matschaffer> I still haven’t yet sorted out how to get UIDs back to the right value after the build otherwise this would be in the stellar repo, but it does yield a binary
+(09:35:27 AM) sacarlson: matschaffer I'm giving your install script a try manualy skiping the rm parts at the end
+(09:35:35 AM) stellar-slack: <matschaffer> good move
+(09:35:45 AM) stellar-slack: <matschaffer> that’s all there in service of minimizing the size of the docker container anyway
+(09:36:01 AM) sacarlson: I'm wondering what parts of the llvm repository is being used
+(09:36:10 AM) sacarlson: only thing I see maybe is lldb-3.6
+(09:36:42 AM) sacarlson: I looked at the llvm site to see what it contains but there is a lot
+(09:37:10 AM) stellar-slack: <matschaffer> yeah, we use lldb-3.6 to process any core files that get produced
+(09:37:24 AM) stellar-slack: <matschaffer> but we actually defer installing most of it until after the build to avoid potentially picking up any other 3.6 stuff
+(09:37:30 AM) sacarlson: it looks to also contain libstdc++6 but I thinking it will be older and my system will still link what's in my repository
+(09:38:31 AM) sacarlson: ok so lets see what it does on a mint system
+(09:39:52 AM) sacarlson: The following packages have unmet dependencies:
+(09:39:52 AM) sacarlson:  lldb-3.6 : Depends: liblldb-3.6 but it is not going to be installed
+(09:39:52 AM) sacarlson:             Depends: libstdc++6 (>= 4.9) but 4.8.4-2ubuntu1~14.04 is to be installed
+(09:41:07 AM) sacarlson: see if there are newer ones in the repository
+(09:47:10 AM) sacarlson: no it apears the libstdc++6 4.8.4 is the newiest that is available in the standard ubuntu repository.  backporting would be required or compiled new version
+(09:48:53 AM) sacarlson: witch leads me thinking back to looking at docker again, as I for see more of these missing parts to come
+(10:00:44 AM) sacarlson: I've found the backport method for the 4.8.4 problem above is http://askubuntu.com/questions/428198/getting-installing-gcc-g-4-9-on-ubuntu
+(10:23:24 AM) sacarlson: I'm now installing this backported 4.9.x above, one last try before moving to docker
+(10:30:54 AM) sacarlson: ok that seems to have corrected the stellar-core dependancy also as now I get this far with run:
+(10:30:56 AM) sacarlson: 2015-07-22T10:29:22.635 <startup> [] [default] FATAL Got an exception: No config file stellar-core.cfg found [main.cpp:398]
+(10:33:01 AM) sacarlson: I also skiped the pip installs as I don't think I will need them pip install awscli; pip install boto
+(10:44:02 AM) stellar-slack: <matschaffer> sacarlson: yep, that’s good
+(10:44:05 AM) stellar-slack: <matschaffer> now you just need a config file
+(10:44:37 AM) stellar-slack: <matschaffer> https://github.com/stellar/stellar-core/blob/master/docs/stellar-core_example.cfg has the basic idea
+(10:44:47 AM) sacarlson: my man thanks
+(10:45:18 AM) stellar-slack: <matschaffer> run `stellar-core -genseed` to make the values that go in PEER_SEED & VALIDATION_SEED, then put the public half of the VALIDATION_SEED into VALIDATORS
+(10:45:23 AM) stellar-slack: <matschaffer> set THRESHOLD to 1
+(10:45:41 AM) stellar-slack: <matschaffer> should be able to leave out the HISTORY.vs section
+(10:46:30 AM) sacarlson: already ran the -genseed and worked ok with numbers 
+(10:46:37 AM) stellar-slack: <matschaffer> you can give it the config file as an arg, or it’ll just look in `pwd`/stellar-core.cfg
+(10:46:59 AM) stellar-slack: <matschaffer> and yeah, boto is for ses
+(10:47:11 AM) stellar-slack: <matschaffer> awscli is for `aws s3 cp` which we use to persist history
+(10:47:22 AM) stellar-slack: <matschaffer> for your purposes, you probably don’t need either
+(10:47:30 AM) sacarlson: ok
+(10:48:00 AM) sacarlson: this first example above apears to be a 3 core setup
+(10:48:19 AM) stellar-slack: <matschaffer> good chance, I do a lot of those
+(10:48:30 AM) stellar-slack: <matschaffer> not sure which one you mean exactly though
+(10:48:42 AM) stellar-slack: <matschaffer> https://github.com/stellar/stellar-core/blob/master/docs/stellar-core_example.cfg is set up to peer with testnet
+(10:48:58 AM) stellar-slack: <matschaffer> you probably don’t want that since you’re liable to hit the same sort of XDR errors you did before
+(10:49:07 AM) stellar-slack: <matschaffer> or at least key format errors since testnet is still on base58
+(10:49:40 AM) sacarlson: oh ok ya
+(10:50:06 AM) sacarlson: yes I noted your base32 changes reflected in the address and keys
+(10:52:00 AM) sacarlson: oh this won't work as my ruby libs are still using base58 also
+(10:52:33 AM) stellar-slack: <matschaffer> https://gist.github.com/matschaffer/0c908da5ff464735440f should do the trick (untested)
+(10:52:42 AM) stellar-slack: <matschaffer> I think the base58 rubylib updates may have landed by now
+(10:52:49 AM) stellar-slack: <matschaffer> 32 that is
+(10:53:12 AM) sacarlson: no I don't think so I have the latist but I can check again
+(10:53:24 AM) stellar-slack: <matschaffer> I see some commits on https://github.com/stellar/ruby-stellar-base/commits/master that seem to reflect that
+(10:53:50 AM) stellar-slack: <matschaffer> looks like 0.1.1 of that particular lib. Not sure if scott  pushed to rubygems or not
+(10:54:12 AM) stellar-slack: <matschaffer> but we’re using the ruby stuff in acceptance testing now and some tests are going green so there should be code somewhere you can use
+(10:54:44 AM) sacarlson: oh 8 hours ago I was still sleeping ha ha
+(10:55:05 AM) stellar-slack: <matschaffer> yeah, it’s been a busy two days trying to land that change
+(10:55:13 AM) stellar-slack: <matschaffer> basically everything needed a bump as a result
+(10:55:21 AM) sacarlson: but this looks to be base64 not base32 as I was expecting
+(10:55:33 AM) stellar-slack: <matschaffer> well I see “stellarkey” further down
+(10:56:14 AM) stellar-slack: <matschaffer> I think the mention of base64 may just be an option for the transaction encoding
+(10:56:14 AM) stellar-slack: <matschaffer> https://github.com/stellar/ruby-stellar-base/commit/7562ec5d157140ed613472e9c4667ab0c7622d81
+(10:56:45 AM) stellar-slack: <matschaffer> the base32/stellarkey thing was for the validation keys (and possibly account keys, not sure)
+(10:56:52 AM) stellar-slack: <matschaffer> definitely the validation keys though
+(10:58:45 AM) sacarlson: ok I'll pull these new changes and give it a wack
+(11:08:17 AM) sacarlson: I note in your stellar config pastebin above you have RUN_STANDALONE=false .  don't we want standalone active here?
+(11:10:22 AM) stellar-slack: <matschaffer> you know, not sure actually
+(11:11:08 AM) sacarlson: but I guess with THRESHOLD=1  it really doesn't mater as it's happy just seeing itself
+(11:11:08 AM) stellar-slack: <matschaffer> every example I can find on this end sets it to false
+(11:11:30 AM) sacarlson: ok
+(11:11:30 AM) stellar-slack: <matschaffer> yep. Though I find I still need to start it with -forcescp
+(11:12:05 AM) stellar-slack: <matschaffer> --forcescp even
+(11:12:21 AM) stellar-slack: <matschaffer> you’ll also want to run it with --newdb to initialize the sql storage
+(11:13:12 AM) sacarlson: and I also assume I need to modify the PEER_SEED= to my secret seed,  if so what goes into VALIDATION_SEED= ?
+(11:13:24 AM) stellar-slack: <matschaffer> another secret seed from -genseed
+(11:13:43 AM) sacarlson: ok I just run it two times
+(11:13:46 AM) stellar-slack: <matschaffer> ye
+(11:13:48 AM) stellar-slack: <matschaffer> yep
+(11:13:53 AM) sacarlson: ok
+(11:13:57 AM) stellar-slack: <matschaffer> doesn’t really matter what the seed/keys are
+(11:14:09 AM) stellar-slack: <matschaffer> so long as they stay consistent and you have them paired up appropriately
+(11:14:24 AM) stellar-slack: <matschaffer> I believe the peer one is mainly used as an ID
+(11:14:50 AM) stellar-slack: <matschaffer> so you can have non-validating peers and still know how to recognize them definitively
+(11:16:19 AM) sacarlson: oh so I really don't even need to change this to run it but would that conflict with an already running node then?
+(11:16:37 AM) sacarlson: if they used the same validator codes?
+(11:16:40 AM) stellar-slack: <matschaffer> well it would if anyone happened to use the same keys
+(11:16:47 AM) stellar-slack: <matschaffer> in the same network
+(11:16:58 AM) sacarlson: ok I'll change them just to be safe
+(11:17:07 AM) stellar-slack: <matschaffer> so basically yeah, you could just use the same ones since you’re only planning on keeping it to your one local node
+(11:17:23 AM) stellar-slack: <matschaffer> I doubt those keys are used anywhere, but pretty easy to run -genseed so I just change them
+(11:17:56 AM) stellar-slack: <matschaffer> our acceptance is driven from https://github.com/stellar/stellar_core_commander which actually generates new sets on every run
+(11:19:20 AM) sacarlson: can I put comment in the config file with # ?  will it handle this?
+(11:23:01 AM) sacarlson: never mind I missed seeing you already had some in it
+(11:26:44 AM) stellar-slack: <matschaffer> yep
+(11:26:58 AM) stellar-slack: <matschaffer> pretty sure it’s just a TOML interpretter
+(11:27:34 AM) sacarlson: 2015-07-22T11:26:55.443 <startup> [] [default] FATAL Got an exception: Failed to parse './stellar.config' :Unterminated string literal at line 20 [main.cpp:398]
+(11:27:58 AM) stellar-slack: <matschaffer> `"ll?level=debug`
+(11:28:01 AM) stellar-slack: <matschaffer> I missed the closing quote
+(11:28:12 AM) stellar-slack: <matschaffer> was trying to take off the partition in the example so we just get debug logging for everything
+(11:28:26 AM) stellar-slack: <matschaffer> will make it easier to see if we missed anything
+(11:28:37 AM) sacarlson: almost there 2015-07-22T11:28:13.532 a39808 [] [default] INFO  * The database has not yet been initialized. Try --newdb
+(11:28:41 AM) stellar-slack: <matschaffer> yep
+(11:29:07 AM) stellar-slack: <matschaffer> so next is `stellar-core --newdb` then `stellar-core --forcescp`
+(11:29:15 AM) stellar-slack: <matschaffer> then `stellar-core` should get things moving
+(11:29:25 AM) stellar-slack: <matschaffer> once it’s moving you can curl localhost:39132/info to make sure
+(11:29:39 AM) stellar-slack: <matschaffer> and watch logs of course
+(11:29:40 AM) sacarlson: 2015-07-22T11:29:08.383 a39808 [] [default] INFO  * The next launch will catchup from the network afresh.
+(11:30:33 AM) sacarlson: 2015-07-22T11:30:15.726 a39808 [] [default] INFO  * The `force scp` flag has been set in the db.
+(11:30:45 AM) stellar-slack: <matschaffer> so far so goo
+(11:30:50 AM) stellar-slack: <matschaffer> d
+(11:31:42 AM) sacarlson: 2015-07-22T11:31:01.015 a39808 [] [History] FATAL No readable archives configured, catchup will fail. [HistoryManagerImpl.cpp:157]
+(11:32:13 AM) stellar-slack: <matschaffer> interesting
+(11:32:22 AM) stellar-slack: <matschaffer> does info say it’s synced?
+(11:32:26 AM) stellar-slack: <matschaffer> or did it just die
+(11:32:57 AM) stellar-slack: <matschaffer> anyway adding this should do it ``` [HISTORY.vs] get="cp /tmp/stellar-core/history/vs/{0} {1}" put="cp {0} /tmp/stellar-core/history/vs/{1}" mkdir="mkdir -p /tmp/stellar-core/history/vs/{0}” ```
+(11:33:01 AM) stellar-slack: <matschaffer> feel free to modify paths
+(11:33:11 AM) stellar-slack: <matschaffer> the vs doesn’t mean anything I’m aware of there
+(11:33:32 AM) stellar-slack: <matschaffer> a lot of our configs end up as [HISTORY.main]
+(11:33:51 AM) stellar-slack: <matschaffer> just needs to be some identifier that’s unique among [HISTORY] blocks in the config
+(11:35:04 AM) sacarlson: http://pastebin.com/3m26PU5H
+(11:36:16 AM) sacarlson: it ended in destroyed
+(11:37:58 AM) sacarlson: I'm not sure where to add this history.vs above
+(11:41:14 AM) stellar-slack: <matschaffer> just at the bottom somewhere
+(11:44:38 AM) stellar-slack: <matschaffer> basically just append it to the end of the cfg
+(11:44:59 AM) sacarlson: 2015-07-22T11:44:18.655 <startup> [] [default] FATAL Got an exception: Failed to parse './stellar.config' :Unidentified trailing character p---did you forget a '#'? at line 31 [main.cpp:398]
+(11:45:14 AM) sacarlson: so maybe I took you line too literaly
+(11:45:45 AM) sacarlson: take out the ``` ?
+(11:46:24 AM) sacarlson: ``` [HISTORY.vs] get="cp /tmp/stellar-core/history/vs/{0} {1}" put="cp {0} /tmp/stellar-core/history/vs/{1}" mkdir="mkdir -p /tmp/stellar-core/history/vs/{0}” ```
+(11:47:08 AM) stellar-slack: <matschaffer> oh, we’re losing fidelity in the irc bridge I think
+(11:47:15 AM) sacarlson: IC
+(11:47:19 AM) stellar-slack: <matschaffer> just look like this https://github.com/stellar/stellar-core/blob/master/docs/stellar-core_example.cfg#L94
+(11:49:26 AM) sacarlson: 2015-07-22T11:49:14.263 a39808 [] [Herder] DEBUG emitEnvelope s:3 i:4 a:Synced!
+(11:53:06 AM) stellar-slack: <matschaffer> nice!
+(11:53:10 AM) stellar-slack: <matschaffer> so there you have it
+(11:53:19 AM) stellar-slack: <matschaffer> info should also report Synced as well
+(11:53:31 AM) stellar-slack: <matschaffer> and /tx should be able to accept encoded blobs from the ruby or golang client
+(11:54:14 AM) sacarlson: that remains to be seen.  so I'll point my ruby client at it with the corrected ports and see what pops out
+(12:01:17 PM) stellar-slack: <matschaffer> godspeed :)
+(12:01:22 PM) stellar-slack: <matschaffer> and nice work getting this far
+(12:03:20 PM) sacarlson: couldn't have done it without you matschaffer or it would have probly taken me a year or so ha ha
+(12:03:32 PM) sacarlson: thanks
+(12:05:50 PM) stellar-slack: <matschaffer> yeah, well here’s hoping the doc push going on right now will help iron some of that out
+(12:27:15 PM) sacarlson: I'm not sure what I did but stellar-core seems to have frozen at sequence 224 after I started and stoped it a few times to setup a script to start it with
+(12:27:24 PM) sacarlson: no errors in the logs
+(12:28:46 PM) sacarlson: maybe there is a proper shutdown method?
+(12:31:01 PM) stellar-slack: <matschaffer> sending it a term is what we usually do
+(12:31:03 PM) stellar-slack: <matschaffer> what’s /info show?
+(12:31:25 PM) stellar-slack: <matschaffer> oh, make sure to -forcescp on the next startup btw
+(12:31:53 PM) stellar-slack: <matschaffer> if you don’t I’m pretty sure what it’ll do is sit there waiting to see SCP messages from a network that doesn’t exist (since it’s one node)
+(12:32:45 PM) sacarlson: sending a term is that the same as <ctl> c ?
+(12:33:58 PM) sacarlson: {    "info" : {       "ledger" : {          "age" : 1575,          "closeTime" : 1437541649,          "hash" : "55181e41148d591483cb2c60024fd5af91365c67ff255aa3dea27ce3081a6dc1",          "num" : 224       },       "numPeers" : 0,       "state" : "Joining SCP"    } } 
+(12:34:30 PM) sacarlson: ok I'll try the -forcescp
+(12:35:03 PM) stellar-slack: <matschaffer> yeah
+(12:35:10 PM) stellar-slack: <matschaffer> ctrl+c is fine
+(12:35:32 PM) stellar-slack: <matschaffer> yeah, if it’s just sitting in joining scp the force should get it moving
+(12:35:58 PM) sacarlson: so when I test I have a limited time window before it locks up like this?
+(12:36:05 PM) stellar-slack: <matschaffer> might be worth trying `RUN_STANDALONE=true` but it doesn’t look like I’ve ever used it
+(12:36:15 PM) sacarlson: ok
+(12:36:17 PM) stellar-slack: <matschaffer> well, when you restart it picks up at the ledger it shut dow on
+(12:36:35 PM) stellar-slack: <matschaffer> but SCP itself usually waits to see other SCP message first
+(12:36:43 PM) stellar-slack: <matschaffer> unless you specify forcescp
+(12:36:57 PM) sacarlson: so if I put in a transaction might that also start it?
+(12:37:27 PM) stellar-slack: <matschaffer> I suppose it’s possible, but my guess is not. Since it’ll probably just queue the transaction given it knows it’s in “Joining SCP” state
+(12:37:57 PM) stellar-slack: <matschaffer> basically the thing that gets you from “Joining” to “Synced” is either seeing SCP messages on the overlay network or forcing the transition
+(12:38:07 PM) sacarlson: ya sounds like I need standalone or later just tie it to testnet
+(12:39:36 PM) sacarlson: but your test look like you run on average 3 nodes so this would never happen to you
+(12:40:23 PM) stellar-slack: <matschaffer> well, it shouldn’t just lock up on its own I don’t think
+(12:40:39 PM) stellar-slack: <matschaffer> we’d probably want to check w/ the core devs to make sure
+(12:40:52 PM) sacarlson: ya it's running again now after the -forcescp
+(12:41:02 PM) stellar-slack: <matschaffer> if it went to “Joining SCP” on its own then you restarted it, it’s probably worth trying that standalone flag or something
+(12:41:17 PM) stellar-slack: <matschaffer> there should be a way to just have it happily run on its own until it’s stopped or crashes
+(12:41:35 PM) sacarlson: {    "info" : {       "ledger" : {          "age" : 1,          "closeTime" : 1437543679,          "hash" : "d46e0831174da25b4c60cc59596ecbaa0aff55f4c381d8253af4f749f83c3790",          "num" : 235       },       "numPeers" : 0,       "state" : "Synced!"    } }
+(12:41:40 PM) stellar-slack: <matschaffer> but yes, the only tests we run on 1 are pretty short
+(12:41:56 PM) stellar-slack: <matschaffer> anything longer than a few minutes is at least 2 nodes, usually 3 or more
+(12:42:27 PM) sacarlson: ok I'm going to go eat and see when I come back if it's still running
+(12:42:32 PM) stellar-slack: <matschaffer> :thumbsup:
+(03:30:45 PM) sacarlson: so all I'm getting now from sample create_account {"status"=>"ERROR", "error"=>"AAAAAAAAAAD////4AAAAAA=="}
+(03:32:40 PM) sacarlson: stellar-core seems to be running ok  "state" : "Synced!"  seq at 2277
+(03:34:57 PM) sacarlson: I've already installed the new ruby-stellar-base
+(03:37:42 PM) sacarlson: this is the b64 I'm sending in blob b64: AAAAAKOYCM92gFQenUO5ROtl35rNw9QtNbvyqxVnJIb2XaJYAAAACgAAAAAAAAACAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAnOSq5R2Qyc/ymD44nnXBtsc0EqMbCYczmZR14YxO97kAAAAAHc1lAAAAAAAAAAAB9l2iWAAAAEAxzJIJHhPXRScFE032z6sMbc0ogBKicYYHkkkjkj8Lg18uKFDqXbSameS+Ss1T8mmdWsDAfZZX8S1h63l9okYG
+(04:24:42 PM) sacarlson: first attempt at compile of new stellar-core on linux mint  with CXX=gcc++-4.9 ;  ./configure ; returns : checking for g++ >= 4.9... configure: error: g++ is < required version 4.9
+(04:36:43 PM) sacarlson: my /usr/g++ had symlink to g++4.8  , I made new symlink from /usr/g++ to g++4.9 now ./configure ran ok
+(04:53:32 PM) sacarlson: compiled ok 
