@@ -20,9 +20,10 @@ require 'yaml'
 #@configs["url_horizon"] = 'https://horizon-testnet.stellar.org'
 #@configs["url_stellar_core"] = 'http://localhost:39132'
 #@configs["mode"] = "localcore" || "horizon"
+#@configs["mode"] = "horizon"
 #File.open("./stellar_utilities.cfg", "w") {|f| f.write(@configs.to_yaml) }
 @configs = YAML.load(File.open("./stellar_utilities.cfg")) 
-
+#exit -1
 def get_accounts_local(account)
     # this is to get all info on table account on Stellar.db from localy running Stellar-core db
     # you must setup your local path to @configs["db_file_path"] for this to work
@@ -38,7 +39,7 @@ def get_accounts_local(account)
     end   
 end
 
-def get_lines_balance(account,currency)
+def get_lines_balance_local(account,currency)
   # balance of trustlines on the Stellar account from localy running Stellar-core db
   # you must setup your local path to @stellar_db_file_path for this to work
   # also at this time this assumes you only have one gateway issuer for each currency
@@ -75,7 +76,7 @@ end
 #puts "#{result}"
 
 
-def get_account_info(account)
+def get_account_info_horizon(account)
     account = convert_keypair_to_address(account)
     params = '/accounts/'
     url = @configs["url_horizon"]
@@ -89,10 +90,20 @@ end
 #puts "#{result}"
 
 
+
+
 def get_account_sequence(account)
-  return get_seqnum_local(account)
-  #data = get_account_info(account)
-  #return data["sequence"]
+  if @configs["mode"] == "horizon"
+    puts "horizon mode get seq"
+    return get_account_sequence_horizon(account)
+  else
+    return get_seqnum_local(account)
+  end
+end
+
+def get_account_sequence_horizon(account)
+  data = get_account_info_horizon(account)
+  return data["sequence"]
 end
 
 def next_sequence(account)
@@ -102,12 +113,18 @@ def next_sequence(account)
   return get_account_sequence(address)+1
 end
 
-#result = get_account_sequence(account)
-#puts "#{result}"
 
-def get_native_ballance(account)
+def get_native_balance_horizon(account)
   data = get_account_info(account)
   return data["balances"]
+end
+
+def get_native_balance(account)
+  if @configs["mode"] == "horizon"
+    return get_native_balance_horizon(account)
+  else
+    return get_native_balance_local(account)
+  end
 end
 
 def create_random_pair
@@ -119,8 +136,9 @@ def create_new_account()
   return Stellar::KeyPair.random
 end
 
-def send_tx(b64)
+def send_tx_local(b64)
   # this assumes you have a stellar-core listening on this address
+  # this sends the tx base64 transaction to the local running stellar-core
   $server = Faraday.new(url: @configs["url_stellar_core"]) do |conn|
     conn.response :json
     conn.adapter Faraday.default_adapter
@@ -129,8 +147,29 @@ def send_tx(b64)
   return result.body
 end
 
+def send_tx_horizon(b64)
+  values = CGI::escape(b64)
+  headers = {
+    :content_type => 'application/x-www-form-urlencoded'
+  }
+  puts "values: #{values}"
+  response = RestClient.post @configs["url_horizon"], values, headers
+  puts response
+  return response
+end
+
+def send_tx(b64)
+  if @configs["mode"] == "horizon"
+    return send_tx_horizon(b64)
+  else
+    return send_tx_local(b64)
+  end
+end
+
 def create_account_tx(account, funder, starting_balance=1000_0000000, seqadd=0)
-  account = convert_address_to_keypair(account)     
+  account = convert_address_to_keypair(account)
+  nxtseq = next_sequence(funder)
+  puts "create_account nxtseq #{nxtseq}"     
   tx = Stellar::Transaction.create_account({
     account:          funder,
     destination:      account,
@@ -140,10 +179,28 @@ def create_account_tx(account, funder, starting_balance=1000_0000000, seqadd=0)
   return tx
 end
 
-def create_account(account, funder, starting_balance=1000_0000000)
+def create_account_local(account, funder, starting_balance=1000_0000000)
   tx = create_account_tx(account, funder, starting_balance)
   b64 = tx.to_envelope(funder).to_xdr(:base64)
-  send_tx(b64)
+  send_tx_local(b64)
+end
+
+def create_account_horizon(account, funder, starting_balance=1000_0000000)
+  tx = create_account_tx(account, funder, starting_balance)
+  b64 = tx.to_envelope(funder).to_xdr(:base64)
+  #b64 = tx.to_envelope(funder).to_xdr(:hex)
+  send_tx_horizon(b64)
+end
+
+def create_account(account, funder, starting_balance=1000_0000000)
+  #this will create an activated account using funds from funder account
+  # both account and funder are stellar account pairs, only the funder pair needs to have an active secrete key and needed funds
+  # @configs["mode"] can point output to "horizon" api website or "local" to direct output to localy running stellar-core 
+  if @configs["mode"] == "horizon"
+    return create_account_horizon(account, funder, starting_balance=1000_0000000)
+  else
+    return create_account_local(account, funder, starting_balance=1000_0000000)
+  end
 end
 
 def account_address_to_keypair(account_address)
@@ -163,12 +220,28 @@ def send_native_tx(from_pair, to_account, amount, seqadd=0)
   return tx   
 end
 
-def send_native(from_pair, to_account, amount)
+def send_native_local(from_pair, to_account, amount)
   tx = send_native_tx(from_pair, to_account, amount)
   b64 = tx.to_envelope(from_pair).to_xdr(:base64)
-  send_tx(b64)
+  send_tx_local(b64)
 end
 
+def send_native_horizon(from_pair, to_account, amount)
+  tx = send_native_tx(from_pair, to_account, amount)
+  b64 = tx.to_envelope(from_pair).to_xdr(:base64)
+  send_tx_horizon(b64)
+end
+
+def send_native(from_pair, to_account, amount)
+  # this will send native lunes from_pair account to_account
+  # from_pair must be an active stellar key pair with the needed funds for amount
+  # to_account can be an account address or an account pair with no need for secrete key.
+  if @configs["mode"] == "horizon"
+    return send_native_horizon(from_pair, to_account, amount)
+  else
+    return send_native_local(from_pair, to_account, amount)
+  end
+end
 
 def add_trust_tx(issuer_account,to_pair,currency,limit=(2**63)-1)
   #issuer_pair = Stellar::KeyPair.from_address(issuer_account)
@@ -182,10 +255,24 @@ def add_trust_tx(issuer_account,to_pair,currency,limit=(2**63)-1)
   return tx
 end
 
-def add_trust(issuer_account,to_pair,currency,limit=(2**63)-1)
+def add_trust_local(issuer_account,to_pair,currency,limit=(2**63)-1)
   tx = add_trust_tx(issuer_account,to_pair,currency,limit)
   b64 = tx.to_envelope(to_pair).to_xdr(:base64)
-  send_tx(b64)
+  send_tx_local(b64)
+end
+
+def add_trust_horizon(issuer_account,to_pair,currency,limit=(2**63)-1)
+  tx = add_trust_tx(issuer_account,to_pair,currency,limit)
+  b64 = tx.to_envelope(to_pair).to_xdr(:base64)
+  send_tx_horizon(b64)
+end
+
+def add_trust(issuer_account,to_pair,currency,limit=(2**63)-1)
+  if @configs["mode"] == "horizon"
+    return add_trust_horizon(issuer_account,to_pair,currency,limit=(2**63)-1)
+  else
+    return add_trust_local(issuer_account,to_pair,currency,limit=(2**63)-1)
+  end
 end
 
 def allow_trust_tx(account, trustor, code, authorize=true)
@@ -226,10 +313,24 @@ def send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, cu
   return tx
 end
 
-def send_currency(from_account_pair, to_account_pair, issuer_pair, amount, currency)
+def send_currency_local(from_account_pair, to_account_pair, issuer_pair, amount, currency)
   tx = send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, currency)
   b64 = tx.to_envelope(from_account_pair).to_xdr(:base64)
-  send_tx(b64)
+  send_tx_local(b64)
+end
+
+def send_currency_horizon(from_account_pair, to_account_pair, issuer_pair, amount, currency)
+  tx = send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, currency)
+  b64 = tx.to_envelope(from_account_pair).to_xdr(:base64)
+  send_tx_horizon(b64)
+end
+
+def send_currency(from_account_pair, to_account_pair, issuer_pair, amount, currency)
+  if @configs["mode"] == "horizon"
+    return send_currency_horizon(from_account_pair, to_account_pair, issuer_pair, amount, currency)
+  else
+    return send_currency_local(from_account_pair, to_account_pair, issuer_pair, amount, currency)
+  end
 end
 
 def send_CHP(from_issuer_pair, to_account_pair, amount)
