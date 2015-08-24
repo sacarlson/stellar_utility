@@ -149,11 +149,13 @@ end
 
 def send_tx_horizon(b64)
   values = CGI::escape(b64)
+  puts "url #{@configs["url_horizon"]}"
   headers = {
     :content_type => 'application/x-www-form-urlencoded'
   }
   puts "values: #{values}"
-  response = RestClient.post @configs["url_horizon"], values, headers
+  #response = RestClient.post @configs["url_horizon"]+"/transactions", values, headers
+  response = RestClient.post @configs["url_horizon"]+"/transactions", b64, headers
   puts response
   return response
 end

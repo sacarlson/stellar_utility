@@ -1,9 +1,11 @@
 #!/usr/bin/ruby
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
 require './stellar_utilities'
+# This will create two active accounts with funds of 1000 lunes funded from the master account
+# it will then setup a native lunes transaction between the two accounts.
+# in this case it uses the horizion-test.stellar.org api interface to do the transactions.
+# this is just an example to show how it's done and how it works and to test if it does work.
 
-#puts get_account_sequence('GAJYPMJOWAAGCXMB7UYP63LIMTYPXMGIBMYGQRW7QBF5AVSO7S3IRKIP')
-# exit -1
 
 master      = Stellar::KeyPair.from_raw_seed("allmylifemyhearthasbeensearching")
 to_pair = Stellar::KeyPair.random

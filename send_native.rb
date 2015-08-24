@@ -18,12 +18,12 @@ puts "#{result}"
 sleep 10
 
 amount = 5
-before = get_native_balance_local(to_pair.address)
+before = get_native_balance(to_pair.address)
 puts "before balance = #{before}"
 result = send_native(from_pair, to_pair.address, amount)
 puts "#{result}"
 sleep 10
-after = get_native_balance_local(to_pair.address)
+after = get_native_balance(to_pair.address)
 puts "after send_native #{after}"
 
 puts "#{result}"
