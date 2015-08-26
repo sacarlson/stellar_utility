@@ -1,0 +1,120 @@
+preinstructions to install stellar horizon
+upgrade postgresql to verision 9.4 or better
+this is not part of standard repository at the time of this writing so added repository is needed:
+
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
+  sudo apt-key add -
+
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg main" >> /etc/apt/sources.list.d/postgresql.list'
+# optionaly follow the steps at http://www.postgresql.org/download/linux/ubuntu/ that do the same as above
+
+sudo apt-get update
+sudo apt-get install postgresql-9.4 
+sudo apt-get install postgresql-contrib-9.4
+
+to setup for all user on system to have access to postgress
+see: http://stackoverflow.com/questions/18664074/getting-error-peer-authentication-failed-for-user-postgres-when-trying-to-ge
+or:
+open the file pg_hba.conf for ubuntu it will be in /etc/postgresql/9.x/main and change the this line:
+
+local   all             postgres                                peer
+to:
+local   all             all                                     trust
+host    all             all             127.0.0.1/32            trust
+
+Restart the server:
+sudo service postgresql restart
+
+before starting the install process of horizon create this source_me.sh file that you will source before 
+you run bin/setup in the next instruction we point you to
+
+export DATABASE_URL="postgres://postgres:none@localhost:5432/horizon?sslmode=disable"
+export STELLAR_CORE_DATABASE_URL="postgres://postgres:none@localhost:5432/stellar?sslmode=disable"
+export IMPORT_HISTORY=true
+
+#change the username and password accordingly if you changed pg_hba.conf to add more security
+
+$source ./source_me.sh
+  at this point continue instructions in developing.md
+  also be sure to rbenv rehash after bundle install
+...  ./bin/setup
+# this must be sourced every time you start horizon in the future
+
+continue to follow instructions seen at: https://github.com/stellar/horizon/blob/master/doc/developing.md
+just be sure to source ./source_me.sh before you continue on with ./bin/setup   
+
+
+note this was with commit 01122be of horizon the same that I was told is now running on horizon-test.stellar.org
+at this point the return seen from bin/setup is:
+
+Top 10 slowest example groups:
+  History::LedgerImporterJob importing all fixture data
+    1.13 seconds average (3.4 seconds / 3 examples) ./spec/jobs/history/ledger_importer_job_spec.rb:211
+  MetricsController
+    1.1 seconds average (2.2 seconds / 2 examples) ./spec/controllers/metrics_controller_spec.rb:3
+  History::LedgerImporterJob importing account_merge operations
+    1.1 seconds average (2.19 seconds / 2 examples) ./spec/jobs/history/ledger_importer_job_spec.rb:64
+  History::LedgerImporterJob importing change_trust operations
+    1.07 seconds average (3.22 seconds / 3 examples) ./spec/jobs/history/ledger_importer_job_spec.rb:98
+  WelcomeController
+    1.07 seconds average (1.07 seconds / 1 example) ./spec/controllers/welcome_controller_spec.rb:3
+  Account Requests
+    1.06 seconds average (10.64 seconds / 10 examples) ./spec/requests/accounts_spec.rb:3
+  History::LedgerImporterJob importing allow_trust operations
+    1.06 seconds average (3.17 seconds / 3 examples) ./spec/jobs/history/ledger_importer_job_spec.rb:116
+  History::Ledger
+    1.04 seconds average (13.56 seconds / 13 examples) ./spec/models/history/ledger_spec.rb:3
+  Hash#map_values
+    1.04 seconds average (2.08 seconds / 2 examples) ./spec/lib/core_ext/hash/map_values_spec.rb:3
+  TotalOrderId.make
+    1.03 seconds average (4.1 seconds / 4 examples) ./spec/models/total_order_id_spec.rb:3
+
+Finished in 1 minute 15.34 seconds (files took 1.75 seconds to load)
+87 examples, 39 failures, 16 pending
+
+Failed examples:
+
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:122 # History::LedgerImporterJob importing allow_trust operations sets `trustee`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:127 # History::LedgerImporterJob importing allow_trust operations sets `trustor`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:132 # History::LedgerImporterJob importing allow_trust operations sets `authorize`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:74 # History::LedgerImporterJob importing account_merge operations sets `into`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:70 # History::LedgerImporterJob importing account_merge operations sets `account`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:219 # History::LedgerImporterJob importing all fixture data properly imports all ledgers
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:223 # History::LedgerImporterJob importing all fixture data properly imports all transactions
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:227 # History::LedgerImporterJob importing all fixture data properly imports all participants
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:14 # History::LedgerImporterJob when importing the first ledger correctly imports the stellar_core ledger header
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:10 # History::LedgerImporterJob when importing the first ledger creates a new History::Ledger record
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:31 # History::LedgerImporterJob when importing the correct, next ledger correctly imports the stellar_core ledger header
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:27 # History::LedgerImporterJob when importing the correct, next ledger creates a new History::Ledger record
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:58 # History::LedgerImporterJob when importing a ledger that has the wrong prevhash 
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:57 # History::LedgerImporterJob when importing a ledger that has the wrong prevhash 
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:41 # History::LedgerImporterJob when importing a non-existent ledger should raise ActiveRecord::RecordNotFound
+rspec ./spec/requests/accounts_spec.rb:13 # Account Requests GET /accounts/:id with a single unknown account 
+rspec ./spec/requests/accounts_spec.rb:12 # Account Requests GET /accounts/:id with a single unknown account 
+rspec ./spec/requests/accounts_spec.rb:26 # Account Requests GET /accounts/:id with a single known account 
+rspec ./spec/requests/accounts_spec.rb:24 # Account Requests GET /accounts/:id with a single known account 
+rspec ./spec/requests/accounts_spec.rb:84 # Account Requests GET /accounts/:id with multiple unknown accounts 
+rspec ./spec/requests/accounts_spec.rb:83 # Account Requests GET /accounts/:id with multiple unknown accounts 
+rspec ./spec/requests/accounts_spec.rb:67 # Account Requests GET /accounts/:id with a mix of known and unknown accounts 
+rspec ./spec/requests/accounts_spec.rb:66 # Account Requests GET /accounts/:id with a mix of known and unknown accounts 
+rspec ./spec/requests/accounts_spec.rb:47 # Account Requests GET /accounts/:id with multiple known accounts 
+rspec ./spec/requests/accounts_spec.rb:46 # Account Requests GET /accounts/:id with multiple known accounts 
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:85 # History::LedgerImporterJob importing path_payment operations sets `from`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:89 # History::LedgerImporterJob importing path_payment operations sets `to`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:93 # History::LedgerImporterJob importing path_payment operations sets `amount`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:145 # History::LedgerImporterJob importing set_options operations inflation_dest details sets `inflation_dest`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:159 # History::LedgerImporterJob importing set_options operations signer details sets `signer_weight`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:154 # History::LedgerImporterJob importing set_options operations signer details sets `signer_key`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:176 # History::LedgerImporterJob importing set_options operations thresholds details sets `low_threshold`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:180 # History::LedgerImporterJob importing set_options operations thresholds details sets `med_threshold`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:184 # History::LedgerImporterJob importing set_options operations thresholds details sets `high_threshold`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:168 # History::LedgerImporterJob importing set_options operations master signer details sets `master_key_weight`
+rspec ./spec/models/transaction_submission_spec.rb:6 # TransactionSubmission#process when connection fails reports exception
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:103 # History::LedgerImporterJob importing change_trust operations sets `trustee`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:107 # History::LedgerImporterJob importing change_trust operations sets `trustor`
+rspec ./spec/jobs/history/ledger_importer_job_spec.rb:111 # History::LedgerImporterJob importing change_trust operations sets `limit`
+
+Randomized with seed 1033
+
+
+

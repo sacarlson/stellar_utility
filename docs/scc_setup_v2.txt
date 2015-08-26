@@ -1,0 +1,63 @@
+to setup stellar_core_commander on a fresh install of Ubuntu 14.04 or Linux Mint 17: also tested on Lubuntu 14.04.1 LTS in virtualbox
+
+apt-get install postgresql
+
+sudo -u postgres createuser --superuser $USER
+
+that fixes this:
+sacarlson@sacarlson-asrock ~/github/stellar/stellar_core_commander/examples $ psql postgres -c "\l"
+psql: FATAL:  role "sacarlson" does not exist
+sacarlson@sacarlson-asrock ~/github/stellar/stellar_core_commander/examples $ psql postgres -c "\l"
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges   
+-----------+----------+----------+-------------+-------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | 
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+(3 rows)
+
+createdb foobar && dropdb foobar
+is ok
+
+sudo apt-get install git
+sudo apt-get install -y libreadline-dev
+# added per http://hibbard.eu/how-to-install-rbenv-on-linux-mint-17-1/
+sudo apt-get install autoconf bison build-essential libssl-dev libyaml-dev libreadline6-dev zlib1g-dev libncurses5-dev libffi-dev libgdbm3 libgdbm-dev
+# sacarlson added for scc
+sudo apt-get install libpq-dev git
+
+git clone https://github.com/sstephenson/rbenv.git ~/.rbenv
+
+echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+echo 'export BUNDLE_PATH=~/.bundle' >>~/.bashrc
+
+git clone https://github.com/sstephenson/ruby-build.git ~/.rbenv/plugins/ruby-build
+
+#rbenv install -l ; to see all ruby versions available to install
+
+#rbenv install 2.1.2 
+rbenv rehash
+gem install bundler
+rbenv rehash
+
+git clone https://github.com/stellar/stellar_core_commander.git ~/scc
+cd ~/scc
+rbenv local 2.1.2
+bundle install
+bundle update
+bundle exec bin/scc --destination ./dest --stellar-core-bin /home/sacarlson/Downloads/stellar-core -r examples/simple_payment.rb &> ./out.txt
+
+note: the above assumes you have stellar-core binary at that location. if you copied it from another system you will also need the dependancies bellow.
+
+notes for stellar-core binary to run on another system we need these dependancies installed:
+# sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+# apt-get update
+# sudo apt-get install libpq-dev clang++-3.5 gcc-4.9 g++-4.9 cpp-4.9
+
+also note to get this to work I had to modify the config function in local_process.rb to work with my older stellar-core
+seems the config syntax in stellar-core is in flux so this may need to be changed again.
+
+

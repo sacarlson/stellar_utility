@@ -1,0 +1,47 @@
+(02:23:17 PM) stellar-slack: <sacarlson> I've decided to take a wak at looking at js-stellar-base, I have npm installed and nodejs working on my mint linux.  what is needed at the command line to start the sinon-chai test in js-stellar-base?
+(02:24:48 PM) stellar-slack: <fredolafritte> gulp test
+(02:24:56 PM) stellar-slack: <fredolafritte> for unit test
+(02:25:09 PM) stellar-slack: <sacarlson> $gulp test
+(02:25:25 PM) stellar-slack: <sacarlson> I assume I cd to some point
+(02:25:37 PM) stellar-slack: <fredolafritte> mocha test/setup/node.js test/functional/functional_test.js
+(02:26:05 PM) stellar-slack: <fredolafritte> For the end to end testing
+(02:26:17 PM) stellar-slack: <sacarlson> ok from what directory?
+(02:26:24 PM) stellar-slack: <fredolafritte> indeed
+(02:26:51 PM) stellar-slack: <sacarlson> I guess from above test
+(02:30:22 PM) stellar-slack: <sacarlson> ok first error is mocha no command found so that's something that needs to be installed
+(02:37:31 PM) stellar-slack: <sacarlson> looks like mocha is installed with npm install -g mocha ;  but at what point do install this or will it install itself?
+(02:54:55 PM) stellar-slack: <sacarlson> I also tried this nodejs test/setup/node.js but get an error: import {default as xdr} from "./generated/stellar-xdr_generated";   should I expect that these tests don't work?
+(02:59:40 PM) stellar-slack: <fredolafritte> do you use my fork or the vanilla js-stellar-base ?
+(03:01:44 PM) stellar-slack: <fredolafritte> the tests are written in es6 and the easiest way to run them is by using mocha
+(03:02:29 PM) stellar-slack: <sacarlson> so where is it you install mocha?   or just install it global?
+(03:04:40 PM) stellar-slack: <fredolafritte> npm install -g mocha
+(03:05:35 PM) stellar-slack: <sacarlson> yes but that installs to a local point as I understand it so I assume it needs to be at some point in the tree of the root
+(03:06:09 PM) stellar-slack: <fredolafritte> js-stellar-base$ ./node_modules/.bin/mocha test/setup/node.js test/unit/operation_test.js
+(03:06:13 PM) stellar-slack: <sacarlson> remind you I"m a total nob on nodejs
+(03:06:35 PM) stellar-slack: <fredolafritte> remind you I'm a total nob on ruby
+(03:07:01 PM) stellar-slack: <sacarlson> yes but this is your stuf now ha ha
+(03:07:45 PM) stellar-slack: <sacarlson> so cd under js-stellar-base then   npm install -g mocha   and we should be good to go?
+(03:08:07 PM) stellar-slack: <fredolafritte> yes
+(03:10:47 PM) stellar-slack: <sacarlson> oh I get this error on attempt npm ERR! Error: EACCES, mkdir '/usr/local/lib/node_modules' so it's attempting to install globaly
+(03:11:01 PM) stellar-slack: <sacarlson> so I guess sudo npm install -g mocha
+(03:11:47 PM) stellar-slack: <sacarlson> all other npm I've done has been local
+(03:13:05 PM) stellar-slack: <sacarlson> after the sudo install I get /usr/bin/env: node: No such file or directory
+(03:16:57 PM) stellar-slack: <sacarlson> seems on linux mint they renamed it so to fix this you need: sudo ln -s /usr/bin/nodejs /usr/bin/node
+(03:19:39 PM) stellar-slack: <fredolafritte> # mocha test/setup/node.js test/unit/operation_test.js
+(03:20:06 PM) stellar-slack: <sacarlson> @fredolafritte:  should I give your github branch a wak?
+(03:20:08 PM) stellar-slack: <fredolafritte> the file test/setup/node.js only contains global variables
+(03:21:01 PM) stellar-slack: <fredolafritte> setting the trust doesn't work on the vanilla lib, still waiting for my changes to be merged ....
+(03:21:48 PM) stellar-slack: <sacarlson> well what I was at least hoping that did work was the decodeing of the errors that doesn't seem to work on ruby
+(03:23:13 PM) stellar-slack: <fredolafritte> decoding the error is only on my fork for now
+(03:23:23 PM) stellar-slack: <fredolafritte> hope it will be merged soon
+(03:23:47 PM) stellar-slack: <sacarlson> no problem I'm fully willing to give yours a try
+(03:33:32 PM) stellar-slack: <fredolafritte> for sure *mocha test/setup/node.js* is the wrong command to start the test
+(03:34:02 PM) stellar-slack: <fredolafritte> try: *mocha test/setup/node.js test/unit/operation_test.js*
+(03:34:48 PM) stellar-slack: <sacarlson> same error seen
+(03:35:02 PM) stellar-slack: <fredolafritte> *sudo npm install* ?
+(03:35:35 PM) stellar-slack: <sacarlson> sudo npm install of mocha?  yes
+(03:36:20 PM) stellar-slack: <fredolafritte> and *sudo npm install* ?
+(03:37:00 PM) stellar-slack: <sacarlson> you want me to try that $sudo npm install;  on the command line?
+(03:37:22 PM) stellar-slack: <fredolafritte> yes
+(03:38:23 PM) stellar-slack: <sacarlson> it's downloading tons of stuf
+(03:39:19 PM) stellar-slack: <sacarlson> after that install now it passed the first  mocha test/setup/node.js

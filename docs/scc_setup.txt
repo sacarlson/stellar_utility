@@ -1,0 +1,767 @@
+to setup stellar_core_commander on a fresh install of Ubuntu 14.04 or Linux Mint 17:
+
+apt-get install postgresql
+
+sudo -u postgres createuser --superuser $USER
+
+that fixes this:
+sacarlson@sacarlson-asrock ~/github/stellar/stellar_core_commander/examples $ psql postgres -c "\l"
+psql: FATAL:  role "sacarlson" does not exist
+sacarlson@sacarlson-asrock ~/github/stellar/stellar_core_commander/examples $ psql postgres -c "\l"
+                                  List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges   
+-----------+----------+----------+-------------+-------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | 
+ template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+           |          |          |             |             | postgres=CTc/postgres
+(3 rows)
+
+createdb foobar && dropdb foobar
+is ok
+
+sudo apt-get install git
+sudo apt-get install -y libreadline-dev
+# added per http://hibbard.eu/how-to-install-rbenv-on-linux-mint-17-1/
+sudo apt-get install autoconf bison build-essential libssl-dev libyaml-dev libreadline6-dev zlib1g-dev libncurses5-dev libffi-dev libgdbm3 libgdbm-dev
+# scotty added for scc
+sudo apt-get install libpq-dev
+
+git clone https://github.com/sstephenson/rbenv.git ~/.rbenv
+
+echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+echo 'export BUNDLE_PATH=~/.bundle' >>~/.bashrc
+
+git clone https://github.com/sstephenson/ruby-build.git ~/.rbenv/plugins/ruby-build
+
+#rbenv install -l ; to see all ruby versions available to install
+
+#rbenv install 2.1.2 json-1.8.3/lib/json/common.rb:67: [BUG] Segmentation fault on mint 17 system
+rbenv rehash
+gem install bundler
+rbenv rehash
+
+git clone https://github.com/stellar/stellar_core_commander.git ~/scc
+cd ~/scc
+rbenv local 2.1.2
+bundle install
+bundle update
+
+
+
+problems with 2.1.0 - 2.1.1 so far:
+sacarlson@sacarlson-asrock ~/github/stellar/stellar_core_commander $ rbenv install 2.1.1
+Downloading yaml-0.1.6.tar.gz...
+-> https://dqw8nmjcqpjn7.cloudfront.net/7da6971b4bd08a986dd2a61353bc422362bd0edcc67d7ebaac68c95f74182749
+Installing yaml-0.1.6...
+Installed yaml-0.1.6 to /home/sacarlson/.rbenv/versions/2.1.1
+
+Downloading ruby-2.1.1.tar.gz...
+-> https://dqw8nmjcqpjn7.cloudfront.net/c843df31ae88ed49f5393142b02b9a9f5a6557453805fd489a76fbafeae88941
+Installing ruby-2.1.1...
+
+BUILD FAILED (LinuxMint 17 using ruby-build 20150818)
+
+Inspect or clean up the working tree at /tmp/ruby-build.20150819120012.22500
+Results logged to /tmp/ruby-build.20150819120012.22500.log
+
+Last 10 log lines:
+linking shared-object dl/callback.so
+compiling ossl_ocsp.c
+make[2]: Leaving directory `/tmp/ruby-build.20150819120012.22500/ruby-2.1.1/ext/dl/callback'
+compiling ossl_hmac.c
+compiling ossl_pkcs12.c
+installing default openssl libraries
+linking shared-object openssl.so
+make[2]: Leaving directory `/tmp/ruby-build.20150819120012.22500/ruby-2.1.1/ext/openssl'
+make[1]: Leaving directory `/tmp/ruby-build.20150819120012.22500/ruby-2.1.1'
+make: *** [build-ext] Error 2
+
+version ruby 2.2.3: problems:
+/home/sacarlson/.bundle/gems/backports-3.6.6/lib/backports/std_lib.rb:9:in `require': incompatible library version - /home/sacarlson/.bundle/gems/ffi-1.9.10/lib/ffi_c.so (LoadError)
+	from /home/sacarlson/.bundle/gems/backports-3.6.6/lib/backports/std_lib.rb:9:in `require_with_backports'
+	from /home/sacarlson/.bundle/gems/ffi-1.9.10/lib/ffi.rb:6:in `rescue in <top (required)>'
+	from /home/sacarlson/.bundle/gems/ffi-1.9.10/lib/ffi.rb:3:in `<top (required)>'
+	from /home/sacarlson/.bundle/gems/backports-3.6.6/lib/backports/std_lib.rb:9:in `require'
+	from /home/sacarlson/.bundle/gems/backports-3.6.6/lib/backports/std_lib.rb:9:in `require_with_backports'
+	from /home/sacarlson/.bundle/gems/rbnacl-3.2.0/lib/rbnacl/sodium.rb:2:in `<top (required)>'
+	from /home/sacarlson/.bundle/gems/backports-3.6.6/lib/backports/std_lib.rb:9:in `require'
+	from /home/sacarlson/.bundle/gems/backports-3.6.6/lib/backports/std_lib.rb:9:in `require_with_backports'
+	from /home/sacarlson/.bundle/gems/rbnacl-3.2.0/lib/rbnacl.rb:3:in `<top (required)>'
+	from /home/sacarlson/.bundle/gems/backports-3.6.6/lib/backports/std_lib.rb:9:in `require'
+	from /home/sacarlson/.bundle/gems/backports-3.6.6/lib/backports/std_lib.rb:9:in `require_with_backports'
+	from /home/sacarlson/.bundle/gems/rbnacl-libsodium-1.0.3/lib/rbnacl/libsodium.rb:11:in `<top (required)>'
+	from /home/sacarlson/.bundle/gems/backports-3.6.6/lib/backports/std_lib.rb:9:in `require'
+	from /home/sacarlson/.bundle/gems/backports-3.6.6/lib/backports/std_lib.rb:9:in `require_with_backports'
+	from /home/sacarlson/.bundle/gems/stellar-base-0.1.4/lib/stellar-base.rb:2:in `<top (required)>'
+	from /home/sacarlson/github/stellar/stellar_core_commander/lib/stellar_core_commander.rb:3:in `require'
+	from /home/sacarlson/github/stellar/stellar_core_commander/lib/stellar_core_commander.rb:3:in `<top (required)>'
+	from bin/scc:3:in `require'
+	from bin/scc:3:in `<main>'
+
+version ruby 2.1.2 problems:
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json/common.rb:67: [BUG] Segmentation fault at 0x00000000000018
+ruby 2.1.2p95 (2014-05-08 revision 45877) [x86_64-linux]
+
+-- Control frame information -----------------------------------------------
+c:0024 p:---- s:0075 e:000074 CFUNC  :initialize
+c:0023 p:---- s:0073 e:000072 CFUNC  :new
+c:0022 p:0075 s:0070 e:000067 METHOD /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/common.rb:67
+c:0021 p:0070 s:0059 e:000057 CLASS  /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext.rb:17
+c:0020 p:0011 s:0056 e:000055 CLASS  /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext.rb:12
+c:0019 p:0057 s:0054 e:000053 TOP    /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext.rb:9 [FINISH]
+c:0018 p:---- s:0052 e:000051 CFUNC  :require
+c:0017 p:0019 s:0048 e:000047 CLASS  /home/sacarlson/.bundle/gems/json-1.8.3/lib/json.rb:58
+c:0016 p:0017 s:0046 e:000045 TOP    /home/sacarlson/.bundle/gems/json-1.8.3/lib/json.rb:54 [FINISH]
+c:0015 p:---- s:0044 e:000043 CFUNC  :require
+c:0014 p:0007 s:0040 e:000039 TOP    /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/json.rb:2 [FINISH]
+c:0013 p:---- s:0038 e:000037 CFUNC  :require
+c:0012 p:0079 s:0034 e:000033 TOP    /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object.rb:12 [FINISH]
+c:0011 p:---- s:0032 e:000031 CFUNC  :require
+c:0010 p:0009 s:0028 e:000027 BLOCK  /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext.rb:2 [FINISH]
+c:0009 p:---- s:0025 e:000024 CFUNC  :each
+c:0008 p:0029 s:0022 e:000021 TOP    /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext.rb:1 [FINISH]
+c:0007 p:---- s:0020 e:000019 CFUNC  :require
+c:0006 p:0023 s:0016 e:000015 TOP    /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/all.rb:3 [FINISH]
+c:0005 p:---- s:0014 e:000013 CFUNC  :require
+c:0004 p:0015 s:0010 e:000009 TOP    /home/sacarlson/github/stellar/stellar_core_commander/lib/stellar_core_commander.rb:2 [FINISH]
+c:0003 p:---- s:0008 e:000007 CFUNC  :require
+c:0002 p:0007 s:0004 E:0003e8 EVAL   bin/scc:3 [FINISH]
+c:0001 p:0000 s:0002 E:000958 TOP    [FINISH]
+
+-- Ruby level backtrace information ----------------------------------------
+bin/scc:3:in `<main>'
+bin/scc:3:in `require'
+/home/sacarlson/github/stellar/stellar_core_commander/lib/stellar_core_commander.rb:2:in `<top (required)>'
+/home/sacarlson/github/stellar/stellar_core_commander/lib/stellar_core_commander.rb:2:in `require'
+/home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/all.rb:3:in `<top (required)>'
+/home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/all.rb:3:in `require'
+/home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext.rb:1:in `<top (required)>'
+/home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext.rb:1:in `each'
+/home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext.rb:2:in `block in <top (required)>'
+/home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext.rb:2:in `require'
+/home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object.rb:12:in `<top (required)>'
+/home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object.rb:12:in `require'
+/home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/json.rb:2:in `<top (required)>'
+/home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/json.rb:2:in `require'
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json.rb:54:in `<top (required)>'
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json.rb:58:in `<module:JSON>'
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json.rb:58:in `require'
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext.rb:9:in `<top (required)>'
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext.rb:12:in `<module:JSON>'
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext.rb:17:in `<module:Ext>'
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json/common.rb:67:in `generator='
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json/common.rb:67:in `new'
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json/common.rb:67:in `initialize'
+
+-- C level backtrace information -------------------------------------------
+ruby(+0x18242c) [0x7fb2ad08642c]
+ruby(+0x1f3ad3) [0x7fb2ad0f7ad3]
+ruby(rb_bug+0xb3) [0x7fb2ad0f8cd3]
+ruby(+0xf94ee) [0x7fb2acffd4ee]
+/lib/x86_64-linux-gnu/libpthread.so.0(+0x10340) [0x7fb2acad1340]
+ruby(rb_hash_aref+0xc) [0x7fb2acf4cd1c]
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/generator.so(+0x260e) [0x7fb2a814760e] generator.c:549
+/home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/generator.so(+0x2b4d) [0x7fb2a8147b4d] generator.c:976
+ruby(+0x1751ba) [0x7fb2ad0791ba]
+ruby(+0x175c19) [0x7fb2ad079c19]
+ruby(rb_class_new_instance+0x21) [0x7fb2acf84401]
+ruby(+0x16bd5c) [0x7fb2ad06fd5c]
+ruby(+0x1784fd) [0x7fb2ad07c4fd]
+ruby(+0x16fc13) [0x7fb2ad073c13]
+ruby(+0x1741ed) [0x7fb2ad0781ed]
+ruby(rb_iseq_eval+0x1b8) [0x7fb2ad084098]
+ruby(+0x1fa5b0) [0x7fb2ad0fe5b0]
+ruby(rb_require_safe+0x599) [0x7fb2ad0fff89]
+ruby(+0x16bd5c) [0x7fb2ad06fd5c]
+ruby(+0x1784fd) [0x7fb2ad07c4fd]
+ruby(+0x16fc13) [0x7fb2ad073c13]
+ruby(+0x1741ed) [0x7fb2ad0781ed]
+ruby(rb_iseq_eval+0x1b8) [0x7fb2ad084098]
+ruby(+0x1fa5b0) [0x7fb2ad0fe5b0]
+ruby(rb_require_safe+0x599) [0x7fb2ad0fff89]
+ruby(+0x16bd5c) [0x7fb2ad06fd5c]
+ruby(+0x1784fd) [0x7fb2ad07c4fd]
+ruby(+0x16fc13) [0x7fb2ad073c13]
+ruby(+0x1741ed) [0x7fb2ad0781ed]
+ruby(rb_iseq_eval+0x1b8) [0x7fb2ad084098]
+ruby(+0x1fa5b0) [0x7fb2ad0fe5b0]
+ruby(rb_require_safe+0x599) [0x7fb2ad0fff89]
+ruby(+0x16bd5c) [0x7fb2ad06fd5c]
+ruby(+0x1784fd) [0x7fb2ad07c4fd]
+ruby(+0x16fc13) [0x7fb2ad073c13]
+ruby(+0x1741ed) [0x7fb2ad0781ed]
+ruby(rb_iseq_eval+0x1b8) [0x7fb2ad084098]
+ruby(+0x1fa5b0) [0x7fb2ad0fe5b0]
+ruby(rb_require_safe+0x599) [0x7fb2ad0fff89]
+ruby(+0x16bd5c) [0x7fb2ad06fd5c]
+ruby(+0x16fc13) [0x7fb2ad073c13]
+ruby(+0x1741ed) [0x7fb2ad0781ed]
+ruby(rb_yield+0x3a4) [0x7fb2ad083154]
+ruby(rb_ary_each+0x52) [0x7fb2ad0a2552]
+ruby(+0x16bd5c) [0x7fb2ad06fd5c]
+ruby(+0x1784fd) [0x7fb2ad07c4fd]
+ruby(+0x16fb76) [0x7fb2ad073b76]
+ruby(+0x1741ed) [0x7fb2ad0781ed]
+ruby(rb_iseq_eval+0x1b8) [0x7fb2ad084098]
+ruby(+0x1fa5b0) [0x7fb2ad0fe5b0]
+ruby(rb_require_safe+0x599) [0x7fb2ad0fff89]
+ruby(+0x16bd5c) [0x7fb2ad06fd5c]
+ruby(+0x1784fd) [0x7fb2ad07c4fd]
+ruby(+0x16fc13) [0x7fb2ad073c13]
+ruby(+0x1741ed) [0x7fb2ad0781ed]
+ruby(rb_iseq_eval+0x1b8) [0x7fb2ad084098]
+ruby(+0x1fa5b0) [0x7fb2ad0fe5b0]
+ruby(rb_require_safe+0x599) [0x7fb2ad0fff89]
+ruby(+0x16bd5c) [0x7fb2ad06fd5c]
+ruby(+0x1784fd) [0x7fb2ad07c4fd]
+ruby(+0x16fc13) [0x7fb2ad073c13]
+ruby(+0x1741ed) [0x7fb2ad0781ed]
+ruby(rb_iseq_eval+0x1b8) [0x7fb2ad084098]
+ruby(+0x1fa5b0) [0x7fb2ad0fe5b0]
+ruby(rb_require_safe+0x599) [0x7fb2ad0fff89]
+ruby(+0x16bd5c) [0x7fb2ad06fd5c]
+ruby(+0x1784fd) [0x7fb2ad07c4fd]
+ruby(+0x16fc13) [0x7fb2ad073c13]
+ruby(+0x1741ed) [0x7fb2ad0781ed]
+ruby(rb_iseq_eval_main+0x212) [0x7fb2ad084312]
+ruby(+0x22bca) [0x7fb2acf26bca]
+ruby(ruby_run_node+0x2f) [0x7fb2acf2a0af]
+ruby(+0x227db) [0x7fb2acf267db]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xf5) [0x7fb2abfdaec5]
+ruby(+0x22809) [0x7fb2acf26809]
+
+-- Other runtime information -----------------------------------------------
+
+* Loaded script: bin/scc
+
+* Loaded features:
+
+    0 enumerator.so
+    1 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/encdb.so
+    2 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/trans/transdb.so
+    3 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/rbconfig.rb
+    4 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/compatibility.rb
+    5 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/defaults.rb
+    6 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/deprecate.rb
+    7 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/errors.rb
+    8 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/version.rb
+    9 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/requirement.rb
+   10 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/platform.rb
+   11 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/basic_specification.rb
+   12 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/stub_specification.rb
+   13 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/util/stringio.rb
+   14 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/specification.rb
+   15 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/exceptions.rb
+   16 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/core_ext/kernel_gem.rb
+   17 thread.rb
+   18 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/thread.so
+   19 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/monitor.rb
+   20 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/core_ext/kernel_require.rb
+   21 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems.rb
+   22 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/pathname.so
+   23 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/pathname.rb
+   24 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/constants.rb
+   25 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/dependency.rb
+   26 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/path_support.rb
+   27 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/io/console.so
+   28 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/user_interaction.rb
+   29 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/etc.so
+   30 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/config_file.rb
+   31 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/ext/build_error.rb
+   32 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/ext/builder.rb
+   33 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/ext/configure_builder.rb
+   34 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/fileutils.rb
+   35 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/delegate.rb
+   36 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/tmpdir.rb
+   37 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/tempfile.rb
+   38 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/ext/ext_conf_builder.rb
+   39 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/ext/rake_builder.rb
+   40 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/optparse.rb
+   41 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/command.rb
+   42 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/ext/cmake_builder.rb
+   43 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/ext.rb
+   44 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/rubygems_integration.rb
+   45 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/current_ruby.rb
+   46 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/shared_helpers.rb
+   47 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/gem_path_manipulation.rb
+   48 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/gem_helpers.rb
+   49 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/match_platform.rb
+   50 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/rubygems_ext.rb
+   51 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/version.rb
+   52 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler.rb
+   53 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/uri/common.rb
+   54 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/uri/generic.rb
+   55 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/uri/ftp.rb
+   56 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/uri/http.rb
+   57 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/uri/https.rb
+   58 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/uri/ldap.rb
+   59 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/uri/ldaps.rb
+   60 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/uri/mailto.rb
+   61 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/uri.rb
+   62 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/settings.rb
+   63 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/strscan.so
+   64 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/source.rb
+   65 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/digest.so
+   66 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/digest.rb
+   67 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/digest/sha1.so
+   68 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/source/path.rb
+   69 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/source/git.rb
+   70 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/socket.so
+   71 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/socket.rb
+   72 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/timeout.rb
+   73 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/net/protocol.rb
+   74 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/zlib.so
+   75 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/stringio.so
+   76 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/net/http/exceptions.rb
+   77 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/net/http/header.rb
+   78 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/net/http/generic_request.rb
+   79 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/net/http/request.rb
+   80 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/net/http/requests.rb
+   81 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/net/http/response.rb
+   82 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/net/http/responses.rb
+   83 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/net/http/proxy_delta.rb
+   84 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/net/http/backward.rb
+   85 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/net/http.rb
+   86 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/date_core.so
+   87 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/date/format.rb
+   88 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/date.rb
+   89 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/time.rb
+   90 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/request.rb
+   91 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/cgi/core.rb
+   92 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/cgi/util.rb
+   93 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/cgi/cookie.rb
+   94 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/cgi.rb
+   95 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/uri_formatter.rb
+   96 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/fcntl.so
+   97 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/openssl.so
+   98 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/openssl/bn.rb
+   99 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/openssl/cipher.rb
+  100 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/openssl/config.rb
+  101 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/openssl/digest.rb
+  102 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/openssl/x509.rb
+  103 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/openssl/buffering.rb
+  104 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/openssl/ssl.rb
+  105 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/openssl.rb
+  106 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/securerandom.rb
+  107 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/resolv.rb
+  108 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/remote_fetcher.rb
+  109 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/text.rb
+  110 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/name_tuple.rb
+  111 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/rubygems/spec_fetcher.rb
+  112 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/source/rubygems.rb
+  113 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/lockfile_parser.rb
+  114 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/set.rb
+  115 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/definition.rb
+  116 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/dependency.rb
+  117 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/ruby_dsl.rb
+  118 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/dsl.rb
+  119 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/source_list.rb
+  120 /home/sacarlson/github/stellar/stellar_core_commander/lib/stellar_core_commander/version.rb
+  121 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/lazy_specification.rb
+  122 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/tsort.rb
+  123 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/forwardable.rb
+  124 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/spec_set.rb
+  125 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/index.rb
+  126 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/environment.rb
+  127 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/runtime.rb
+  128 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/remote_specification.rb
+  129 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/dep_proxy.rb
+  130 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/vendor/molinillo/lib/molinillo/gem_metadata.rb
+  131 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/vendor/molinillo/lib/molinillo/errors.rb
+  132 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/vendor/molinillo/lib/molinillo/dependency_graph.rb
+  133 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/vendor/molinillo/lib/molinillo/state.rb
+  134 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/vendor/molinillo/lib/molinillo/modules/specification_provider.rb
+  135 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/vendor/molinillo/lib/molinillo/resolution.rb
+  136 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/vendor/molinillo/lib/molinillo/resolver.rb
+  137 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/vendor/molinillo/lib/molinillo/modules/ui.rb
+  138 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/vendor/molinillo/lib/molinillo.rb
+  139 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/vendored_molinillo.rb
+  140 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/resolver.rb
+  141 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/endpoint_specification.rb
+  142 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/stub_specification.rb
+  143 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/ui.rb
+  144 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/ui/silent.rb
+  145 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/ui/rg_proxy.rb
+  146 /var/lib/gems/1.9.1/gems/bundler-1.10.6/lib/bundler/setup.rb
+  147 /home/sacarlson/.bundle/gems/thread_safe-0.3.5/lib/thread_safe/version.rb
+  148 /home/sacarlson/.bundle/gems/thread_safe-0.3.5/lib/thread_safe/synchronized_delegator.rb
+  149 /home/sacarlson/.bundle/gems/thread_safe-0.3.5/lib/thread_safe.rb
+  150 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/array/prepend_and_append.rb
+  151 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/hash/deep_merge.rb
+  152 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/hash/except.rb
+  153 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/hash/slice.rb
+  154 /home/sacarlson/.bundle/gems/i18n-0.7.0/lib/i18n/version.rb
+  155 /home/sacarlson/.bundle/gems/i18n-0.7.0/lib/i18n/exceptions.rb
+  156 /home/sacarlson/.bundle/gems/i18n-0.7.0/lib/i18n/interpolate/ruby.rb
+  157 /home/sacarlson/.bundle/gems/i18n-0.7.0/lib/i18n.rb
+  158 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/lazy_load_hooks.rb
+  159 /home/sacarlson/.bundle/gems/i18n-0.7.0/lib/i18n/config.rb
+  160 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/i18n.rb
+  161 /home/sacarlson/.bundle/gems/thread_safe-0.3.5/lib/thread_safe/non_concurrent_cache_backend.rb
+  162 /home/sacarlson/.bundle/gems/thread_safe-0.3.5/lib/thread_safe/mri_cache_backend.rb
+  163 /home/sacarlson/.bundle/gems/thread_safe-0.3.5/lib/thread_safe/cache.rb
+  164 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/inflector/inflections.rb
+  165 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/inflections.rb
+  166 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/inflector/methods.rb
+  167 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/dependencies/autoload.rb
+  168 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/gem_version.rb
+  169 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/version.rb
+  170 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/array/extract_options.rb
+  171 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module/attribute_accessors.rb
+  172 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/concern.rb
+  173 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/logger_silence.rb
+  174 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/logger.rb
+  175 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/logger.rb
+  176 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support.rb
+  177 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/acts_like.rb
+  178 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/time/acts_like.rb
+  179 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/base64.rb
+  180 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/bigdecimal.so
+  181 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module/delegation.rb
+  182 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/multibyte.rb
+  183 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/multibyte.rb
+  184 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/inflector/transliterate.rb
+  185 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/inflections.rb
+  186 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date_time/calculations.rb
+  187 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/singleton.rb
+  188 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/kernel/singleton_class.rb
+  189 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/deprecation/instance_delegator.rb
+  190 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/notifications/instrumenter.rb
+  191 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/mutex_m.rb
+  192 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/notifications/fanout.rb
+  193 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/per_thread_registry.rb
+  194 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/notifications.rb
+  195 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/deprecation/behaviors.rb
+  196 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/deprecation/reporting.rb
+  197 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module/aliasing.rb
+  198 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/deprecation/method_wrappers.rb
+  199 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/deprecation/proxy_wrappers.rb
+  200 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module/deprecation.rb
+  201 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/deprecation.rb
+  202 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/kernel/reporting.rb
+  203 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/blank.rb
+  204 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/xml_mini/rexml.rb
+  205 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/xml_mini.rb
+  206 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/hash/keys.rb
+  207 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/to_query.rb
+  208 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/to_param.rb
+  209 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/array/conversions.rb
+  210 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/duration.rb
+  211 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/ruby_core_support.rb
+  212 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/offset_rationals.rb
+  213 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/time_or_datetime.rb
+  214 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/timezone_definition.rb
+  215 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/timezone_offset.rb
+  216 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/timezone_transition.rb
+  217 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/timezone_transition_definition.rb
+  218 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/timezone_index_definition.rb
+  219 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/timezone_info.rb
+  220 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/data_timezone_info.rb
+  221 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/linked_timezone_info.rb
+  222 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/transition_data_timezone_info.rb
+  223 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/zoneinfo_timezone_info.rb
+  224 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/data_source.rb
+  225 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/ruby_data_source.rb
+  226 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/zoneinfo_data_source.rb
+  227 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/timezone_period.rb
+  228 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/timezone.rb
+  229 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/info_timezone.rb
+  230 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/data_timezone.rb
+  231 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/linked_timezone.rb
+  232 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/timezone_proxy.rb
+  233 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/country_index_definition.rb
+  234 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/country_info.rb
+  235 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/ruby_country_info.rb
+  236 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/zoneinfo_country_info.rb
+  237 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/country.rb
+  238 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo/country_timezone.rb
+  239 /home/sacarlson/.bundle/gems/tzinfo-1.2.2/lib/tzinfo.rb
+  240 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/try.rb
+  241 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/values/time_zone.rb
+  242 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/time/conversions.rb
+  243 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/time_with_zone.rb
+  244 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date_and_time/zones.rb
+  245 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/time/zones.rb
+  246 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date_and_time/calculations.rb
+  247 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/time/calculations.rb
+  248 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/time/marshal.rb
+  249 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/time.rb
+  250 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date/acts_like.rb
+  251 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date/zones.rb
+  252 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date/calculations.rb
+  253 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module/remove_method.rb
+  254 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date/conversions.rb
+  255 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date.rb
+  256 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date_time/acts_like.rb
+  257 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date_time/conversions.rb
+  258 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date_time/zones.rb
+  259 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/date_time.rb
+  260 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/numeric/time.rb
+  261 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/integer/time.rb
+  262 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/conversions.rb
+  263 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/zones.rb
+  264 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/time.rb
+  265 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/name_error.rb
+  266 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/struct.rb
+  267 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/class/attribute.rb
+  268 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/class/delegating_attributes.rb
+  269 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module/anonymous.rb
+  270 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module/reachable.rb
+  271 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/class/subclasses.rb
+  272 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/class.rb
+  273 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/inflector.rb
+  274 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module/introspection.rb
+  275 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module/attr_internal.rb
+  276 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module/concerning.rb
+  277 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module/qualified_const.rb
+  278 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/module.rb
+  279 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/kernel/agnostics.rb
+  280 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/kernel/concern.rb
+  281 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/kernel.rb
+  282 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/range/conversions.rb
+  283 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/range/include_range.rb
+  284 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/range/overlaps.rb
+  285 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/range/each.rb
+  286 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/range.rb
+  287 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/regexp.rb
+  288 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/uri.rb
+  289 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/marshal.rb
+  290 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/file/atomic.rb
+  291 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/file.rb
+  292 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/thread.rb
+  293 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/hash/compact.rb
+  294 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/array/wrap.rb
+  295 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/hash/reverse_merge.rb
+  296 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/hash/conversions.rb
+  297 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/hash_with_indifferent_access.rb
+  298 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/hash/indifferent_access.rb
+  299 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/hash/transform_values.rb
+  300 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/hash.rb
+  301 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/benchmark.rb
+  302 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/benchmark.rb
+  303 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/filters.rb
+  304 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/starts_ends_with.rb
+  305 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/access.rb
+  306 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/behavior.rb
+  307 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/erb.rb
+  308 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/output_safety.rb
+  309 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/exclude.rb
+  310 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/strip.rb
+  311 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/string_inquirer.rb
+  312 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/inquiry.rb
+  313 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string/indent.rb
+  314 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/string.rb
+  315 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/integer/multiple.rb
+  316 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/integer/inflections.rb
+  317 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/integer.rb
+  318 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/load_error.rb
+  319 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/duplicable.rb
+  320 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/deep_dup.rb
+  321 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/itself.rb
+  322 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/inclusion.rb
+  323 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/conversions.rb
+  324 /home/sacarlson/.bundle/gems/activesupport-4.2.3/lib/active_support/core_ext/object/instance_variables.rb
+  325 /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/version.rb
+  326 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/ostruct.rb
+  327 /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/generic_object.rb
+  328 /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/common.rb
+  329 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_16be.so
+  330 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_16le.so
+  331 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_32be.so
+  332 /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_32le.so
+  333 /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/parser.so
+  334 /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/generator.so
+
+* Process memory map:
+
+7fb2a7f2e000-7fb2a7f44000 r-xp 00000000 fc:00 160683                     /lib/x86_64-linux-gnu/libgcc_s.so.1
+7fb2a7f44000-7fb2a8143000 ---p 00016000 fc:00 160683                     /lib/x86_64-linux-gnu/libgcc_s.so.1
+7fb2a8143000-7fb2a8144000 r--p 00015000 fc:00 160683                     /lib/x86_64-linux-gnu/libgcc_s.so.1
+7fb2a8144000-7fb2a8145000 rw-p 00016000 fc:00 160683                     /lib/x86_64-linux-gnu/libgcc_s.so.1
+7fb2a8145000-7fb2a814c000 r-xp 00000000 fc:00 305710                     /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/generator.so
+7fb2a814c000-7fb2a834c000 ---p 00007000 fc:00 305710                     /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/generator.so
+7fb2a834c000-7fb2a834d000 r--p 00007000 fc:00 305710                     /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/generator.so
+7fb2a834d000-7fb2a834e000 rw-p 00008000 fc:00 305710                     /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/generator.so
+7fb2a834e000-7fb2a834f000 r-xp 00000000 fc:00 4209361                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_32le.so
+7fb2a834f000-7fb2a854e000 ---p 00001000 fc:00 4209361                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_32le.so
+7fb2a854e000-7fb2a854f000 r--p 00000000 fc:00 4209361                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_32le.so
+7fb2a854f000-7fb2a8550000 rw-p 00001000 fc:00 4209361                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_32le.so
+7fb2a8550000-7fb2a8551000 r-xp 00000000 fc:00 4209324                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_32be.so
+7fb2a8551000-7fb2a8750000 ---p 00001000 fc:00 4209324                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_32be.so
+7fb2a8750000-7fb2a8751000 r--p 00000000 fc:00 4209324                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_32be.so
+7fb2a8751000-7fb2a8752000 rw-p 00001000 fc:00 4209324                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_32be.so
+7fb2a8752000-7fb2a8753000 r-xp 00000000 fc:00 4209328                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_16le.so
+7fb2a8753000-7fb2a8953000 ---p 00001000 fc:00 4209328                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_16le.so
+7fb2a8953000-7fb2a8954000 r--p 00001000 fc:00 4209328                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_16le.so
+7fb2a8954000-7fb2a8955000 rw-p 00002000 fc:00 4209328                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_16le.so
+7fb2a8955000-7fb2a8956000 r-xp 00000000 fc:00 4209362                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_16be.so
+7fb2a8956000-7fb2a8b56000 ---p 00001000 fc:00 4209362                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_16be.so
+7fb2a8b56000-7fb2a8b57000 r--p 00001000 fc:00 4209362                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_16be.so
+7fb2a8b57000-7fb2a8b58000 rw-p 00002000 fc:00 4209362                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/utf_16be.so
+7fb2a8b58000-7fb2a8b5f000 r-xp 00000000 fc:00 167709                     /lib/x86_64-linux-gnu/librt-2.19.so
+7fb2a8b5f000-7fb2a8d5e000 ---p 00007000 fc:00 167709                     /lib/x86_64-linux-gnu/librt-2.19.so
+7fb2a8d5e000-7fb2a8d5f000 r--p 00006000 fc:00 167709                     /lib/x86_64-linux-gnu/librt-2.19.so
+7fb2a8d5f000-7fb2a8d60000 rw-p 00007000 fc:00 167709                     /lib/x86_64-linux-gnu/librt-2.19.so
+7fb2a8d60000-7fb2a8f56000 r-xp 00000000 fc:00 17857                      /usr/lib/libruby-1.9.1.so.1.9.1
+7fb2a8f56000-7fb2a9155000 ---p 001f6000 fc:00 17857                      /usr/lib/libruby-1.9.1.so.1.9.1
+7fb2a9155000-7fb2a915a000 r--p 001f5000 fc:00 17857                      /usr/lib/libruby-1.9.1.so.1.9.1
+7fb2a915a000-7fb2a915e000 rw-p 001fa000 fc:00 17857                      /usr/lib/libruby-1.9.1.so.1.9.1
+7fb2a915e000-7fb2a917a000 rw-p 00000000 00:00 0 
+7fb2a917a000-7fb2a9180000 r-xp 00000000 fc:00 305714                     /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/parser.so
+7fb2a9180000-7fb2a937f000 ---p 00006000 fc:00 305714                     /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/parser.so
+7fb2a937f000-7fb2a9380000 r--p 00005000 fc:00 305714                     /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/parser.so
+7fb2a9380000-7fb2a9381000 rw-p 00006000 fc:00 305714                     /home/sacarlson/.bundle/gems/json-1.8.3/lib/json/ext/parser.so
+7fb2a9381000-7fb2a9395000 r-xp 00000000 fc:00 3690996                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/bigdecimal.so
+7fb2a9395000-7fb2a9594000 ---p 00014000 fc:00 3690996                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/bigdecimal.so
+7fb2a9594000-7fb2a9595000 r--p 00013000 fc:00 3690996                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/bigdecimal.so
+7fb2a9595000-7fb2a9596000 rw-p 00014000 fc:00 3690996                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/bigdecimal.so
+7fb2a9596000-7fb2a95eb000 r-xp 00000000 fc:00 131366                     /lib/x86_64-linux-gnu/libssl.so.1.0.0
+7fb2a95eb000-7fb2a97eb000 ---p 00055000 fc:00 131366                     /lib/x86_64-linux-gnu/libssl.so.1.0.0
+7fb2a97eb000-7fb2a97ee000 r--p 00055000 fc:00 131366                     /lib/x86_64-linux-gnu/libssl.so.1.0.0
+7fb2a97ee000-7fb2a97f5000 rw-p 00058000 fc:00 131366                     /lib/x86_64-linux-gnu/libssl.so.1.0.0
+7fb2a97f5000-7fb2a9846000 r-xp 00000000 fc:00 3690995                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/openssl.so
+7fb2a9846000-7fb2a9a46000 ---p 00051000 fc:00 3690995                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/openssl.so
+7fb2a9a46000-7fb2a9a47000 r--p 00051000 fc:00 3690995                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/openssl.so
+7fb2a9a47000-7fb2a9a49000 rw-p 00052000 fc:00 3690995                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/openssl.so
+7fb2a9a49000-7fb2a9a4a000 rw-p 00000000 00:00 0 
+7fb2a9a4a000-7fb2a9a4b000 r-xp 00000000 fc:00 3690998                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/fcntl.so
+7fb2a9a4b000-7fb2a9c4a000 ---p 00001000 fc:00 3690998                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/fcntl.so
+7fb2a9c4a000-7fb2a9c4b000 r--p 00000000 fc:00 3690998                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/fcntl.so
+7fb2a9c4b000-7fb2a9c4c000 rw-p 00001000 fc:00 3690998                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/fcntl.so
+7fb2a9c4c000-7fb2a9c7f000 r-xp 00000000 fc:00 3690986                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/date_core.so
+7fb2a9c7f000-7fb2a9e7f000 ---p 00033000 fc:00 3690986                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/date_core.so
+7fb2a9e7f000-7fb2a9e80000 r--p 00033000 fc:00 3690986                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/date_core.so
+7fb2a9e80000-7fb2a9e81000 rw-p 00034000 fc:00 3690986                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/date_core.so
+7fb2a9e81000-7fb2a9e82000 rw-p 00000000 00:00 0 
+7fb2a9e82000-7fb2a9e8a000 r-xp 00000000 fc:00 3690983                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/stringio.so
+7fb2a9e8a000-7fb2aa089000 ---p 00008000 fc:00 3690983                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/stringio.so
+7fb2aa089000-7fb2aa08a000 r--p 00007000 fc:00 3690983                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/stringio.so
+7fb2aa08a000-7fb2aa08b000 rw-p 00008000 fc:00 3690983                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/stringio.so
+7fb2aa08b000-7fb2aa0a3000 r-xp 00000000 fc:00 173836                     /lib/x86_64-linux-gnu/libz.so.1.2.8
+7fb2aa0a3000-7fb2aa2a2000 ---p 00018000 fc:00 173836                     /lib/x86_64-linux-gnu/libz.so.1.2.8
+7fb2aa2a2000-7fb2aa2a3000 r--p 00017000 fc:00 173836                     /lib/x86_64-linux-gnu/libz.so.1.2.8
+7fb2aa2a3000-7fb2aa2a4000 rw-p 00018000 fc:00 173836                     /lib/x86_64-linux-gnu/libz.so.1.2.8
+7fb2aa2a4000-7fb2aa2b4000 r-xp 00000000 fc:00 3690988                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/zlib.so
+7fb2aa2b4000-7fb2aa4b3000 ---p 00010000 fc:00 3690988                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/zlib.so
+7fb2aa4b3000-7fb2aa4b4000 r--p 0000f000 fc:00 3690988                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/zlib.so
+7fb2aa4b4000-7fb2aa4b5000 rw-p 00010000 fc:00 3690988                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/zlib.so
+7fb2aa4b5000-7fb2aa4dd000 r-xp 00000000 fc:00 3690981                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/socket.so
+7fb2aa4dd000-7fb2aa6dd000 ---p 00028000 fc:00 3690981                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/socket.so
+7fb2aa6dd000-7fb2aa6de000 r--p 00028000 fc:00 3690981                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/socket.so
+7fb2aa6de000-7fb2aa6df000 rw-p 00029000 fc:00 3690981                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/socket.so
+7fb2aa6df000-7fb2aa6e2000 r-xp 00000000 fc:00 3690987                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/digest.so
+7fb2aa6e2000-7fb2aa8e2000 ---p 00003000 fc:00 3690987                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/digest.so
+7fb2aa8e2000-7fb2aa8e3000 r--p 00003000 fc:00 3690987                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/digest.so
+7fb2aa8e3000-7fb2aa8e4000 rw-p 00004000 fc:00 3690987                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/digest.so
+7fb2aa8e4000-7fb2aaa96000 r-xp 00000000 fc:00 131361                     /lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+7fb2aaa96000-7fb2aac95000 ---p 001b2000 fc:00 131361                     /lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+7fb2aac95000-7fb2aacb0000 r--p 001b1000 fc:00 131361                     /lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+7fb2aacb0000-7fb2aacbb000 rw-p 001cc000 fc:00 131361                     /lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+7fb2aacbb000-7fb2aacbf000 rw-p 00000000 00:00 0 
+7fb2aacbf000-7fb2aacc0000 r-xp 00000000 fc:00 4209310                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/digest/sha1.so
+7fb2aacc0000-7fb2aaebf000 ---p 00001000 fc:00 4209310                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/digest/sha1.so
+7fb2aaebf000-7fb2aaec0000 r--p 00000000 fc:00 4209310                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/digest/sha1.so
+7fb2aaec0000-7fb2aaec1000 rw-p 00001000 fc:00 4209310                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/digest/sha1.so
+7fb2aaec1000-7fb2aaec7000 r-xp 00000000 fc:00 3690992                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/strscan.so
+7fb2aaec7000-7fb2ab0c6000 ---p 00006000 fc:00 3690992                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/strscan.so
+7fb2ab0c6000-7fb2ab0c7000 r--p 00005000 fc:00 3690992                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/strscan.so
+7fb2ab0c7000-7fb2ab0c8000 rw-p 00006000 fc:00 3690992                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/strscan.so
+7fb2ab0c8000-7fb2ab0cb000 r-xp 00000000 fc:00 3691002                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/etc.so
+7fb2ab0cb000-7fb2ab2ca000 ---p 00003000 fc:00 3691002                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/etc.so
+7fb2ab2ca000-7fb2ab2cb000 r--p 00002000 fc:00 3691002                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/etc.so
+7fb2ab2cb000-7fb2ab2cc000 rw-p 00003000 fc:00 3691002                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/etc.so
+7fb2ab2cc000-7fb2ab2d0000 r-xp 00000000 fc:00 4338637                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/io/console.so
+7fb2ab2d0000-7fb2ab4cf000 ---p 00004000 fc:00 4338637                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/io/console.so
+7fb2ab4cf000-7fb2ab4d0000 r--p 00003000 fc:00 4338637                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/io/console.so
+7fb2ab4d0000-7fb2ab4d1000 rw-p 00004000 fc:00 4338637                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/io/console.so
+7fb2ab4d1000-7fb2ab4d8000 r-xp 00000000 fc:00 3690997                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/pathname.so
+7fb2ab4d8000-7fb2ab6d7000 ---p 00007000 fc:00 3690997                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/pathname.so
+7fb2ab6d7000-7fb2ab6d8000 r--p 00006000 fc:00 3690997                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/pathname.so
+7fb2ab6d8000-7fb2ab6d9000 rw-p 00007000 fc:00 3690997                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/pathname.so
+7fb2ab6d9000-7fb2ab6dc000 r-xp 00000000 fc:00 3690977                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/thread.so
+7fb2ab6dc000-7fb2ab8db000 ---p 00003000 fc:00 3690977                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/thread.so
+7fb2ab8db000-7fb2ab8dc000 r--p 00002000 fc:00 3690977                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/thread.so
+7fb2ab8dc000-7fb2ab8dd000 rw-p 00003000 fc:00 3690977                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/thread.so
+7fb2ab8dd000-7fb2ab8df000 r-xp 00000000 fc:00 4209344                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/trans/transdb.so
+7fb2ab8df000-7fb2abadf000 ---p 00002000 fc:00 4209344                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/trans/transdb.so
+7fb2abadf000-7fb2abae0000 r--p 00002000 fc:00 4209344                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/trans/transdb.so
+7fb2abae0000-7fb2abae1000 rw-p 00003000 fc:00 4209344                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/trans/transdb.so
+7fb2abae1000-7fb2abae3000 r-xp 00000000 fc:00 4209366                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/encdb.so
+7fb2abae3000-7fb2abce2000 ---p 00002000 fc:00 4209366                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/encdb.so
+7fb2abce2000-7fb2abce3000 r--p 00001000 fc:00 4209366                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/encdb.so
+7fb2abce3000-7fb2abce4000 rw-p 00002000 fc:00 4209366                    /home/sacarlson/.rbenv/versions/2.1.2/lib/ruby/2.1.0/x86_64-linux/enc/encdb.so
+7fb2abce4000-7fb2abfb9000 r--p 00000000 fc:00 17683                      /usr/lib/locale/locale-archive
+7fb2abfb9000-7fb2ac174000 r-xp 00000000 fc:00 132186                     /lib/x86_64-linux-gnu/libc-2.19.so
+7fb2ac174000-7fb2ac373000 ---p 001bb000 fc:00 132186                     /lib/x86_64-linux-gnu/libc-2.19.so
+7fb2ac373000-7fb2ac377000 r--p 001ba000 fc:00 132186                     /lib/x86_64-linux-gnu/libc-2.19.so
+7fb2ac377000-7fb2ac379000 rw-p 001be000 fc:00 132186                     /lib/x86_64-linux-gnu/libc-2.19.so
+7fb2ac379000-7fb2ac37e000 rw-p 00000000 00:00 0 
+7fb2ac37e000-7fb2ac483000 r-xp 00000000 fc:00 131875                     /lib/x86_64-linux-gnu/libm-2.19.so
+7fb2ac483000-7fb2ac682000 ---p 00105000 fc:00 131875                     /lib/x86_64-linux-gnu/libm-2.19.so
+7fb2ac682000-7fb2ac683000 r--p 00104000 fc:00 131875                     /lib/x86_64-linux-gnu/libm-2.19.so
+7fb2ac683000-7fb2ac684000 rw-p 00105000 fc:00 131875                     /lib/x86_64-linux-gnu/libm-2.19.so
+7fb2ac684000-7fb2ac68d000 r-xp 00000000 fc:00 131972                     /lib/x86_64-linux-gnu/libcrypt-2.19.so
+7fb2ac68d000-7fb2ac88d000 ---p 00009000 fc:00 131972                     /lib/x86_64-linux-gnu/libcrypt-2.19.so
+7fb2ac88d000-7fb2ac88e000 r--p 00009000 fc:00 131972                     /lib/x86_64-linux-gnu/libcrypt-2.19.so
+7fb2ac88e000-7fb2ac88f000 rw-p 0000a000 fc:00 131972                     /lib/x86_64-linux-gnu/libcrypt-2.19.so
+7fb2ac88f000-7fb2ac8bd000 rw-p 00000000 00:00 0 
+7fb2ac8bd000-7fb2ac8c0000 r-xp 00000000 fc:00 131932                     /lib/x86_64-linux-gnu/libdl-2.19.so
+7fb2ac8c0000-7fb2acabf000 ---p 00003000 fc:00 131932                     /lib/x86_64-linux-gnu/libdl-2.19.so
+7fb2acabf000-7fb2acac0000 r--p 00002000 fc:00 131932                     /lib/x86_64-linux-gnu/libdl-2.19.so
+7fb2acac0000-7fb2acac1000 rw-p 00003000 fc:00 131932                     /lib/x86_64-linux-gnu/libdl-2.19.so
+7fb2acac1000-7fb2acada000 r-xp 00000000 fc:00 134906                     /lib/x86_64-linux-gnu/libpthread-2.19.so
+7fb2acada000-7fb2accd9000 ---p 00019000 fc:00 134906                     /lib/x86_64-linux-gnu/libpthread-2.19.so
+7fb2accd9000-7fb2accda000 r--p 00018000 fc:00 134906                     /lib/x86_64-linux-gnu/libpthread-2.19.so
+7fb2accda000-7fb2accdb000 rw-p 00019000 fc:00 134906                     /lib/x86_64-linux-gnu/libpthread-2.19.so
+7fb2accdb000-7fb2accdf000 rw-p 00000000 00:00 0 
+7fb2accdf000-7fb2acd02000 r-xp 00000000 fc:00 132014                     /lib/x86_64-linux-gnu/ld-2.19.so
+7fb2acdca000-7fb2acecf000 rw-p 00000000 00:00 0 
+7fb2acef3000-7fb2acef4000 rw-p 00000000 00:00 0 
+7fb2acef4000-7fb2acefb000 r--s 00000000 fc:00 19267                      /usr/lib/x86_64-linux-gnu/gconv/gconv-modules.cache
+7fb2acefb000-7fb2acefc000 ---p 00000000 00:00 0 
+7fb2acefc000-7fb2acf01000 rw-p 00000000 00:00 0                          [stack:23327]
+7fb2acf01000-7fb2acf02000 r--p 00022000 fc:00 132014                     /lib/x86_64-linux-gnu/ld-2.19.so
+7fb2acf02000-7fb2acf03000 rw-p 00023000 fc:00 132014                     /lib/x86_64-linux-gnu/ld-2.19.so
+7fb2acf03000-7fb2acf04000 rw-p 00000000 00:00 0 
+7fb2acf04000-7fb2ad1c3000 r-xp 00000000 fc:00 3690850                    /home/sacarlson/.rbenv/versions/2.1.2/bin/ruby
+7fb2ad3c3000-7fb2ad3c8000 r--p 002bf000 fc:00 3690850                    /home/sacarlson/.rbenv/versions/2.1.2/bin/ruby
+7fb2ad3c8000-7fb2ad3ca000 rw-p 002c4000 fc:00 3690850                    /home/sacarlson/.rbenv/versions/2.1.2/bin/ruby
+7fb2ad3ca000-7fb2ad3ee000 rw-p 00000000 00:00 0 
+7fb2adbd8000-7fb2af4dd000 rw-p 00000000 00:00 0                          [heap]
+7fff38d59000-7fff38d7b000 rw-p 00000000 00:00 0 
+7fff38dfe000-7fff38e00000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]
+
+
+[NOTE]
+You may have encountered a bug in the Ruby interpreter or extension libraries.
+Bug reports are welcome.
+For details: http://www.ruby-lang.org/bugreport.html
+
+note: after eraseing ~./bundle  I did another bundle install
+sacarlson@sacarlson-asrock ~/github/stellar/stellar_core_commander $ bundle install
+Fetching gem metadata from https://rubygems.org/..........
+Fetching version metadata from https://rubygems.org/...
+Fetching dependency metadata from https://rubygems.org/..
+Resolving dependencies...
+Installing rake 10.4.2
+Installing i18n 0.7.0
+Installing json 1.8.3 with native extensions
+Installing minitest 5.8.0
+Installing thread_safe 0.3.5
+Installing tzinfo 1.2.2
+Installing activesupport 4.2.3
+
+Gem::RemoteFetcher::FetchError: SSL_connect SYSCALL returned=5 errno=0 state=unknown state (https://rubygems.org/gems/builder-3.2.2.gem)
+An error occurred while installing builder (3.2.2), and Bundler cannot continue.
+Make sure that `gem install builder -v '3.2.2'` succeeds before bundling.
+
+notes for stellar-core dependancies:
+# sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+# apt-get update
+# sudo apt-get install git libpq-dev clang++-3.5 gcc-4.9 g++-4.9 cpp-4.9
+
+

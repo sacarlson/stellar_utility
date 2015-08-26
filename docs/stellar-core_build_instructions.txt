@@ -1,0 +1,83 @@
+
+To build, configure and start stellar-core on mint 17 and probly ubuntu:
+
+sudo apt-get install build-essential
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt-get update
+
+sudo apt-get install g++-4.9
+create symbolic link to g++ at /usr/bin
+lrwxrwxrwx 1 root root     16 Jul 22 16:32 g++ -> /usr/bin/g++-4.9
+
+download https://github.com/stellar/stellar-core/archive/master.zip
+or git clone https://github.com/stellar/stellar-core.git
+at time of this writing I was at commit 69ec10e5aa0da004d8f3f047f0dcfb60ddb2c107 
+
+In the shell command `./configure && make && make install'
+should configure, build, and install this package.
+
+setup config file have examples if needed.
+
+reset stellar-core:
+mv ./stellar.db ./stellar.db.org2
+/home/sacarlson/github/stellar/stellar-core/src/stellar-core -conf ./stellar.config -newdb
+
+sleep 3
+/home/sacarlson/github/stellar/stellar-core/src/stellar-core -conf ./stellar.config -newhist vs
+sleep 1
+/home/sacarlson/github/stellar/stellar-core/src/stellar-core -conf ./stellar.config -forcescp
+sleep 1
+/home/sacarlson/github/stellar/stellar-core/src/stellar-core -conf ./stellar.config
+
+start stellar-core example:
+MY_PATH="`dirname \"$0\"`"              # relative
+MY_PATH="`( cd \"$MY_PATH\" && pwd )`"  # absolutized and normalized
+if [ -z "$MY_PATH" ] ; then
+  # error; for some reason, the path is not accessible
+  # to the script (e.g. permissions re-evaled after suid)
+  exit 1  # fail
+fi
+#echo "$MY_PATH"
+cd $MY_PATH
+#stellar-core -conf ./stellar.config
+/home/sacarlson/github/stellar/stellar-core/src/stellar-core -conf ./stellar.config -forcescp
+sleep 3
+/home/sacarlson/github/stellar/stellar-core/src/stellar-core -conf ./stellar.config
+
+example of my config file:
+PEER_PORT= 39133
+RUN_STANDALONE=false
+
+HTTP_PORT=39132
+PUBLIC_HTTP_PORT=false
+
+PEER_SEED="SB2OCBS2SSXL4DVX6EVUAVCVDP24XCJHAQ3DBCUVV7EXMPG6OUVBCXH6"
+
+VALIDATION_SEED="SBO64RAJ45DYO7MC7PBRXMSDW5SIDM3WRDUQUXE6SUSS6SU57P6F6675"
+
+# will send outbound connections till we are at this number of peer connections
+TARGET_PEER_CONNECTIONS=20
+
+# will start dropping peers if above this number of connected peers
+MAX_PEER_CONNECTIONS=30
+
+PREFERRED_PEERS=["127.0.0.1:39133"]
+
+COMMANDS=[
+"ll?level=debug"
+]
+
+DATABASE="sqlite3://stellar.db"
+
+[QUORUM_SET]
+THRESHOLD=1
+VALIDATORS=[
+"GA7BVTHKVK75R6CQ5RD4A6PKP4Q7DYPRUW2MEWXYSPM7YZVSTHA2NYQT"
+]
+
+[HISTORY.vs]
+get="cp /tmp/stellar-core/history/vs/{0} {1}"
+put="cp {0} /tmp/stellar-core/history/vs/{1}"
+mkdir="mkdir -p /tmp/stellar-core/history/vs/{0}"
+
+

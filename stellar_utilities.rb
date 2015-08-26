@@ -54,6 +54,14 @@ def get_lines_balance_local(account,currency)
   return nil.to_f   
 end
 
+def get_lines_balance(account,currency)
+  if @configs["mode"] == "horizon"
+    return get_lines_balance_horizon(account,currency)
+  else
+    return get_lines_balance_local(account,currency)
+  end
+end
+
 def bal_CHP(account)
   get_lines_balance(account,"CHP")
 end
@@ -306,6 +314,10 @@ def make_asset(input)
 end
 
 def send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, currency)
+  # to_account_pair and issuer_pair can be ether a pair or just account address
+  # from_account_pair must have full pair with secreet key
+  to_account_pair = convert_address_to_keypair(to_account_pair)
+  issuer_pair = convert_address_to_keypair(issuer_pair)
   tx = Stellar::Transaction.payment({
     account:     from_account_pair,
     destination: to_account_pair,

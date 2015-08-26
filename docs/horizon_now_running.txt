@@ -1,0 +1,57 @@
+present horizon-test.stellar.org  now running on Aug 21 11:25am bkk time per Mat Schaffer
+01122be3aa2cf50 for ruby and 15a824394 for go is what's currently deployed to testnet (at least according to dpkg) 
+b179493 for stellar-core
+baseline set......
+
+horizon:
+commit 01122be3aa2cf509e2785a1be027311dd473730b
+Merge: ac60c69 fb693de
+Author: Scott Fleckenstein <nullstyle@gmail.com>
+Date:   Thu Jul 30 08:12:57 2015 -0800
+
+    Merge pull request #34 from stellar/more-compat
+    
+    Fix transaction submission, friendbot, update test sql to latest stellar-cor
+:
+
+go-horizon:
+commit 15a82439457cd37ba71fe36454e0da5f89309d3b
+Merge: 5f52fcf ecf4049
+Author: Scott Fleckenstein <nullstyle@gmail.com>
+Date:   Mon Aug 17 14:18:05 2015 -0700
+
+    Merge pull request #62 from nullstyle/fixes
+    
+    Back to working
+
+
+
+
+stellar-core:
+commit b179493a328955f8927d367c712bf0dd7341f3e7
+Merge: 28231d6 f33bca9
+Author: Latobarita <latobarita@users.noreply.github.com>
+Date:   Sat Aug 15 08:20:02 2015 -0700
+
+    Merge pull request #701 from graydon/fast-path-catchup-state-machine
+    
+    Add fast path to catchup state machine, greatly accelerate download phase.
+    
+    Reviewed-by: jedmccaleb
+
+tested native tx as working by buhrmi with:
+
+js-stellar-base:
+commit 17328b04687cdf35f5132443d04b3e5c13399d87
+
+js-stellar-lib:
+commit 4042b169b24c83f25f822a63f3846d5bfaeb88b6 
+
+These tools bellow only tested on a local stellar-core that ran older code than above used on horizon but should work: 
+
+ruby-stellar-base:
+commit 3cf765c526eadacffc846d0b61e63f807f160581
+
+stellar_utilities:
+commit 29849987596e8fbfe4117d6956b69370cab310d7
+

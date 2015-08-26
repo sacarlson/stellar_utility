@@ -1,0 +1,47 @@
+ruby rbenv with bundler project quickstart:
+
+cd into/project/path
+
+#if new version of ruby needed
+rbenv versions  # see what's available and what's set to run
+rbenv install 1.9.3-p484
+# set that installed version to run in this path 1.9.3-p484 is default ubuntu version
+rbenv local 1.9.3-p484
+# if this is a new installed version of ruby you will also need to install bundler
+gem install bundler
+
+bundle exec gem update --system   #not sure this is needed
+
+bundle init
+# now modify the Gemfile in your project path that was created by init above
+# to include all gem "youwant"
+
+# now install all the gems in Gemfile with:
+bundle install
+
+#after new gems installed
+rbenv rehash
+
+#to run your ruby app
+bundler exec ruby ./yourrubyapp.rb
+
+#what I found that might work for corupted gems like json
+cd /to/rubyproject
+bundle install --force
+bundle exec gem install -f json  #not tested yet
+
+
+#also might try for corupted gems like json and ffi
+cd /to/rubyproject
+bundle exec gem pristine --all
+bundle exec gem pristine ffi
+bundle exec gem pristine json
+
+#can't find gem?
+bundle exec gem list rake --remote --all
+
+
+
+
+
+

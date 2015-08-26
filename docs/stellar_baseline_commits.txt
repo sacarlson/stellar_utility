@@ -1,0 +1,52 @@
+stellar baseline Aug 21 2015:
+
+stellar-core: fred's older one
+commit 0c4c858124e0bb32efda1e26fae7c9bc5b396f6d
+Author: Frederic Heem <frederic.heem@finclusionsystems.com>
+Date:   Wed Aug 5 14:25:26 2015 +0100
+
+    add stellar-core_standalone.cfg
+
+commit f1ea35548fe261954984763ab8024edf9109ad75
+Merge: 450cd53 cbb232a
+Author: Latobarita <latobarita@users.noreply.github.com>
+Date:   Wed Aug 5 01:40:00 2015 -0700
+
+    Merge pull request #673 from jedmccaleb/master
+    
+    emit the build version in info command. fixes #668
+    
+    Reviewed-by: graydon
+
+ruby-stellar-base:
+commit 0d04692f4147ad01cf07c149d4b383f3bc842c75
+Author: Scott Fleckenstein <nullstyle@gmail.com>
+Date:   Wed Jul 22 09:05:51 2015 -0700
+
+    Bump to 0.1.2
+
+stellar_core_commander:
+commit 14df54f18f8fcd3f3ec1566602e05227fb35f826
+Merge: 11f1654 81271ea
+Author: Graydon Hoare <graydon@users.noreply.github.com>
+Date:   Sat Aug 15 11:45:45 2015 -0700
+
+    Merge pull request #61 from graydon/repair-testnet-catchup-complete
+    
+    Repair testnet catchup complete
+
+stellar_utility:
+commit 7ef7cf02b870643aecf5c003e51730c2a2d6d526
+Author: sacarlson <sacarlson_2000@yahoo.com>
+Date:   Sat Aug 15 15:30:36 2015 +0700
+
+    first release with all the files
+
+
+
+
+
+
+
+
+

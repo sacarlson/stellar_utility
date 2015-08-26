@@ -7,16 +7,16 @@ require './stellar_utilities'
 #to_pair = Stellar::KeyPair.from_seed("SCPY5UQQH4HZSKS3NZGZVWS2C7FOSEKK65M5QWKFRR4JQ3Q2D6VAJJWC")
 #fred's
 
-to_pair = Stellar::KeyPair.from_seed('SB2NQE7LDVNLZPI3VU5Y6SQFY4FHWB6XL5CMEPMIGM2E3G6ZQ3Y3AELX')
-keypairA = YAML.load(File.open("./secret_keypairA.yml")) 
-keypairB = YAML.load(File.open("./secret_keypairB.yml"))
-keypairC = YAML.load(File.open("./secret_keypairC.yml")) 
-keypairD = YAML.load(File.open("./secret_keypairD.yml"))
+#to_pair = Stellar::KeyPair.from_seed('SB2NQE7LDVNLZPI3VU5Y6SQFY4FHWB6XL5CMEPMIGM2E3G6ZQ3Y3AELX')
+keypairA = YAML.load(File.open("./secret_keypair_GBPJR44JZVXBGRXRQ7PN34IUERQOJ64OG44UIF7ICOIUWLN7H5MALVIU.yml")) 
+keypairB = YAML.load(File.open("./secret_keypair_GBZH6Z74OWID6ZP67KYNF7T5ES4APLZSISYO7GZGXW7PJNMFL4XNV3PT.yml"))
+keypairC = YAML.load(File.open("./secret_keypair_GCMZXKLCURDHSACMVOTWG67JWICOPUPV5GTI2LN6ZQCKBEIXHOFW7W4L.yml")) 
+keypairD = YAML.load(File.open("./secret_keypair_GD3DYNE54777BUJLMZVML53LBKG4FQX523NJYOEXFFCZKKXAQABUQPT4.yml"))
 issuer_account = keypairA.address
 issuer_pair = keypairA
 
 currency = "USD"
-limit = 10000
+limit = 10000000
 amount = 1000
 
 result = add_trust(issuer_account,keypairB,"USD")
