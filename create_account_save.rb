@@ -5,7 +5,8 @@ require './stellar_utilities'
 
 master      = Stellar::KeyPair.from_raw_seed("allmylifemyhearthasbeensearching")
 destination = Stellar::KeyPair.random
-to_file="./secret_keypair_"+destination.address+".yml"
+#destination = Stellar::KeyPair.from_seed("SDWTC2MQLFH5J5GBXUI4H4KIPHOFAKY77G7RQH6RDXORIX25NZAJEET5")
+to_file = "./secret_keypair_"+destination.address+".yml"
 puts "save to file #{to_file}"
 
 File.open(to_file, "w") {|f| f.write(destination.to_yaml) }

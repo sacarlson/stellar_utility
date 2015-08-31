@@ -12,46 +12,79 @@ require 'faraday_middleware'
 require 'json'
 require 'rest-client'
 require 'sqlite3'
+require 'pg'
 require 'yaml'
 
-@configs = {}
+#@configs = {}
 #@configs["db_file_path"] = '/home/sacarlson/github/stellar/my-stellar/stellar-core/stellar.db'
 #@configs["db_file_path"] = '/home/sacarlson/github/stellar/fred/stellar-db/stellar.db'
+#only need url_horizon if your in horizon mode but this is default horizon-testnet
 #@configs["url_horizon"] = 'https://horizon-testnet.stellar.org'
 #@configs["url_stellar_core"] = 'http://localhost:39132'
-#@configs["mode"] = "localcore" || "horizon"
-#@configs["mode"] = "horizon"
+#only need pg_*** if your using local_postgres mode
+#@configs["pg_hostaddr"] = '127.0.0.1'
+#@configs["pg_port"] = 5432
+#@configs["pg_dbname"] = "stellar"
+#@configs["pg_user"] = "sacarlson"
+#@configs["pg_password"] = "scottc"
+#@configs["mode"] = "localcore" || "horizon" || "local_postgres"
+#@configs["mode"] = "local_postgres"
 #File.open("./stellar_utilities.cfg", "w") {|f| f.write(@configs.to_yaml) }
 @configs = YAML.load(File.open("./stellar_utilities.cfg")) 
+#@configs["mode"] = "localcore"
 #exit -1
-def get_accounts_local(account)
-    # this is to get all info on table account on Stellar.db from localy running Stellar-core db
-    # you must setup your local path to @configs["db_file_path"] for this to work
-    #puts "db_file_path #{@configs["db_file_path"]}"
-    account = convert_keypair_to_address(account)
+
+def get_db(query)
+  #returns query hash from database that is dependent on mode
+  if @configs["mode"] == "localcore"
+    #puts "db file #{@configs["db_file_path"]}"
     db = SQLite3::Database.open @configs["db_file_path"]
     db.execute "PRAGMA journal_mode = WAL"
-    stm = db.prepare "SELECT * FROM accounts WHERE accountid='#{account}' " 
-    rs = stm.execute
-    rs.each do |row|
-      #puts "#{row}"
-      return row
-    end   
+    db.results_as_hash=true
+    stm = db.prepare query 
+    result= stm.execute
+    return result.next
+  elsif @configs["mode"] == "local_postgres"
+    conn=PGconn.connect( :hostaddr=>@configs["pg_hostaddr"], :port=>@configs["pg_port"], :dbname=>@configs["pg_dbname"], :user=>@configs["pg_user"], :password=>@configs["pg_password"])
+    result = conn.exec(query)
+    conn.close
+    #puts "rusult class #{result.class}"
+    if result.cmd_tuples == 0
+      return nil
+    else
+      return result[0]
+    end
+  elsif @configs["mode"] == "horizon"
+    puts "no db query for horizon mode error"
+    exit -1
+  else
+    puts "no such mode #{@configs["mode"]} for db query error"
+    exit -1
+  end
+end
+
+def get_accounts_local(account)
+    # this is to get all info on table account on Stellar.db from localy running Stellar-core db
+    # returns a hash of all account info example result["seqnum"]
+    # database used and config info needed is dependant on @config["mode"] setting
+    account = convert_keypair_to_address(account)
+    puts "account #{account}"
+    query = "SELECT * FROM accounts WHERE accountid='#{account}' "
+    return get_db(query) 
 end
 
 def get_lines_balance_local(account,currency)
   # balance of trustlines on the Stellar account from localy running Stellar-core db
   # you must setup your local path to @stellar_db_file_path for this to work
   # also at this time this assumes you only have one gateway issuer for each currency
-  account = convert_keypair_to_address(account)
-  db = SQLite3::Database.open @configs["db_file_path"]
-  db.execute "PRAGMA journal_mode = WAL"
-  stm = db.prepare "SELECT * FROM trustlines WHERE accountid='#{account}' AND assetcode= '#{currency}'" 
-  rs = stm.execute
-  rs.each do |row|
-    return row[5].to_f
+  account = convert_keypair_to_address(account)  
+  query = "SELECT * FROM trustlines WHERE accountid='#{account}' AND assetcode= '#{currency}'"
+  result = get_db(query)
+  if result == nil
+    return 0
+  else
+    return result["balance"]
   end
-  return nil.to_f   
 end
 
 def get_lines_balance(account,currency)
@@ -67,18 +100,18 @@ def bal_CHP(account)
 end
 
 def get_seqnum_local(account)
-  row = get_accounts_local(account)
-  return row[2].to_i
+  result = get_accounts_local(account)
+  return result["seqnum"].to_i
 end
 
 def get_native_balance_local(account)
   puts "account #{account}"
-  row = get_accounts_local(account)
-  return row[1].to_i
+  result = get_accounts_local(account)
+  return result["balance"].to_i
 end
 
 def bal_STR(account)
-  get_native_balance_local(account).to_i
+  get_native_balance(account).to_i
 end
 #result = bal_STR(account)
 #puts "#{result}"

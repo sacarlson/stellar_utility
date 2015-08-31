@@ -8,7 +8,10 @@ require './stellar_utilities'
 #fred's
 issuer_account = 'GBPJR44JZVXBGRXRQ7PN34IUERQOJ64OG44UIF7ICOIUWLN7H5MALVIU'
 #to_pair = Stellar::KeyPair.from_seed('SB2N...')
-to_pair = YAML.load(File.open("./secret_keypair_GBZH6Z74OWID6ZP67KYNF7T5ES4APLZSISYO7GZGXW7PJNMFL4XNV3PT.yml"))
+#to_pair = YAML.load(File.open("./secret_keypair_GBZH6Z74OWID6ZP67KYNF7T5ES4APLZSISYO7GZGXW7PJNMFL4XNV3PT.yml"))
+to_pair = YAML.load(File.open("./secret_keypair_GDJUIEGLARHHM6IVNFEMV5HRX3A2CQV4YVRYUB5FEHDSBVAFENPKRHBA.yml"))
+
+
 currency = "BEER"
 limit = 10000000
 
@@ -16,7 +19,7 @@ result = add_trust(issuer_account,to_pair,currency)
 #result = add_trust(issuer_account,to_pair,currency,limit)
 puts "#{result}"
 
-exit -1
+
 sleep 12
 
 result = add_trust(issuer_account,to_pair,"CHP")

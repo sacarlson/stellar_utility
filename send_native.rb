@@ -2,6 +2,7 @@
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
 require './stellar_utilities'
 
+#this works ok in postgres mode also
 master      = Stellar::KeyPair.from_raw_seed("allmylifemyhearthasbeensearching")
 to_pair = Stellar::KeyPair.random
 #to_account = 'GDJUIEGLARHHM6IVNFEMV5HRX3A2CQV4YVRYUB5FEHDSBVAFENPKRHBA'
@@ -17,7 +18,7 @@ result = create_account(to_pair, master, starting_balance=1000_0000000)
 puts "#{result}"
 sleep 10
 
-amount = 5
+amount = 666
 before = get_native_balance(to_pair.address)
 puts "before balance = #{before}"
 result = send_native(from_pair, to_pair.address, amount)

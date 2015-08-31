@@ -24,6 +24,7 @@ rbenv rehash
 
 #to run your ruby app
 bundler exec ruby ./yourrubyapp.rb
+bundler exec rails --version
 
 #what I found that might work for corupted gems like json
 cd /to/rubyproject
@@ -36,6 +37,7 @@ cd /to/rubyproject
 bundle exec gem pristine --all
 bundle exec gem pristine ffi
 bundle exec gem pristine json
+bundle exec gem pristine pg
 
 #can't find gem?
 bundle exec gem list rake --remote --all

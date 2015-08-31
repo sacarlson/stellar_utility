@@ -29,6 +29,7 @@ GEM
     minitest (5.8.0)
     multipart-post (2.0.0)
     netrc (0.10.3)
+    pg (0.18.2)
     rbnacl (3.2.0)
       ffi
     rbnacl-libsodium (1.0.3)
@@ -63,6 +64,7 @@ DEPENDENCIES
   faraday
   faraday_middleware
   json
+  pg
   rest-client
   sqlite3
   stellar-base

@@ -1,0 +1,102 @@
+preinstall setup for stellar go-horizon on Mint 17 or Ubuntu 14.04
+
+#install golang version 1.4, at the time I wrote this the standard repository only had version 1.2.1
+#add ppa repository
+ppa:evarlast/golang1.4
+sudo add-apt-repository ppa:evarlast/golang1.4
+
+#install golang1.4
+sudo apt-get install golang1.4 
+
+#after install of golang be sure the install also updated your ~/.bashrc file
+# you should see something like this inside ~/.bashrc
+export GOPATH=$HOME/go
+export PATH=$PATH:$GOPATH/bin
+
+#install gb from any dir
+$go get -u github.com/constabulary/gb/...
+
+#from this point you can follow the instructions provided in go-horizon readme.md
+# continued here as a reference to myself and to get an idea of what you see
+
+cd /path/you/downloaded/go-horizon
+gb build 
+
+
+#present output:
+sacarlson@sacarlson-asrock ~/github/stellar/go-horizon $ gb build
+github.com/golang/groupcache/lru
+github.com/garyburd/redigo/internal
+github.com/Sirupsen/logrus
+github.com/getsentry/raven-go
+github.com/zenazn/goji/web
+github.com/jtacoma/uritemplates
+github.com/rs/cors
+github.com/nullstyle/go-xdr/xdr3
+github.com/mndrix/ps
+github.com/visionmedia/go-debug
+github.com/zenazn/goji/web/mutil
+github.com/zenazn/goji/graceful/listener
+github.com/spf13/pflag
+github.com/kr/text
+github.com/mitchellh/mapstructure
+github.com/Sirupsen/logrus/hooks/sentry
+github.com/garyburd/redigo/redis
+github.com/PuerkitoBio/throttled
+github.com/jagregory/halgo
+github.com/jmoiron/sqlx/reflectx
+github.com/lann/builder
+github.com/segmentio/go-loggly
+github.com/inconshreveable/mousetrap
+github.com/BurntSushi/toml
+github.com/magiconair/properties
+github.com/PuerkitoBio/throttled/store
+golang.org/x/net/context
+github.com/sebest/xff
+github.com/jmoiron/sqlx
+github.com/stellar/go-horizon/render/hal
+github.com/stellar/go-stellar-base/xdr
+github.com/zenazn/goji/web/middleware
+github.com/spf13/jwalterweatherman
+github.com/kr/pretty
+github.com/rcrowley/go-metrics
+github.com/stellar/go-horizon/httpx
+github.com/goji/context
+github.com/lann/squirrel
+gopkg.in/yaml.v2
+github.com/zenazn/goji/graceful
+github.com/spf13/cast
+github.com/zenazn/goji/bind
+github.com/stellar/go-horizon/context/requestid
+github.com/lib/pq/oid
+github.com/spf13/cobra
+bitbucket.org/ww/goautoneg
+github.com/stellar/go-horizon/assets
+github.com/lib/pq
+github.com/stellar/go-horizon/log
+github.com/stellar/go-horizon/render/sse
+github.com/stellar/go-horizon/test
+github.com/stellar/go-horizon/render/problem
+github.com/spf13/viper
+github.com/stellar/go-horizon/render
+github.com/stellar/go-horizon/db
+github.com/stellar/go-horizon/actions
+github.com/stellar/go-horizon
+github.com/stellar/go-horizon/cmd/horizon
+
+#continue install
+go get -u github.com/jteeuwen/go-bindata/...
+
+git clone git@github.com:nullstyle/go-codegen.git
+cd go-codegen
+gb build
+cp ./bin/go-codegen /usr/local/bin
+# at this point I copied cp ./bin/go-codegen $HOME/go/bin/go-codegen  instead so I didn't need sudo
+
+sudo apt-get install redis-server
+
+#you will also have to install postgres 9.4.4 and set that up with no password
+
+#run tests
+bash scripts/run_tests.bash
+

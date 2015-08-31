@@ -117,4 +117,16 @@ rspec ./spec/jobs/history/ledger_importer_job_spec.rb:111 # History::LedgerImpor
 Randomized with seed 1033
 
 
+#this must be a good thing?
+
+#at this point you can now start the server
+./source source_me.sh
+./bin/rails server
+
+# I also wrote a script with that above that starts the server
+
+you will now see some text and finaly says now active on localhost:3000
+
+checkout localhost:3000 on your browser
+{"_links":{"account":{"href":"/accounts/{address}","templated":true},"account_transactions":{"href":"/accounts/{address}/transactions{?after}{?limit}{?order}","templated":true},"transaction":{"href":"/transactions/{hash}","templated":true},"transactions":{"href":"/transactions{?after}{?limit}{?order}","templated":true},"metrics":{"href":"/metrics","templated":true},"friendbot":{"href":"/friendbot{?addr}","templated":true}}}
 
