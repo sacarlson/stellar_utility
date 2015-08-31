@@ -212,7 +212,7 @@ end
 def create_account_tx(account, funder, starting_balance=1000_0000000, seqadd=0)
   account = convert_address_to_keypair(account)
   nxtseq = next_sequence(funder)
-  puts "create_account nxtseq #{nxtseq}"     
+  #puts "create_account nxtseq #{nxtseq}"     
   tx = Stellar::Transaction.create_account({
     account:          funder,
     destination:      account,
