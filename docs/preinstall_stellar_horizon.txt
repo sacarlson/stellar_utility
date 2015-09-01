@@ -127,6 +127,20 @@ Randomized with seed 1033
 
 you will now see some text and finaly says now active on localhost:3000
 
-checkout localhost:3000 on your browser
+#checkout localhost:3000 on your browser
 {"_links":{"account":{"href":"/accounts/{address}","templated":true},"account_transactions":{"href":"/accounts/{address}/transactions{?after}{?limit}{?order}","templated":true},"transaction":{"href":"/transactions/{hash}","templated":true},"transactions":{"href":"/transactions{?after}{?limit}{?order}","templated":true},"metrics":{"href":"/metrics","templated":true},"friendbot":{"href":"/friendbot{?addr}","templated":true}}}
+
+#if you want to have server listen on public accessable port
+add this to config/boot.rb
+
+require 'rails/commands/server'
+module Rails
+  class Server
+    def default_options
+      super.merge(Host: '0.0.0.0', Port: 3000)
+    end
+  end
+end
+
+
 
