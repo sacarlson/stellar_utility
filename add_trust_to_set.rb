@@ -1,13 +1,9 @@
 #!/usr/bin/ruby
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
 require './stellar_utilities'
+# note: these accounts must be active and native funded if running on stellar network
 
-#my-stellar
-#issuer_account = 'GCZSBCPPUPBGMESSKBZQVSUNEZZFFR37DDEZ3V2MUMUASWDOMS5PNUSA'
-#to_pair = Stellar::KeyPair.from_seed("SCPY5UQQH4HZSKS3NZGZVWS2C7FOSEKK65M5QWKFRR4JQ3Q2D6VAJJWC")
-#fred's
-
-#to_pair = Stellar::KeyPair.from_seed('SB2NQE7LDVNLZPI3VU5Y6SQFY4FHWB6XL5CMEPMIGM2E3G6ZQ3Y3AELX')
+#to_keypair = Stellar::KeyPair.from_seed('SB2NQE...')
 keypairA = YAML.load(File.open("./secret_keypair_GBPJR44JZVXBGRXRQ7PN34IUERQOJ64OG44UIF7ICOIUWLN7H5MALVIU.yml")) 
 keypairB = YAML.load(File.open("./secret_keypair_GBZH6Z74OWID6ZP67KYNF7T5ES4APLZSISYO7GZGXW7PJNMFL4XNV3PT.yml"))
 keypairC = YAML.load(File.open("./secret_keypair_GCMZXKLCURDHSACMVOTWG67JWICOPUPV5GTI2LN6ZQCKBEIXHOFW7W4L.yml")) 

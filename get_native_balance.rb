@@ -9,5 +9,7 @@ account = master.address
 #account = keypair.address
 
 
-result = get_native_balance_local(account)
+#result = get_native_balance_local(account)
+#result = get_native_balance_horizon(account)
+result = get_native_balance(account)
 puts " native balance: #{result}"

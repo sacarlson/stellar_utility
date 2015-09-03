@@ -1,10 +1,13 @@
 #!/usr/bin/ruby
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
-# this setup requires haveing a local stellar-core running on your system
-# you must also modify @configs["db_file_path"] or edit stellar_utilities.cfg file to point to the location you now have the stellar-core sqlite db file
-# there is also support to get results from https://horizon-testnet.stellar.org and at some point we should be able
-# to also send base64 transactions to horizon to get results, but this is not yet tested. 
-# some functions are duplicated just to be plug and play compatible with my old stellar network class_payment.rb lib that's used in pokerth_accounting.
+# this is a helper utility lib used to help make interfaceing ruby with ruby-stellar-base easier
+# this package also comes with examples of how this can be used to setup transactions on the Stellar.org network or open-core
+# this setup no longer requires haveing a local stellar-core running on your system if configured to horizon mode and pointed at a horizon url entity
+# you can also modify @configs["db_file_path"] or edit stellar_utilities.cfg file to point to the location you now have the stellar-core sqlite db file
+# there is also support to get results from https://horizon-testnet.stellar.org and you can now also
+# send base64 transactions to horizon to get results
+# some functions are duplicated just to be plug and play compatible with the old stellar network class_payment.rb lib that's used in pokerth_accounting.
+# also see docs directory that contains text information on how to setup dependancies and other useful info to know if using stellar.org on Linux Mint or Ubuntu.
 
 require 'stellar-base'
 require 'faraday'
@@ -20,18 +23,20 @@ require 'yaml'
 #@configs["db_file_path"] = '/home/sacarlson/github/stellar/fred/stellar-db/stellar.db'
 #only need url_horizon if your in horizon mode but this is default horizon-testnet
 #@configs["url_horizon"] = 'https://horizon-testnet.stellar.org'
-#@configs["url_stellar_core"] = 'http://localhost:39132'
+#@configs["url_stellar_core"] = 'http://localhost:8080'
 #only need pg_*** if your using local_postgres mode
 #@configs["pg_hostaddr"] = '127.0.0.1'
 #@configs["pg_port"] = 5432
 #@configs["pg_dbname"] = "stellar"
 #@configs["pg_user"] = "sacarlson"
-#@configs["pg_password"] = "scottc"
+#@configs["pg_password"] = "password"
 #@configs["mode"] = "localcore" || "horizon" || "local_postgres"
 #@configs["mode"] = "local_postgres"
+#@configs["fee"] = 10
 #File.open("./stellar_utilities.cfg", "w") {|f| f.write(@configs.to_yaml) }
 @configs = YAML.load(File.open("./stellar_utilities.cfg")) 
 #@configs["mode"] = "localcore"
+
 #exit -1
 
 def get_db(query)
@@ -68,17 +73,17 @@ def get_accounts_local(account)
     # returns a hash of all account info example result["seqnum"]
     # database used and config info needed is dependant on @config["mode"] setting
     account = convert_keypair_to_address(account)
-    puts "account #{account}"
-    query = "SELECT * FROM accounts WHERE accountid='#{account}' "
+    #puts "account #{account}"
+    query = "SELECT * FROM accounts WHERE accountid='#{account}'"
     return get_db(query) 
 end
 
-def get_lines_balance_local(account,currency)
+def get_lines_balance_local(account,issuer,currency)
   # balance of trustlines on the Stellar account from localy running Stellar-core db
   # you must setup your local path to @stellar_db_file_path for this to work
   # also at this time this assumes you only have one gateway issuer for each currency
   account = convert_keypair_to_address(account)  
-  query = "SELECT * FROM trustlines WHERE accountid='#{account}' AND assetcode= '#{currency}'"
+  query = "SELECT * FROM trustlines WHERE accountid='#{account}' AND assetcode='#{currency}' AND issuer='#{issuer}'"
   result = get_db(query)
   if result == nil
     return 0
@@ -87,11 +92,11 @@ def get_lines_balance_local(account,currency)
   end
 end
 
-def get_lines_balance(account,currency)
+def get_lines_balance(account,issuer,currency)
   if @configs["mode"] == "horizon"
-    return get_lines_balance_horizon(account,currency)
+    return get_lines_balance_horizon(account,issuer,currency)
   else
-    return get_lines_balance_local(account,currency)
+    return get_lines_balance_local(account,issuer,currency)
   end
 end
 
@@ -101,21 +106,24 @@ end
 
 def get_seqnum_local(account)
   result = get_accounts_local(account)
+  if result.nil?
+    return 0
+  end
   return result["seqnum"].to_i
 end
 
 def get_native_balance_local(account)
-  puts "account #{account}"
+  #puts "account #{account}"
   result = get_accounts_local(account)
+  if result.nil?
+    return 0
+  end
   return result["balance"].to_i
 end
 
 def bal_STR(account)
   get_native_balance(account).to_i
 end
-#result = bal_STR(account)
-#puts "#{result}"
-
 
 def get_account_info_horizon(account)
     account = convert_keypair_to_address(account)
@@ -127,11 +135,6 @@ def get_account_info_horizon(account)
     data = JSON.parse(postdata)
     return data
 end
-#result = get_account_info(account)
-#puts "#{result}"
-
-
-
 
 def get_account_sequence(account)
   if @configs["mode"] == "horizon"
@@ -156,8 +159,35 @@ end
 
 
 def get_native_balance_horizon(account)
-  data = get_account_info(account)
-  return data["balances"]
+  #compatable with old ruby horizon and go-horizon formats
+  data = get_account_info_horizon(account)
+  data["balances"].each{ |row|
+    puts "row = #{row}"
+    #go-horizon format
+    if row["asset_type"] == "native"
+      return row["balance"]
+    end
+    #old ruby horizon format
+    if !row["asset"].nil?
+      if row["asset"]["type"] == "native"
+        return row["balance"]
+      end
+    end
+  }
+  return 0
+end
+
+def get_lines_balance_horizon(account,issuer,currency)
+  #will only work on go-horizon
+  data = get_account_info_horizon(account)
+  data["balances"].each{ |row|
+    if row["asset_code"] == currency
+      if row["issuer"] == issuer
+        return row["balance"]
+      end
+    end
+  }
+  return 0
 end
 
 def get_native_balance(account)
@@ -196,7 +226,8 @@ def send_tx_horizon(b64)
   }
   puts "values: #{values}"
   #response = RestClient.post @configs["url_horizon"]+"/transactions", values, headers
-  response = RestClient.post @configs["url_horizon"]+"/transactions", b64, headers
+  #response = RestClient.post @configs["url_horizon"]+"/transactions", b64, headers
+  response = RestClient.post(@configs["url_horizon"]+"/transactions", {tx: b64}, headers)
   puts response
   return response
 end
@@ -218,6 +249,7 @@ def create_account_tx(account, funder, starting_balance=1000_0000000, seqadd=0)
     destination:      account,
     sequence:         next_sequence(funder)+seqadd,
     starting_balance: starting_balance,
+    fee:        @configs["fee"]
   })
   return tx
 end
@@ -258,7 +290,8 @@ def send_native_tx(from_pair, to_account, amount, seqadd=0)
     account:     from_pair,
     destination: to_pair,
     sequence:    next_sequence(from_pair)+seqadd,
-    amount:      [:native, amount * Stellar::ONE]
+    amount:      [:native, amount * Stellar::ONE],
+    fee:        @configs["fee"]
   })
   return tx   
 end
@@ -293,8 +326,10 @@ def add_trust_tx(issuer_account,to_pair,currency,limit=(2**63)-1)
     account:    to_pair,
     sequence:   next_sequence(to_pair),
     line:       [:alphanum4, currency, issuer_pair],
-    limit:      limit
+    limit:      limit,
+    fee:        @configs["fee"]
   })
+  puts "fee = #{tx.fee}"
   return tx
 end
 
@@ -327,6 +362,7 @@ def allow_trust_tx(account, trustor, code, authorize=true)
     sequence: next_sequence(account),
     asset: asset,
     trustor:  trustor,
+    fee:        @configs["fee"],
     authorize: authorize,
   }).to_envelope(account)
   b64 = tx.to_envelope(to_pair).to_xdr(:base64)
@@ -355,7 +391,8 @@ def send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, cu
     account:     from_account_pair,
     destination: to_account_pair,
     sequence:    next_sequence(from_account_pair),
-    amount:      [:alphanum4, currency, issuer_pair, amount]
+    amount:      [:alphanum4, currency, issuer_pair, amount],
+    fee:        @configs["fee"]
   })  
   return tx
 end
@@ -401,17 +438,18 @@ def offer(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,pri
     selling:    [:alphanum4, sell_currency, sell_issuer],
     buying:     [:alphanum4, buy_currency, buy_issuer],
     amount:     amount,
+    fee:        @configs["fee"],
     price:      price,
   })
   b64 = tx.to_envelope(account).to_xdr(:base64)
   return b64
 end
 
-def tx_merge(account,tx1,tx2)
+def tx_merge(account_keypair,tx1,tx2)
   # these tx1 and tx2 must be from before the b64 convert
   # also note that the tx's must all be for the same account
   # not sure I will ever need this. just added as a reference from the examples.
-  b64 = tx1.merge(tx2).to_envelope(account).to_xdr(:base64)
+  b64 = tx1.merge(tx2).to_envelope(account_keypair).to_xdr(:base64)
   return b64
 end
 #hex = tx1.merge(tx2).to_envelope(master).to_xdr(:base64)
