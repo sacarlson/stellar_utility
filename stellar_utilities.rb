@@ -579,4 +579,29 @@ def envelope_addsigners(env,tx,*keypair)
   return envnew
 end
 
+def envelope_merge(*envs)
+  def env_merge(*envs)
+end
+
+def env_merge(*envs)
+  #this assumes all envelops have sigs of the same tx
+  #envs can be arrays of envelops or env_merge(envA,envB,envC)
+  #this can be used to collect all the signers of a multi-sign transaction
+  tx = envs[0].tx
+  sigs = []
+  envs.each do |env|
+    #puts "env sig #{env.signatures}"
+    sigs.concat(env.signatures)
+  end
+  #puts "sigs #{sigs}"  
+  envnew = tx.to_envelope()
+  pos = 0
+  sigs.each do |sig|
+    envnew.signatures[pos] = sig
+    pos = pos + 1
+  end
+  return envnew	    
+end
+
+
 
