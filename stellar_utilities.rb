@@ -8,6 +8,7 @@
 # send base64 transactions to horizon to get results
 # some functions are duplicated just to be plug and play compatible with the old stellar network class_payment.rb lib that's used in pokerth_accounting.
 # also see docs directory that contains text information on how to setup dependancies and other useful info to know if using stellar.org on Linux Mint or Ubuntu.
+# much of the functions seen here were simply copy pasted from what was found and seen useful in stellar_core_commander
 
 require 'stellar-base'
 require 'faraday'
@@ -491,5 +492,91 @@ def convert_address_to_keypair(account)
   return keypair
 end
 
-  
+#Contract(Symbol, Thresholds => Any)
+def set_thresholds(account, thresholds)
+  set_options account, thresholds: thresholds
+end
+
+def set_options(account, args)
+  tx = set_options_tx(account, args)
+  tx.to_envelope(account)
+end
+
+#Contract Symbol, SetOptionsArgs => Any
+def set_options_tx(account, args)
+  #account = get_account account
+  #puts "#{account}  #{args}"
+  params = {
+    account:  account,
+    sequence: next_sequence(account),
+  }
+
+  if args[:inflation_dest].present?
+    params[:inflation_dest] = get_account args[:inflation_dest]
+  end
+
+  if args[:set_flags].present?
+    params[:set] = make_account_flags(args[:set_flags])
+  end
+
+  if args[:clear_flags].present?
+    params[:clear] = make_account_flags(args[:clear_flags])
+  end
+
+  if args[:master_weight].present?
+    params[:master_weight] = args[:master_weight]
+  end
+
+  if args[:thresholds].present?
+    params[:low_threshold] = args[:thresholds][:low]
+    params[:med_threshold] = args[:thresholds][:medium]
+    params[:high_threshold] = args[:thresholds][:high]
+  end
+
+  if args[:home_domain].present?
+    params[:home_domain] = args[:home_domain]
+  end
+
+  if args[:signer].present?
+    params[:signer] = args[:signer]
+  end
+
+  tx = Stellar::Transaction.set_options(params)
+  #tx.to_envelope(account)
+end
+
+#Contract Symbol, Stellar::KeyPair, Num => Any
+def add_signer(account, key, weight)
+  set_options account, signer: Stellar::Signer.new({
+    pub_key: key.public_key,
+    weight: weight
+  })
+end
+
+#Contract Symbol, Stellar::KeyPair => Any
+def remove_signer(account, key)
+  add_signer account, key, 0
+end
+
+#Contract(Symbol, MasterWeightByte => Any)
+def set_master_signer_weight(account, weight)
+  set_options account, master_weight: weight
+end
+
+def envelope_addsigners(env,tx,*keypair)
+  #this is used to add needed keypair signitures to a transaction
+  # and combine your added signed tx with someone elses envelope that has signed tx's in it
+  # you can add one or more keypairs to the envelope
+  sigs = env.signatures
+  envnew = envelope = tx.to_envelope(*keypair)
+  pos = envnew.signatures.length
+  #puts "pos start #{pos}"
+  sigs.each do |sig|
+    #puts "sig #{sig}"
+    envnew.signatures[pos] = sig
+    pos = pos + 1
+  end
+  return envnew
+end
+
 

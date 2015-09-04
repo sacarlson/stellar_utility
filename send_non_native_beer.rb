@@ -5,6 +5,9 @@ require './stellar_utilities'
 # note: in this case to issue BEER both accounts must be already be active and funded with native if needed on that network
 
 issuer_pair = YAML.load(File.open("./secret_keypair_GBZH6Z74OWID6ZP67KYNF7T5ES4APLZSISYO7GZGXW7PJNMFL4XNV3PT.yml"))
+puts "issuer acc #{issuer_pair.address}"
+puts "issuer seed #{issuer_pair.seed}"
+
 #to_account = 'GBZH6Z74OWID6ZP67KYNF7T5ES4APLZSISYO7GZGXW7PJNMFL4XNV3PT'
 #issuer_account = 'GBZH6Z74OWID6ZP67KYNF7T5ES4APLZSISYO7GZGXW7PJNMFL4XNV3PT'
 #buhrmi's account GD5GK...
