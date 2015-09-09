@@ -18,7 +18,7 @@ signerA_keypair = YAML.load(File.open("./signerA_keypair.yml"))
 signerB_keypair = YAML.load(File.open("./signerB_keypair.yml"))
 
 puts "multi_sig address #{multi_sig_account_keypair.address}"
-exit -1
+
 
 if @configs["fee"] == 0
   starting_balance = 0

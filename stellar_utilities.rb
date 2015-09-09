@@ -19,6 +19,8 @@ require 'sqlite3'
 require 'pg'
 require 'yaml'
 
+#require 'base32'
+
 #@configs = {}
 #@configs["db_file_path"] = '/home/sacarlson/github/stellar/my-stellar/stellar-core/stellar.db'
 #@configs["db_file_path"] = '/home/sacarlson/github/stellar/fred/stellar-db/stellar.db'
@@ -472,6 +474,11 @@ def envelope_to_b64(envelope)
   return b64
 end
 
+def b64_to_envelope(b64)
+  bytes = Stellar::Convert.from_base64 b64
+  envelope = Stellar::TransactionEnvelope.from_xdr bytes
+end
+
 def convert_keypair_to_address(account)
   if account.is_a?(Stellar::KeyPair)
     address = account.address
@@ -553,6 +560,17 @@ def add_signer(account, key, weight)
   })
 end
 
+def add_signer_public_key(account, key, weight)
+  set_options account, signer: Stellar::Signer.new({
+    pub_key: key,
+    weight: weight
+  })
+end
+
+def get_public_key(keypair)
+  keypair.public_key
+end
+
 #Contract Symbol, Stellar::KeyPair => Any
 def remove_signer(account, key)
   add_signer account, key, 0
@@ -580,7 +598,7 @@ def envelope_addsigners(env,tx,*keypair)
 end
 
 def envelope_merge(*envs)
-  def env_merge(*envs)
+  return env_merge(*envs)
 end
 
 def env_merge(*envs)
@@ -601,6 +619,12 @@ def env_merge(*envs)
     pos = pos + 1
   end
   return envnew	    
+end
+
+def hash32(string)
+  #a shortened 10 letter base32 SHA256 hash, not likely to be duplicate with small numbers of tx
+  # example output "7ZZUMOSZ26"
+  Base32.encode(Digest::SHA256.digest(string))[0..9]
 end
 
 
