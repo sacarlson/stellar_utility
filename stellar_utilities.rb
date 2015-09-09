@@ -243,7 +243,7 @@ def send_tx(b64)
   end
 end
 
-def create_account_tx(account, funder, starting_balance=1000_0000000, seqadd=0)
+def create_account_tx(account, funder, starting_balance=25.0, seqadd=0)
   account = convert_address_to_keypair(account)
   nxtseq = next_sequence(funder)
   #puts "create_account nxtseq #{nxtseq}"     
@@ -257,27 +257,28 @@ def create_account_tx(account, funder, starting_balance=1000_0000000, seqadd=0)
   return tx
 end
 
-def create_account_local(account, funder, starting_balance=1000_0000000)
+def create_account_local(account, funder, starting_balance=25.0)
   tx = create_account_tx(account, funder, starting_balance)
   b64 = tx.to_envelope(funder).to_xdr(:base64)
+  puts "b64: #{b64}"
   send_tx_local(b64)
 end
 
-def create_account_horizon(account, funder, starting_balance=1000_0000000)
+def create_account_horizon(account, funder, starting_balance=25.0)
   tx = create_account_tx(account, funder, starting_balance)
   b64 = tx.to_envelope(funder).to_xdr(:base64)
   #b64 = tx.to_envelope(funder).to_xdr(:hex)
   send_tx_horizon(b64)
 end
 
-def create_account(account, funder, starting_balance=1000_0000000)
+def create_account(account, funder, starting_balance=25.0)
   #this will create an activated account using funds from funder account
   # both account and funder are stellar account pairs, only the funder pair needs to have an active secrete key and needed funds
   # @configs["mode"] can point output to "horizon" api website or "local" to direct output to localy running stellar-core 
   if @configs["mode"] == "horizon"
-    return create_account_horizon(account, funder, starting_balance=1000_0000000)
+    return create_account_horizon(account, funder, starting_balance=25.0)
   else
-    return create_account_local(account, funder, starting_balance=1000_0000000)
+    return create_account_local(account, funder, starting_balance=25.0)
   end
 end
 
