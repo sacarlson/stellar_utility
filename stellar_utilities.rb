@@ -39,7 +39,7 @@ require 'yaml'
 #File.open("./stellar_utilities.cfg", "w") {|f| f.write(@configs.to_yaml) }
 @configs = YAML.load(File.open("./stellar_utilities.cfg")) 
 #@configs["mode"] = "localcore"
-
+Stellar.default_network = eval(@configs["default_network"])
 #exit -1
 
 def get_db(query)
@@ -91,7 +91,8 @@ def get_lines_balance_local(account,issuer,currency)
   if result == nil
     return 0
   else
-    return result["balance"]
+    bal = result["balance"].to_f
+    return bal/10000000
   end
 end
 
@@ -115,18 +116,6 @@ def get_seqnum_local(account)
   return result["seqnum"].to_i
 end
 
-def get_native_balance_local(account)
-  #puts "account #{account}"
-  result = get_accounts_local(account)
-  if result.nil?
-    return 0
-  end
-  return result["balance"].to_i
-end
-
-def bal_STR(account)
-  get_native_balance(account).to_i
-end
 
 def get_account_info_horizon(account)
     account = convert_keypair_to_address(account)
@@ -158,6 +147,29 @@ def next_sequence(account)
   address = convert_keypair_to_address(account)
   #puts "address #{address}"
   return get_account_sequence(address)+1
+end
+
+def bal_STR(account)
+  get_native_balance(account).to_i
+end
+
+def get_native_balance(account)
+  if @configs["mode"] == "horizon"
+    return get_native_balance_horizon(account)
+  else
+    return get_native_balance_local(account)
+  end
+end
+
+def get_native_balance_local(account)
+  #puts "account #{account}"
+  result = get_accounts_local(account)
+  if result.nil?
+    return 0
+  end
+  bal = result["balance"].to_f
+  bal = bal/10000000
+  return bal
 end
 
 
@@ -193,14 +205,6 @@ def get_lines_balance_horizon(account,issuer,currency)
   return 0
 end
 
-def get_native_balance(account)
-  if @configs["mode"] == "horizon"
-    return get_native_balance_horizon(account)
-  else
-    return get_native_balance_local(account)
-  end
-end
-
 def create_random_pair
   return Stellar::KeyPair.random
 end
@@ -218,6 +222,20 @@ def send_tx_local(b64)
     conn.adapter Faraday.default_adapter
   end
   result = $server.get('tx', blob: b64)
+  if result.body["error"] != nil
+    puts "#result.body: #{result.body}"
+    puts "#result.body[error]: #{result.body["error"]}"
+    b64 = result.body["error"]
+    # decode to the raw byte stream
+    bytes = Stellar::Convert.from_base64 b64
+    # decode to the in-memory TransactionResult
+    tr = Stellar::TransactionResult.from_xdr bytes
+    # the actual code is embedded in the "result" field of the 
+    # TransactionResult.
+    puts "#{tr.result.code}"
+    return tr.result.code
+  end
+  #puts "#result.body: #{result.body}"
   return result.body
 end
 
@@ -243,7 +261,9 @@ def send_tx(b64)
   end
 end
 
-def create_account_tx(account, funder, starting_balance=25.0, seqadd=0)
+def create_account_tx(account, funder, starting_balance, seqadd=0)
+  puts "starting_balance #{starting_balance}"
+  starting_balance = starting_balance.to_i
   account = convert_address_to_keypair(account)
   nxtseq = next_sequence(funder)
   #puts "create_account nxtseq #{nxtseq}"     
@@ -257,29 +277,51 @@ def create_account_tx(account, funder, starting_balance=25.0, seqadd=0)
   return tx
 end
 
-def create_account_local(account, funder, starting_balance=25.0)
+def create_account_local(account, funder, starting_balance)
   tx = create_account_tx(account, funder, starting_balance)
   b64 = tx.to_envelope(funder).to_xdr(:base64)
   puts "b64: #{b64}"
   send_tx_local(b64)
 end
 
-def create_account_horizon(account, funder, starting_balance=25.0)
+def create_account_horizon(account, funder, starting_balance)
   tx = create_account_tx(account, funder, starting_balance)
   b64 = tx.to_envelope(funder).to_xdr(:base64)
   #b64 = tx.to_envelope(funder).to_xdr(:hex)
   send_tx_horizon(b64)
 end
 
-def create_account(account, funder, starting_balance=25.0)
+def create_account(account, funder, starting_balance) 
   #this will create an activated account using funds from funder account
   # both account and funder are stellar account pairs, only the funder pair needs to have an active secrete key and needed funds
   # @configs["mode"] can point output to "horizon" api website or "local" to direct output to localy running stellar-core 
   if @configs["mode"] == "horizon"
-    return create_account_horizon(account, funder, starting_balance=25.0)
+    return create_account_horizon(account, funder, starting_balance)
   else
-    return create_account_local(account, funder, starting_balance=25.0)
+    return create_account_local(account, funder, starting_balance)
   end
+end
+
+def create_account_multi_sign(acc_hash)
+  #  this is not done yet  work in progress
+  #  need to figure out how to merge tx before  I continue this otherwise this will be too slow
+  #create a multi-sign account from a multi-sign-server acc_hash
+  # this must start from a pre active and funded master_address, see create_account above to create funded acounts
+  # see acc_hash = setup_multi_sig_acc_hash(master_pair,*signers) to create acc_hash
+  #example acc_hash:
+  #{"action"=>"create_acc", "tx_title"=>"HHHM7L2GSH", "master_address"=>"GC6CMLFLFP6ZKZUA34XPQ3FNHJISZO5QHR3VIM3YOEXESPUNDTC4JDUF", "master_seed"=>"SB2GKZC2XALSYAV3HUDGMKC4BNTVXPCAZTB7FMC2Z2ACTIUCFR22TDL4", "signers_total"=>3, "thesholds"=>{"master_weight"=>1, "low"=>"0", "med"=>3, "high"=>3}, "signer_weights"=>{"GAUKOWGRSXVQVGYXQZ5EWXIHKW3V6LUGUUSERUCPIGDRB6F244XMW5KY"=>1, "GABH7PJKTMTZMO7NJ4TD7KCOV5FC3OK4EDU2DRRZSJ4LO433NNXZR3OC"=>1}}
+  envelope = add_signer(multi_sig_account_keypair,signerA_keypair,1) 
+b64 = envelope_to_b64(envelope)
+puts "send_tx"
+result = send_tx(b64)
+puts "result send_tx #{result}"
+sleep 12
+
+  envelope = set_thresholds(multi_sig_account_keypair, master_weight: 1, low: 0, medium: 2, high: 2)
+b64 = envelope_to_b64(envelope)
+puts "send_tx"
+result = send_tx(b64)
+puts "result send_tx #{result}"
 end
 
 def account_address_to_keypair(account_address)
@@ -294,8 +336,9 @@ def send_native_tx(from_pair, to_account, amount, seqadd=0)
     account:     from_pair,
     destination: to_pair,
     sequence:    next_sequence(from_pair)+seqadd,
-    amount:      [:native, amount * Stellar::ONE],
-    fee:        @configs["fee"]
+    #amount:      [:native, amount * Stellar::ONE],
+    amount:      [:native, amount.to_s ],
+    #fee:        @configs["fee"]
   })
   return tx   
 end
@@ -323,7 +366,7 @@ def send_native(from_pair, to_account, amount)
   end
 end
 
-def add_trust_tx(issuer_account,to_pair,currency,limit=(2**63)-1)
+def add_trust_tx(issuer_account,to_pair,currency,limit)
   #issuer_pair = Stellar::KeyPair.from_address(issuer_account)
   issuer_pair = convert_address_to_keypair(issuer_account)
   tx = Stellar::Transaction.change_trust({
@@ -337,23 +380,23 @@ def add_trust_tx(issuer_account,to_pair,currency,limit=(2**63)-1)
   return tx
 end
 
-def add_trust_local(issuer_account,to_pair,currency,limit=(2**63)-1)
+def add_trust_local(issuer_account,to_pair,currency,limit=900000000000)
   tx = add_trust_tx(issuer_account,to_pair,currency,limit)
   b64 = tx.to_envelope(to_pair).to_xdr(:base64)
   send_tx_local(b64)
 end
 
-def add_trust_horizon(issuer_account,to_pair,currency,limit=(2**63)-1)
+def add_trust_horizon(issuer_account,to_pair,currency,limit=900000000000)
   tx = add_trust_tx(issuer_account,to_pair,currency,limit)
   b64 = tx.to_envelope(to_pair).to_xdr(:base64)
   send_tx_horizon(b64)
 end
 
-def add_trust(issuer_account,to_pair,currency,limit=(2**63)-1)
+def add_trust(issuer_account,to_pair,currency,limit=900000000000)
   if @configs["mode"] == "horizon"
-    return add_trust_horizon(issuer_account,to_pair,currency,limit=(2**63)-1)
+    return add_trust_horizon(issuer_account,to_pair,currency,limit)
   else
-    return add_trust_local(issuer_account,to_pair,currency,limit=(2**63)-1)
+    return add_trust_local(issuer_account,to_pair,currency,limit)
   end
 end
 
@@ -395,8 +438,8 @@ def send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, cu
     account:     from_account_pair,
     destination: to_account_pair,
     sequence:    next_sequence(from_account_pair),
-    amount:      [:alphanum4, currency, issuer_pair, amount],
-    fee:        @configs["fee"]
+    amount:      [:alphanum4, currency, issuer_pair, amount.to_s],
+    #fee:        @configs["fee"]
   })  
   return tx
 end
@@ -428,9 +471,9 @@ end
 def create_new_account_with_CHP_trust(acc_issuer_pair)
   currency = "CHP"
   to_pair = Stellar::KeyPair.random
-  create_account(to_pair, acc_issuer_pair, starting_balance=30_0000000)
+  create_account(to_pair, acc_issuer_pair, starting_balance=30)
   sleep 11
-  add_trust(issuer_account,to_pair,currency,limit=(2**63)-1)
+  add_trust(issuer_account,to_pair,currency)
   return to_pair
 end
 
@@ -441,7 +484,7 @@ def offer(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,pri
     sequence:   next_sequence(account),
     selling:    [:alphanum4, sell_currency, sell_issuer],
     buying:     [:alphanum4, buy_currency, buy_issuer],
-    amount:     amount,
+    amount:     amount.to_s,
     fee:        @configs["fee"],
     price:      price,
   })
@@ -449,14 +492,23 @@ def offer(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,pri
   return b64
 end
 
-def tx_merge(account_keypair,tx1,tx2)
-  # these tx1 and tx2 must be from before the b64 convert
-  # also note that the tx's must all be for the same account
-  # not sure I will ever need this. just added as a reference from the examples.
-  b64 = tx1.merge(tx2).to_envelope(account_keypair).to_xdr(:base64)
-  return b64
+def tx_merge(*tx)
+  # this will merge an array of tx transactions and take care of seq_num and fee adjustments
+  # I'm not totaly sure you need to fee = count * 10, not sure what the exact number is yet but it works so go with it
+  seq_num = tx[0].seq_num 
+  tx0 = tx[0]
+  count = tx.length
+  puts "count: #{count}"
+  tx.drop(1).each do |row|
+    seq_num = seq_num + 1
+    row.seq_num = seq_num
+    puts "row.source_account: #{row.source_account}"
+    tx0 = tx0.merge(row)
+  end
+  tx0.fee = count * 10
+  return tx0 
 end
-#hex = tx1.merge(tx2).to_envelope(master).to_xdr(:base64)
+
 
 def tx_to_b64(from_pair,tx)
   # in the event we want to later convert tx to base64, don't need it yet but maybe someday?
@@ -476,6 +528,11 @@ def envelope_to_b64(envelope)
 end
 
 def b64_to_envelope(b64)
+  puts "b64 class: #{b64.class}"
+  puts "b64: #{b64}"
+  if b64.nil?
+    return nil
+  end
   bytes = Stellar::Convert.from_base64 b64
   envelope = Stellar::TransactionEnvelope.from_xdr bytes
 end
@@ -555,6 +612,7 @@ end
 
 #Contract Symbol, Stellar::KeyPair, Num => Any
 def add_signer(account, key, weight)
+  #note to add signers you must have +10 min ballance per signer example 20 normal account 30 min to add one signer
   set_options account, signer: Stellar::Signer.new({
     pub_key: key.public_key,
     weight: weight
@@ -587,7 +645,7 @@ def envelope_addsigners(env,tx,*keypair)
   # and combine your added signed tx with someone elses envelope that has signed tx's in it
   # you can add one or more keypairs to the envelope
   sigs = env.signatures
-  envnew = envelope = tx.to_envelope(*keypair)
+  envnew = tx.to_envelope(*keypair)
   pos = envnew.signatures.length
   #puts "pos start #{pos}"
   sigs.each do |sig|
@@ -628,5 +686,128 @@ def hash32(string)
   Base32.encode(Digest::SHA256.digest(string))[0..9]
 end
 
+def send_to_multi_sign_server(hash)
+  #this will send the hash created in setup_multi_sig_acc_hash() function to the stellar MSS-server to process
+  puts "hash class: #{hash.class}"
+  if hash.nil?
+    puts " send hash was nil returning nothingn done"
+    return nil
+  end
+  url = @configs["multi_sign_server_url"]
+  puts "url #{url}"
+  puts "sent: #{hash.to_json}"
+  result = RestClient.post url, hash.to_json
+  puts "send results: #{result}"
+  if result == "null"
+    return {"status"=>"return_nil"}
+  end
+  return JSON.parse(result) 
+end
 
+def setup_multi_sig_acc_hash(master_pair,*signers)
+  #master_pair is an active funded account, signers is an array of all signers to be included in this multi-signed account that can be address or keypairs
+  #the default master_weights will be the number low=0, med=number_of_signers_plus1 high= same_as_med, plus1 means all signers and master must sign before tx valid
+  # all master and signer weights will default to 1
+  #tx_title will be the hash32 (ten leters) of hash created 
+  #it will return a hash that can be submited to send_to_multi_sign_server function
+  create_acc = {"action"=>"create_acc","tx_title"=>"none","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...","signers_total"=>"2", "thesholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>{"GDZ4AF..."=>"1","GDOJM..."=>"1","zzz"=>"1"}}
+  signer_count = signers.length
+  puts "sigs: #{signer_count}"
+  signer_weights = {}
+  signers.each do |row|
+    row = convert_keypair_to_address(row)
+    signer_weights[row] = 1
+  end
+  puts "signer_weights: #{signer_weights}"  
+  create_acc["master_address"] = master_pair.address
+  create_acc["master_seed"] = master_pair.seed
+  create_acc["signer_weights"] = signer_weights
+  create_acc["signers_total"] = signer_count + 1
+  create_acc["thesholds"]["med"] = signer_count + 1
+  create_acc["thesholds"]["high"] = signer_count + 1
+  create_acc["thesholds"]["master_weight"] = 1
+  tx_codex = hash32(create_acc.to_json)
+  create_acc["tx_title"] = tx_codex
+  return create_acc
+end
+
+def setup_multi_sig_tx_hash(tx, master_keypair, signer_keypair=master_keypair)
+  #setup a tx_hash that will be sent to send_to_multi_sign_server(tx_hash) to publish tx to multi-sign server
+  # you have the option to customize the hash after this creates a basic template
+  # you can change tx_title, signer_weight, signer_sig, if desired before sending it to the multi-sign-server
+  signer_address = convert_keypair_to_address(signer_keypair)
+  master_address = convert_keypair_to_address(master_keypair)
+  tx_hash = {"action"=>"submit_tx","tx_title"=>"test tx", "signer_address"=>"RUTIWOPF", "signer_weight"=>"1", "master_address"=>"GAJYPMJ...","tx_envelope_b64"=>"AAAA...","signer_sig"=>""}
+  tx_hash["signer_address"] = signer_address
+  tx_hash["master_address"] = master_address
+  envelope = tx.to_envelope(signer_keypair)
+  b64 = envelope_to_b64(envelope)
+  tx_hash["tx_title"] = hash32(b64)
+  tx_hash["tx_envelope_b64"] = b64
+  return tx_hash
+end 
+
+def sign_transaction_tx(tx,keypair)
+  #return a signature for a transaction
+  #signature = sign_transaction(tx,keypair)
+  # todo: make it so tx can be a raw tx or an envelope that already has some sigs in it.
+  # just depending on the class of tx
+  envelope = tx.to_envelope(keypair)
+  return envelope.signatures
+end
+
+def sign_transaction_env(env,keypair)
+  #return a signature for a transaction
+  #signature = sign_transaction(tx,keypair)
+  # todo: make it so tx can be a raw tx or an envelope that already has some sigs in it.
+  # just depending on the class of tx
+  tx = env.tx
+  envelope = tx.to_envelope(keypair)
+  return envelope.signatures
+end
+
+def merge_signatures_tx(tx,*sigs)
+  #merge an array of signing signatures onto a transaction
+  #output is a signed envelope
+  #envelope = merge_signatures(tx,sig1,sig2,sig3)
+  # todo: make it so tx can be raw tx or envelope with sigs already in it.
+  envnew = tx.to_envelope()
+  pos = 0
+  sigs.each do |sig|
+    envnew.signatures[pos] = sig
+    pos = pos + 1
+  end
+  return envnew	    
+end
+
+def decode_txbody_b64(b64)
+  #this can be used to view what is inside of a stellar db txhistory txbody in a more human readable format than b64
+  #example data seen 
+  #b64 = 'AAAAAGXNhLrhGtltTwCpmqlarh7s1DB2hIkbP//jgzn4Fos/AAAACgAAACEAAAGwAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAPsbtuH+tyUkMFS7Jglb5xLEpSxGGW0dn/Ryb1K60u4IAAAAXSHboAAAAAAAAAAAB+BaLPwAAAEDmsy29BbAv/oXdKMTYTKFiqPTKgMO0lpzBTJSaH5ZT2LFdpIT+fWnOjknlRlmXwazn0IaV8nlokS4ETTPPqgEK'
+
+  #example output:
+  #tx.inpect #<Stellar::Transaction:0x0000000317cb60 @attributes={:source_account=>#<Stellar::PublicKey:0x0000000317c110 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value="e\xCD\x84\xBA\xE1\x1A\xD9mO\x00\xA9\x9A\xA9Z\xAE\x1E\xEC\xD40v\x84\x89\e?\xFF\xE3\x839\xF8\x16\x8B?">, :fee=>10, :seq_num=>141733921200, :time_bounds=>nil, :memo=>#<Stellar::Memo:0x00000003094fe0 @switch=Stellar::MemoType.memo_none(0), @arm=nil, @value=:void>, :operations=>[#<Stellar::Operation:0x00000003094950 @attributes={:source_account=>nil, :body=>#<Stellar::Operation::Body:0x00000003093a78 @switch=Stellar::OperationType.create_account(0), @arm=:create_account_op, @value=#<Stellar::CreateAccountOp:0x00000003094220 @attributes={:destination=>#<Stellar::PublicKey:0x00000003093cf8 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value=">\xC6\xED\xB8\x7F\xAD\xC9I\f\x15.\xC9\x82V\xF9\xC4\xB1)K\x11\x86[Gg\xFD\x1C\x9B\xD4\xAE\xB4\xBB\x82">, :starting_balance=>100000000000}>>}>], :ext=>#<Stellar::Transaction::Ext:0x00000003093668 @switch=0, @arm=nil, @value=:void>}>
+
+  env = b64_to_envelope(b64)
+  tx = env.tx
+  puts "tx class #{tx.class}"
+  # inspect is what we wanted
+  puts "tx.inpect #{tx.inspect}"
+  return tx.inspect
+end
+
+def decode_txresult_b64(b64)
+  #this can be used to view what is inside of a stellar db txhistory txresult in a more human readable format than b64
+  #TransactionResultPair 
+  #b64 = '3E2ToLG5246Hu+cyMqanBh0b0aCON/JPOHi8LW68gZYAAAAAAAAACgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA=='
+
+  #example out:
+  #tranPair.inspect:  #<Stellar::TransactionResultPair:0x00000001816ae0 @attributes={:transaction_hash=>"\xDCM\x93\xA0\xB1\xB9\xDB\x8E\x87\xBB\xE722\xA6\xA7\x06\x1D\e\xD1\xA0\x8E7\xF2O8x\xBC-n\xBC\x81\x96", :result=>#<Stellar::TransactionResult:0x00000001816180 @attributes={:fee_charged=>10, :result=>#<Stellar::TransactionResult::Result:0x0000000170fbb0 @switch=Stellar::TransactionResultCode.tx_success(0), @arm=:results, @value=[#<Stellar::OperationResult:0x0000000170fc00 @switch=Stellar::OperationResultCode.op_inner(0), @arm=:tr, @value=#<Stellar::OperationResult::Tr:0x0000000170fca0 @switch=Stellar::OperationType.create_account(0), @arm=:create_account_result, @value=#<Stellar::CreateAccountResult:0x0000000170fcf0 @switch=Stellar::CreateAccountResultCode.create_account_success(0), @arm=nil, @value=:void>>>]>, :ext=>#<Stellar::TransactionResult::Ext:0x0000000170f868 @switch=0, @arm=nil, @value=:void>}>}>
+#<Stellar::TransactionResultPair:0x00000001816ae0 @attributes={:transaction_hash=>"\xDCM\x93\xA0\xB1\xB9\xDB\x8E\x87\xBB\xE722\xA6\xA7\x06\x1D\e\xD1\xA0\x8E7\xF2O8x\xBC-n\xBC\x81\x96", :result=>#<Stellar::TransactionResult:0x00000001816180 @attributes={:fee_charged=>10, :result=>#<Stellar::TransactionResult::Result:0x0000000170fbb0 @switch=Stellar::TransactionResultCode.tx_success(0), @arm=:results, @value=[#<Stellar::OperationResult:0x0000000170fc00 @switch=Stellar::OperationResultCode.op_inner(0), @arm=:tr, @value=#<Stellar::OperationResult::Tr:0x0000000170fca0 @switch=Stellar::OperationType.create_account(0), @arm=:create_account_result, @value=#<Stellar::CreateAccountResult:0x0000000170fcf0 @switch=Stellar::CreateAccountResultCode.create_account_success(0), @arm=nil, @value=:void>>>]>, :ext=>#<Stellar::TransactionResult::Ext:0x0000000170f868 @switch=0, @arm=nil, @value=:void>}>}>
+
+  bytes = Stellar::Convert.from_base64 b64
+  tranPair = Stellar::TransactionResultPair.from_xdr bytes
+  puts "tranPair.inspect:  #{tranPair.inspect}"
+  return tranPair.inspect
+end
 

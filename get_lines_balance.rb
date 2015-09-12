@@ -1,11 +1,12 @@
 #!/usr/bin/ruby
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
 require './stellar_utilities'
+#works sep 12, 2015
 
-currency = "beer"
-issuer = 'GBZH6Z74OWID6ZP67KYNF7T5ES4APLZSISYO7GZGXW7PJNMFL4XNV3PT'
+currency = "CHP"
+issuer = 'GAC2ZUXVI5266NMMGDPBMXHH4BTZKJ7MMTGXRZGX2R5YLMFRYLJ7U5EA'
 #account = Stellar::KeyPair.random
-account = 'GD5GK7WBU27XXAGD6J75JOLF7WVFGH2RXEBLOQ6OCVJTIA2JZDJLXAJ3'
+account = 'GCW55ICD6QFJ6UZNFXIMVMHDF7GD55LT6R6MCCTZVEWCPUPWLLJKWIM6'
  
 
 result = get_lines_balance(account,issuer,currency)

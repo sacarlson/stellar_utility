@@ -6,9 +6,13 @@ require 'stellar-base'
 
 #new error sep 9 2015
 #Stellar::TransactionResultCode.tx_bad_auth(-6)
-#txBAD_AUTH = -6, // not enough signatures to perform transaction
-b64 = "AAAAAAAAAAD////6AAAAAA=="
+#txBAD_AUTH = -6,   // not enough signatures to perform transaction
+# txBAD_AUTH = -6,  // too few valid signatures / wrong network
+#b64 = "AAAAAAAAAAD////6AAAAAA=="
 
+
+#Stellar::TransactionResultCode.tx_no_account(-8)
+b64 = "AAAAAAAAAAD////4AAAAAA=="
 
 # decode to the raw byte stream
 bytes = Stellar::Convert.from_base64 b64

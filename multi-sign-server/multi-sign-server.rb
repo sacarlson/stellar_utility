@@ -4,10 +4,10 @@ require 'sqlite3'
 require 'yaml'
 require 'base32'
 require './stellar_utilities.rb'
-
+require 'rest-client'
 
 configs = {}
-configs["db_file_path"] = "/home/sacarlson/github/stellar/stellar_utility/multi-sig-server/multisign.db"
+configs["mss_db_file_path"] = "/home/sacarlson/github/stellar/stellar_utility/multi-sign-server/multisign.db"
 configs["mode"] = "sqlite"
 configs["bind"] = '0.0.0.0'
 configs["port"] = 9494
@@ -26,7 +26,7 @@ class Multi_sign
 
       @configs = configs  
       #puts "db file: #{@configs["db_file_path"]}"
-      @db = SQLite3::Database.open @configs["db_file_path"]
+      @db = SQLite3::Database.open @configs["mss_db_file_path"]
       @db.execute "PRAGMA journal_mode = WAL"
       @db.results_as_hash=true
 
@@ -92,7 +92,7 @@ def add_acc(hash)
   return get_Multi_sign_acc(hash["master_address"])
 end
 
-def create_db(db_file_path=@configs["db_file_path"])
+def create_db(db_file_path=@configs["mss_db_file_path"])
   #create_acc = {"action"=>"create_acc","tx_title"=>"first multi-sig tx","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...","signers_total"=>"2", "thesholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>["GDZ4AF..."=>"1","GDOJM..."=>"1"]}
   #submit_tx = {"action"=>"submit_tx","tx_title"=>"test multi sig tx","master_address"=>"GDZ4AF...", "tx_envelope_b64"=>"AAAA..."}
   #sign_tx = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA..." "signer_sig_b64"=>"JIEYS..."}
@@ -172,13 +172,19 @@ def hash32(string)
 end
 
 def send_multi_sig_tx(tx_code)
+  if tx_code == "7ZZUMOSZ26"
+    puts "test mode disable send_multi_sig_tx"
+    return
+  end
   # this will merge all signed transaction for transaction tx_code and send it to stellar network for processing
   tx = get_Tx(tx_code)
   #{"tx_num"=>2, "signer"=>1, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test tx", "signer_address"=>"GAJYGYIa...", "signer_weight"=>"1", "master_address"=>"", "tx_envelope_b64"=>"AAAAzz...", "signer_sig_b64"=>""}
   signed = get_Tx_signed(tx_code)
-  env_master = tx["tx_envelope_b64"]
+  env_master_b64 = tx["tx_envelope_b64"]
+  env_master = b64_to_envelope(env_master_b64)
   #total = levels["master_weight"].to_i
   signed.each do |row|
+    puts "env_b64: #{row["tx_envelope_b64"]}"
     newenv = b64_to_envelope(row["tx_envelope_b64"])
     env_master = envelope_merge(env_master,newenv)
     #total = total + row["signer_weight"].to_i
@@ -195,7 +201,7 @@ def check_tx_status(tx_code,level="high")
   #this will see if the multi-sign transaction with this tx_code has the needed signitures to be processed
   #at this time only check to see if threshold high has met needed signature count
   tx = get_Tx(tx_code)
-  #puts "tx: #{tx}"
+  puts "tx: #{tx}"
   levels = get_acc_threshold_levels(tx["master_address"])
   #puts "#{levels}"
   need = levels[level].to_i
@@ -230,7 +236,7 @@ if 1==0
 #enable funtion tests
 # all pass on sep 8 2015
 configs = {}
-  configs["db_file_path"] = "/home/sacarlson/github/stellar/stellar_utility/multi-sig-server/multisign.db"
+  configs["mss_db_file_path"] = "/home/sacarlson/github/stellar/stellar_utility/multi-sign-server/multisign.db"
   configs["mode"] = "sqlite"
   @mult_sig = Multi_sign.new(configs)
   @mult_sig.create_db
@@ -368,32 +374,50 @@ puts "should start here"
 post '/' do
   #status 204 #successful request with no body content
   configs = {}
-  configs["db_file_path"] = "/home/sacarlson/github/stellar/stellar_utility/multi-sig-server/multisign.db"
+  configs["mss_db_file_path"] = "/home/sacarlson/github/stellar/stellar_utility/multi-sign-server/multisign.db"
   configs["mode"] = "sqlite"
   @mult_sig = Multi_sign.new(configs)
   @mult_sig.create_db
 
   request.body.rewind
-  request_payload = JSON.parse(request.body.read)
+  #puts "request.body.read:  #{request.body.read}"
+  s = request.body.read.to_s
+  #puts "class: #{s.class}"
+  puts "length: #{s.length}"
+  #puts "hex: #{s.unpack('U'*s.length).collect {|x| x.to_s 16}.join}"
+  #request_payload = JSON.parse(s)
+  request_payload = ActiveSupport::JSON.decode(s)  
+  puts "payload: #{request_payload}"
+  if 1==1
   if request_payload["action"] == "create_acc"
-    puts "payload: #{request_payload}"
-    z = request_payload
-    result = @mult_sig.add_acc(z)
+    #puts "payload: #{request_payload}"
+    result = @mult_sig.add_acc(request_payload)
     string = result["acc_num"].to_s
-    sendback = '{"status"=>"success", "acc_num"=>"' + string + '"}'
-    sendback
+    stat = '{"status"=>"success", "acc_num"=>"' + string + '"}'
+    sendback = eval(stat)
+    #puts "sendback: #{sendback}"
+    sendback.to_json
   elsif request_payload["action"] == "submit_tx"
-    result = @mult_sig.add_tx(request_payload)
+    results = @mult_sig.add_tx(request_payload)
     results.to_json
   elsif request_payload["action"] == "get_tx"
     #puts "get_tx"
     results = @mult_sig.get_Tx(request_payload["tx_code"])
     results.to_json
   elsif request_payload["action"] == "sign_tx"
-    results = @mult_sig.sign_tx(hash)
+    #puts "payload: {#{request_payload}"
+    results = @mult_sig.sign_tx(request_payload)
+    #puts "sign_tx results: #{results}"
+    results.to_json
+  elsif request_payload["action"] == "status_tx"
+    results = @mult_sig.check_tx_status(request_payload["tx_code"])
+    results.to_json
+  elsif request_payload["action"] == "send_tx"
+    results = @mult_sig.send_multi_sig_tx(request_payload["tx_code"])
     results.to_json
   else
-    'error bad json'
+    'error bad action code in json: #{request_payload["action"]}'
+  end
   end
 end
 
