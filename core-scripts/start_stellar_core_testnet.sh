@@ -1,4 +1,4 @@
-COREPATH='/home/sacarlson/github/stellar/stellar-core/src'
+COREPATH='/home/sacarlson/github/stellar/buhrmi/network/src'
 #CONFIGFILE='./stellar-core_standalone.cfg'
 CONFIGFILE='./stellar-core_testnet.cfg'
 MY_PATH="`dirname \"$0\"`"              # relative

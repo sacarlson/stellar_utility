@@ -1,4 +1,4 @@
-COREPATH='/home/sacarlson/github/stellar/stellar-core/src'
+COREPATH='/home/sacarlson/github/stellar/buhrmi/network/src'
 #COREPATH='/home/sacarlson/github/stellar/fred/stellar-core/src'
 #CONFIGFILE='./stellar-core_standalone.cfg'
 CONFIGFILE='./stellar-core_testnet.cfg'
