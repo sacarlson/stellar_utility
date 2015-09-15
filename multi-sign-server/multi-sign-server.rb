@@ -3,19 +3,24 @@ require 'json'
 require 'sqlite3'
 require 'yaml'
 require 'base32'
-require './stellar_utilities.rb'
 require 'rest-client'
+require '../lib/stellar_utility/stellar_utility.rb'
 
-configs = {}
-configs["mss_db_file_path"] = "/home/sacarlson/github/stellar/stellar_utility/multi-sign-server/multisign.db"
-configs["mode"] = "sqlite"
-configs["bind"] = '0.0.0.0'
-configs["port"] = 9494
+if File.file?("./stellar_utilities.cfg")
+  configs = YAML.load(File.open("./stellar_utilities.cfg"))
+else 
+  configs = {}
+  configs["mss_db_file_path"] = "./multisign.db"
+  configs["mss_db_mode"] = "sqlite"
+  configs["mss_bind"] = '0.0.0.0'
+  configs["mss_port"] = 9494
+end
 
-set :bind, configs["bind"]
-set :port, configs["port"]
+set :bind, configs["mss_bind"]
+set :port, configs["mss_port"]
 
-puts "started"
+puts "configs:  #{configs}"
+puts "sever started"
 
 class Multi_sign
 
@@ -24,25 +29,27 @@ class Multi_sign
   def initialize(configs)  
     # Instance variables 
 
-      @configs = configs  
-      #puts "db file: #{@configs["db_file_path"]}"
-      @db = SQLite3::Database.open @configs["mss_db_file_path"]
-      @db.execute "PRAGMA journal_mode = WAL"
-      @db.results_as_hash=true
-
+    @configs = configs  
+    #puts "db file: #{@configs["db_file_path"]}"
+    @db = SQLite3::Database.open @configs["mss_db_file_path"]
+    @db.execute "PRAGMA journal_mode = WAL"
+    @db.results_as_hash=true
+    @Utils = Stellar_utility::Utils.new("horizon")
+    puts "Utils version: #{@Utils.version}"
+    puts "configs: #{@Utils.configs}"
     #@conn
   end  
 
 def get_db(query="none")
   #puts "q: #{query}"
   #returns query hash from database that is dependent on mode
-  if @configs["mode"] == "sqlite"
+  if @configs["mss_db_mode"] == "sqlite"
     #puts "db file: #{@configs["db_file_path"]}"
     #db = SQLite3::Database.open @configs["db_file_path"]  
     stm = @db.prepare query 
     result= stm.execute
     return result
-  elsif @configs["mode"] == "postgres"
+  elsif @configs["mss_db_mode"] == "postgres"
     #postgress is untested
     conn=PGconn.connect( :hostaddr=>@configs["pg_hostaddr"], :port=>@configs["pg_port"], :dbname=>@configs["pg_dbname"], :user=>@configs["pg_user"], :password=>@configs["pg_password"])
     result = conn.exec(query)
@@ -55,7 +62,7 @@ def get_db(query="none")
       #return result[0]
     end
   else 
-    puts "no such mode #{@configs["mode"]} for db query error"
+    puts "no such mode #{@configs["mss_db_mode"]} for db query error"
     exit -1
   end
 end
@@ -168,6 +175,7 @@ end
 def hash32(string)
   #a shortened 10 letter base32 SHA256 hash, not likely to be duplicate with small numbers of tx
   # example output "7ZZUMOSZ26"
+  # this is duplicated in Stellar_utility::Utils, if we change this remember to change the other
   Base32.encode(Digest::SHA256.digest(string))[0..9]
 end
 
@@ -181,18 +189,18 @@ def send_multi_sig_tx(tx_code)
   #{"tx_num"=>2, "signer"=>1, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test tx", "signer_address"=>"GAJYGYIa...", "signer_weight"=>"1", "master_address"=>"", "tx_envelope_b64"=>"AAAAzz...", "signer_sig_b64"=>""}
   signed = get_Tx_signed(tx_code)
   env_master_b64 = tx["tx_envelope_b64"]
-  env_master = b64_to_envelope(env_master_b64)
+  env_master = @Utils.b64_to_envelope(env_master_b64)
   #total = levels["master_weight"].to_i
   signed.each do |row|
     puts "env_b64: #{row["tx_envelope_b64"]}"
-    newenv = b64_to_envelope(row["tx_envelope_b64"])
-    env_master = envelope_merge(env_master,newenv)
+    newenv = @Utils.b64_to_envelope(row["tx_envelope_b64"])
+    env_master = @Utils.envelope_merge(env_master,newenv)
     #total = total + row["signer_weight"].to_i
     #puts "row: #{row["signer_weight"].to_i}"
   end
-  b64 = envelope_to_b64(env_master)
+  b64 = @Utils.envelope_to_b64(env_master)
   puts "send_tx"
-  result = send_tx(b64)
+  result = @Utils.send_tx(b64)
   puts "result send_tx #{result}"
   return result
 end
@@ -237,7 +245,7 @@ if 1==0
 # all pass on sep 8 2015
 configs = {}
   configs["mss_db_file_path"] = "/home/sacarlson/github/stellar/stellar_utility/multi-sign-server/multisign.db"
-  configs["mode"] = "sqlite"
+  configs["mss_db_mode"] = "sqlite"
   @mult_sig = Multi_sign.new(configs)
   @mult_sig.create_db
 
@@ -373,9 +381,9 @@ puts "should start here"
 
 post '/' do
   #status 204 #successful request with no body content
-  configs = {}
-  configs["mss_db_file_path"] = "/home/sacarlson/github/stellar/stellar_utility/multi-sign-server/multisign.db"
-  configs["mode"] = "sqlite"
+  #configs = {}
+  #configs["mss_db_file_path"] = "/home/sacarlson/github/stellar/stellar_utility/multi-sign-server/multisign.db"
+  #configs["mss_db_mode"] = "sqlite"
   @mult_sig = Multi_sign.new(configs)
   @mult_sig.create_db
 

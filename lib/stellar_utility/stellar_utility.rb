@@ -329,7 +329,7 @@ def create_account(account, funder, starting_balance = @configs["start_balance"]
   return result
 end
 
-def create_account_multi_sign(acc_hash)
+def create_account_multi_sign_slow(acc_hash)
   #  this is not done yet  work in progress
   #  need to figure out how to merge tx before  I continue this otherwise this will be too slow
   #create a multi-sign account from a multi-sign-server acc_hash
@@ -338,17 +338,16 @@ def create_account_multi_sign(acc_hash)
   #example acc_hash:
   #{"action"=>"create_acc", "tx_title"=>"HHHM7L2GSH", "master_address"=>"GC6CMLFLFP6ZKZUA34XPQ3FNHJISZO5QHR3VIM3YOEXESPUNDTC4JDUF", "master_seed"=>"SB2GKZC2XALSYAV3HUDGMKC4BNTVXPCAZTB7FMC2Z2ACTIUCFR22TDL4", "signers_total"=>3, "thesholds"=>{"master_weight"=>1, "low"=>"0", "med"=>3, "high"=>3}, "signer_weights"=>{"GAUKOWGRSXVQVGYXQZ5EWXIHKW3V6LUGUUSERUCPIGDRB6F244XMW5KY"=>1, "GABH7PJKTMTZMO7NJ4TD7KCOV5FC3OK4EDU2DRRZSJ4LO433NNXZR3OC"=>1}}
   envelope = add_signer(multi_sig_account_keypair,signerA_keypair,1) 
-b64 = envelope_to_b64(envelope)
-#puts "send_tx"
-result = send_tx(b64)
-puts "result send_tx #{result}"
-sleep 12
-
+  b64 = envelope_to_b64(envelope)
+  #puts "send_tx"
+  result = send_tx(b64)
+  puts "result send_tx #{result}"
+  sleep 12
   envelope = set_thresholds(multi_sig_account_keypair, master_weight: 1, low: 0, medium: 2, high: 2)
-b64 = envelope_to_b64(envelope)
-puts "send_tx"
-result = send_tx(b64)
-puts "result send_tx #{result}"
+  b64 = envelope_to_b64(envelope)
+  puts "send_tx"
+  result = send_tx(b64)
+  puts "result send_tx #{result}"
 end
 
 def account_address_to_keypair(account_address)
@@ -525,15 +524,17 @@ end
 
 def tx_merge(*tx)
   # this will merge an array of tx transactions and take care of seq_num and fee adjustments
-  # I'm not totaly sure you need to fee = count * 10, not sure what the exact number is yet but it works so go with it
-  seq_num = tx[0].seq_num 
-  tx0 = tx[0]
-  count = tx.length
-  puts "count: #{count}"
-  tx.drop(1).each do |row|
+  # I'm not totaly sure you need a fee = count * 10, not sure what the exact number is yet but it works so go with it
+  puts ""
+  #puts "tx.inspect:  #{tx.inspect}"
+  seq_num = tx[0][0].seq_num 
+  tx0 = tx[0][0]
+  count = tx[0].length
+  #puts "count: #{count}"
+  tx[0].drop(1).each do |row|
     seq_num = seq_num + 1
     row.seq_num = seq_num
-    puts "row.source_account: #{row.source_account}"
+    #puts "row.source_account: #{row.source_account}"
     tx0 = tx0.merge(row)
   end
   tx0.fee = count * 10
@@ -671,6 +672,7 @@ def set_master_signer_weight(account, weight)
   set_options account, master_weight: weight
 end
 
+
 def envelope_addsigners(env,tx,*keypair)
   #this is used to add needed keypair signitures to a transaction
   # and combine your added signed tx with someone elses envelope that has signed tx's in it
@@ -695,11 +697,14 @@ def env_merge(*envs)
   #this assumes all envelops have sigs of the same tx
   #envs can be arrays of envelops or env_merge(envA,envB,envC)
   #this can be used to collect all the signers of a multi-sign transaction
-  tx = envs[0].tx
+  env = envs[0][0]
+  #puts "envs[0][0]:  #{envs[0][0].inspect}"
+  tx = env.tx
   sigs = []
   envs.each do |env|
     #puts "env sig #{env.signatures}"
-    sigs.concat(env.signatures)
+    env2 = env[0]
+    sigs.concat(env2.signatures)
   end
   #puts "sigs #{sigs}"  
   envnew = tx.to_envelope()
@@ -777,6 +782,33 @@ def setup_multi_sig_tx_hash(tx, master_keypair, signer_keypair=master_keypair)
   tx_hash["tx_envelope_b64"] = b64
   return tx_hash
 end 
+
+def create_account_from_acc_hash(acc_hash, funder)
+  to_pair = Stellar::KeyPair.from_seed(acc_hash["master_seed"])
+  signers = acc_hash["signer_weights"]
+  puts "to_pair:  #{to_pair.address}"
+  puts "funder:  #{funder.address}"
+  tx = []
+  tx[0] = create_account_tx(to_pair, funder, 106)
+  pos = 1
+  signers.drop(0).each do |acc, wt|
+    puts "acc:#{acc}  wt:#{wt}"
+    keypair = Stellar::KeyPair.from_address(acc)
+    public_key = keypair.public_key
+    env = add_signer_public_key(to_pair, public_key, wt.to_i)
+    tx[pos] = env.tx
+    pos = pos + 1
+  end
+  #puts "tx: #{tx[0].inspect}"  
+  th = acc_hash["thesholds"]
+  env = set_thresholds(to_pair, master_weight: th["master_weight"].to_i, low: th["low"].to_i, medium: th["med"].to_i, high: th["high"].to_i)
+  tx[pos] = env.tx
+  puts "tx.length:  #{tx.length}"
+  tx_new = tx_merge(tx)
+  env_new = tx_to_envelope(to_pair,tx_new)
+  b64 = envelope_to_b64(env_new)
+  #send_tx(b64) 
+end
 
 def sign_transaction_tx(tx,keypair)
   #return a signature for a transaction

@@ -1,6 +1,5 @@
 #!/usr/bin/ruby
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
-require './stellar_utilities'
 #this will demonstrate how a client would use the multi-sign-server to setup and publish a multi-sign-account
 # to a multi-sign-server or as we will sometimes now call it an mss-server. 
 # The multi-sign-server is used to distribute tx envelopes to the signers and acumulate the needed signatures and submit them
@@ -18,14 +17,15 @@ require './stellar_utilities'
 
 # you will have to privide a master_keypair account in ./stellar_utility.cfg that has the funds needed to do this operation
 # you will need 25 lunes minimum that will be used to activate and fund the multi_sig_account_keypair 
+require '../lib/stellar_utility/stellar_utility.rb'
 
-master  = eval( @configs["master_keypair"])
-rs = Stellar.current_network
-puts "current_network = #{rs}"
-puts "multi-sign-server url: #{@configs["multi_sign_server_url"]}"
-starting_balance = @configs["start_balance"]
-puts "starting_balance = #{starting_balance}"
-puts "fee = #{@configs["fee"]}"
+Utils = Stellar_utility::Utils.new("horizon")
+puts "Utils version: #{Utils.version}"
+puts "configs: #{Utils.configs}"
+
+#master  = eval( @configs["master_keypair"])
+master  = Stellar::KeyPair.master
+
 
 # the bigginning of this program just sets up the needed accounts and keypair files that will be used here and in the 
 # next steps in other programs that demonstrate other parts.
@@ -44,21 +44,21 @@ else
     signerB_keypair = YAML.load(File.open("./signerB_keypair.yml"))
   else
     #if the file didn't exist we will create the needed set of keypair files and fund the needed account.
-    multi_sig_account_keypair =Stellar::KeyPair.random
+    multi_sig_account_keypair = Stellar::KeyPair.random
     puts "my #{multi_sig_account_keypair.address}"
     puts "mys #{multi_sig_account_keypair.seed}"
     to_file = "./multi_sig_account_keypair.yml"
     puts "save to file #{to_file}"
     File.open(to_file, "w") {|f| f.write(multi_sig_account_keypair.to_yaml) }
 
-    signerA_keypair =Stellar::KeyPair.random
+    signerA_keypair = Stellar::KeyPair.random
     puts "A #{signerA_keypair.address}"
     puts "As #{signerA_keypair.seed}"
     to_file = "./signerA_keypair.yml"
     puts "save to file #{to_file}"
     File.open(to_file, "w") {|f| f.write(signerA_keypair.to_yaml) }
 
-    signerB_keypair =Stellar::KeyPair.random
+    signerB_keypair = Stellar::KeyPair.random
     puts "B #{signerB_keypair.address}"
     puts "Bs #{signerB_keypair.seed}"
     to_file = "./signerB_keypair.yml"
@@ -67,12 +67,28 @@ else
     if 1==1
       #fund the multi sign account we will use in the steps bellow 
       puts "create_account multi_sig_account_keypair"
-      result = create_account(multi_sig_account_keypair, master, starting_balance)
+      result = Utils.create_account(multi_sig_account_keypair, master)
       puts "#{result}"
       sleep 11
     end
   end
 end
+
+def create_account_from_acc_hash(acc_hash)
+  signers = acc_hash["signer_weights"]
+  signers.each do |acc, wt|
+  #functions needed
+  #tx = Utils.add_signer_public_key(account, key, weight)
+  #or
+  #  better just us this one 
+  #tx = Utils.add_signer(account, key, weight)
+  #new_tx = Utils.tx_merge(*tx)
+  #env = Utils.tx_to_envelope(from_pair,tx)
+  #b64 = Utils.envelope_to_b64(envelope)
+  #result = Utils.send_tx(b64)
+  #puts "res:  #{result}"  
+end
+
 
 
 # so the real program bellow is just two function calls to create the acc_hash and optionaly modify it then send it 
@@ -84,7 +100,7 @@ end
 # note at this stage the signer keypairs don't need to have the secreet seed
 # only the multi_sig_account_keypair needs a secreet key for the transaction at this point
 
-acc_hash = setup_multi_sig_acc_hash(multi_sig_account_keypair,signerA_keypair,signerB_keypair)
+acc_hash = Utils.setup_multi_sig_acc_hash(multi_sig_account_keypair,signerA_keypair,signerB_keypair)
 puts "tx_hash: #{acc_hash}"
 
 #example out:
@@ -100,5 +116,22 @@ puts "tx_hash: #{acc_hash}"
 # default for signers is all equal with a signing weight of 1
 
 #send the above created and optionaly edited acc_hash to the mss-server for processing
-send_to_multi_sign_server(acc_hash)
+result = Utils.send_to_multi_sign_server(acc_hash)
+puts "send results:  #{result}"
+
+__END__
+
+def create_account_from_acc_hash(acc_hash)
+  signers = acc_hash["signer_weights"]
+  #functions needed
+  #tx = add_signer_public_key(account, key, weight)
+  #or
+  #  better just us this one 
+  #tx add_signer(account, key, weight)
+  #new_tx =tx_merge(*tx)
+  #env = tx_to_envelope(from_pair,tx)
+  #b64 = envelope_to_b64(envelope)
+  #send_tx(b64)  
+end
+
 
