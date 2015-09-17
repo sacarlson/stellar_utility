@@ -12,7 +12,9 @@ require 'stellar-base'
 
 
 #Stellar::TransactionResultCode.tx_no_account(-8)
-b64 = "AAAAAAAAAAD////4AAAAAA=="
+#b64 = "AAAAAAAAAAD////4AAAAAA=="
+
+b64 = "AAAAAAAAAAr////2AAAAAA=="
 
 # decode to the raw byte stream
 bytes = Stellar::Convert.from_base64 b64

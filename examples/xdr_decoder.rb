@@ -1,7 +1,5 @@
 #!/usr/bin/ruby
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
-require './stellar_utilities'
-
 #this is a tool to decode what is seen in the stellar database colums that are coded in base64 in xdr structures
 # it can aide in isolating transaction errors by looking at txresults  
 #these columes include:
@@ -11,46 +9,53 @@ require './stellar_utilities'
 #  txresult
 #    decode_txresult_b64(b64)
 #  txmeta
-#    no decoder yet writen 
+#    decode_txmeta_b64(b64) 
 #
 #accounts
 #  thresholds
-#    decode_thresholds_b64(b64)  //is broken 
+#    decode_thresholds_b64(b64)  
 
+require '../lib/stellar_utility/stellar_utility.rb'
+Utils = Stellar_utility::Utils.new("horizon")
+puts "Utils version: #{Utils.version}"
+puts "configs: #{Utils.configs}"
 
-def decode_thresholds_b64(b64)
-  #  this one doesn't work yet, must be wrong structure 
-  #ThresholdIndexes
-  #b64 = 'AQAAAA=='
-  bytes = Stellar::Convert.from_base64 b64
-  thresholdindexes = Stellar::ThresholdIndexes.from_xdr bytes
-  puts "thesholdindexes.inspect:  #{thresholdindexes.inspect}"
-  return thresholdindexes.inspect
-end
+#puts "base version: #{Stellar::Base}"
 
 #examples of usage:
+puts ""
+#txmeta data
+b64 = "AAAAAAAAAAEAAAABAAKAzQAAAAAAAAAAZc2EuuEa2W1PAKmaqVquHuzUMHaEiRs//+ODOfgWiz8AAEtfm+1FNgAAACEAAAIhAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAAAAoDNAAAAAAAAAABCzwVZeQ9sO2TeFRIN8Lslyqt9wttPtKGKNeiBvzI69wAAABdIdugAAAKAzQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAoDNAAAAAAAAAABlzYS64RrZbU8AqZqpWq4e7NQwdoSJGz//44M5+BaLPwAAS0hTdl02AAAAIQAAAiEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA=="
+Utils.decode_txmeta_b64(b64)
 
-b64 = 'AQAAAA=='
-#decode_thresholds_b64(b64)
+exit -1
 
+#account thresholds
+#b64 = 'AQAAAA=='
+#{:master_weight=>1, :low=>0, :medium=>3, :high=>3}
+b64 = "AQADAw=="
+Utils.decode_thresholds_b64(b64)
+exit -1
 
 #this can be used to view what is inside of a stellar db txhistory txresult in a more human readable format than b64
 #TransactionResultPair 
 b64 = '3E2ToLG5246Hu+cyMqanBh0b0aCON/JPOHi8LW68gZYAAAAAAAAACgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA=='
 b64 = 'vbk+9tuTcnX5JdRUcY3E9fqwG3fnGPH0WVBGeC3QDtIAAAAAAAAACv////8AAAABAAAAAAAAAAX/////AAAAAA=='
-result = decode_txresult_b64(b64)
+b64 = 'o1+xo6/fzgtu4ryqv7EyjOX7BUnbYEr6U1YaQaXti5IAAAAAAAAACv////8AAAABAAAAAAAAAAD////9AAAAAA=='
+result = Utils.decode_txresult_b64(b64)
 #puts "result:  #{result}" 
+#:CreateAccountResultCode.create_account_low_reserve(-3)
 
 exit -1
 
 b64 = 'AAAAAGXNhLrhGtltTwCpmqlarh7s1DB2hIkbP//jgzn4Fos/AAAACgAAACEAAAGwAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAPsbtuH+tyUkMFS7Jglb5xLEpSxGGW0dn/Ryb1K60u4IAAAAXSHboAAAAAAAAAAAB+BaLPwAAAEDmsy29BbAv/oXdKMTYTKFiqPTKgMO0lpzBTJSaH5ZT2LFdpIT+fWnOjknlRlmXwazn0IaV8nlokS4ETTPPqgEK'
 #this can be used to view what is inside of a stellar db txhistory txbody in a more human readable format than b64
-result = decode_txbody_b64(b64)
+result = Utils.decode_txbody_b64(b64)
 #puts "result:  #{result}"
 
 __END__
 
-tx = create_account_tx(multi_sig_account_keypair, signerB_keypair, starting_balance, seqadd=0)
+tx = Utils.create_account_tx(multi_sig_account_keypair, signerB_keypair, starting_balance, seqadd=0)
 puts "tx.inpect #{tx.inspect}"
 puts "tx.source_account #{tx.source_account.inspect}"
 

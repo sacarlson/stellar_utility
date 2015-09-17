@@ -116,7 +116,7 @@ def bal_CHP(account)
   get_lines_balance(account,"CHP")
 end
 
-def get_seqnum_local(account)
+def get_sequence_local(account)
   result = get_accounts_local(account)
   if result.nil?
     return 0
@@ -140,16 +140,16 @@ def get_account_info_horizon(account)
     return data
 end
 
-def get_account_sequence(account)
+def get_sequence(account)
   if @configs["mode"] == "horizon"
     #puts "horizon mode get seq"
-    return get_account_sequence_horizon(account)
+    return get_sequence_horizon(account)
   else
-    return get_seqnum_local(account)
+    return get_sequence_local(account)
   end
 end
 
-def get_account_sequence_horizon(account)
+def get_sequence_horizon(account)
   data = get_account_info_horizon(account)
   return data["sequence"]
 end
@@ -158,7 +158,7 @@ def next_sequence(account)
   # account here can be Stellar::KeyPair or String with Stellar address
   address = convert_keypair_to_address(account)
   #puts "address for next_seq #{address}"
-  result =  get_account_sequence(address)
+  result =  get_sequence(address)
   #puts "seqnum:  #{result}"
   return (result.to_i + 1)
 end
@@ -278,11 +278,15 @@ def send_tx_horizon(b64)
 end
 
 def send_tx(b64)
+  if b64 == "no funds"
+    return "no funds"
+  end
   if @configs["mode"] == "horizon"
     return send_tx_horizon(b64)
   else
     return send_tx_local(b64)
   end
+  sleep 11
 end
 
 def create_account_tx(account, funder, starting_balance)
@@ -321,33 +325,46 @@ def create_account(account, funder, starting_balance = @configs["start_balance"]
   # @configs["mode"] can point output to "horizon" api website or "local" to direct output to localy running stellar-core
   # this also includes the aprox delay needed before results can be seen on network 
   if @configs["mode"] == "horizon"
+    puts "start bal: #{starting_balance}"
     result = create_account_horizon(account, funder, starting_balance)
   else
     result = create_account_local(account, funder, starting_balance)
   end
-  sleep 11
   return result
 end
 
-def create_account_multi_sign_slow(acc_hash)
-  #  this is not done yet  work in progress
-  #  need to figure out how to merge tx before  I continue this otherwise this will be too slow
-  #create a multi-sign account from a multi-sign-server acc_hash
-  # this must start from a pre active and funded master_address, see create_account above to create funded acounts
-  # see acc_hash = setup_multi_sig_acc_hash(master_pair,*signers) to create acc_hash
-  #example acc_hash:
-  #{"action"=>"create_acc", "tx_title"=>"HHHM7L2GSH", "master_address"=>"GC6CMLFLFP6ZKZUA34XPQ3FNHJISZO5QHR3VIM3YOEXESPUNDTC4JDUF", "master_seed"=>"SB2GKZC2XALSYAV3HUDGMKC4BNTVXPCAZTB7FMC2Z2ACTIUCFR22TDL4", "signers_total"=>3, "thesholds"=>{"master_weight"=>1, "low"=>"0", "med"=>3, "high"=>3}, "signer_weights"=>{"GAUKOWGRSXVQVGYXQZ5EWXIHKW3V6LUGUUSERUCPIGDRB6F244XMW5KY"=>1, "GABH7PJKTMTZMO7NJ4TD7KCOV5FC3OK4EDU2DRRZSJ4LO433NNXZR3OC"=>1}}
-  envelope = add_signer(multi_sig_account_keypair,signerA_keypair,1) 
-  b64 = envelope_to_b64(envelope)
-  #puts "send_tx"
-  result = send_tx(b64)
-  puts "result send_tx #{result}"
-  sleep 12
-  envelope = set_thresholds(multi_sig_account_keypair, master_weight: 1, low: 0, medium: 2, high: 2)
-  b64 = envelope_to_b64(envelope)
-  puts "send_tx"
-  result = send_tx(b64)
-  puts "result send_tx #{result}"
+
+def create_key_testset_and_account(start_balance = 0)
+  if !File.file?("./multi_sig_account_keypair.yml")
+    #if the file didn't exist we will create the needed set of keypair files and fund the needed account.
+    multi_sig_account_keypair = Stellar::KeyPair.random
+    puts "my #{multi_sig_account_keypair.address}"
+    puts "mys #{multi_sig_account_keypair.seed}"
+    to_file = "./multi_sig_account_keypair.yml"
+    puts "save to file #{to_file}"
+    File.open(to_file, "w") {|f| f.write(multi_sig_account_keypair.to_yaml) }
+
+    signerA_keypair = Stellar::KeyPair.random
+    puts "A #{signerA_keypair.address}"
+    puts "As #{signerA_keypair.seed}"
+    to_file = "./signerA_keypair.yml"
+    puts "save to file #{to_file}"
+    File.open(to_file, "w") {|f| f.write(signerA_keypair.to_yaml) }
+
+    signerB_keypair = Stellar::KeyPair.random
+    puts "B #{signerB_keypair.address}"
+    puts "Bs #{signerB_keypair.seed}"
+    to_file = "./signerB_keypair.yml"
+    puts "save to file #{to_file}"
+    File.open(to_file, "w") {|f| f.write(signerB_keypair.to_yaml) }
+    if start_balance != 0
+      #fund the multi sign account we will use in the steps bellow 
+      master  = eval( @configs["master_keypair"])
+      puts "create_account multi_sig_account_keypair"
+      result = create_account(multi_sig_account_keypair, master, start_balance)
+      puts "#{result}"
+    end
+  end
 end
 
 def account_address_to_keypair(account_address)
@@ -424,7 +441,6 @@ def add_trust(issuer_account,to_pair,currency,limit=900000000000)
   else
     result = add_trust_local(issuer_account,to_pair,currency,limit)
   end
-  sleep 11
   return result
 end
 
@@ -490,7 +506,6 @@ def send_currency(from_account_pair, to_account_pair, issuer_pair, amount, curre
   else
     result send_currency_local(from_account_pair, to_account_pair, issuer_pair, amount, currency)
   end
-  sleep 11
   return result
 end
 
@@ -502,7 +517,6 @@ def create_new_account_with_CHP_trust(acc_issuer_pair)
   currency = "CHP"
   to_pair = Stellar::KeyPair.random
   create_account(to_pair, acc_issuer_pair, starting_balance=30)
-  sleep 11
   add_trust(issuer_account,to_pair,currency)
   return to_pair
 end
@@ -694,16 +708,29 @@ def envelope_merge(*envs)
 end
 
 def env_merge(*envs)
-  #this assumes all envelops have sigs of the same tx
+  #this assumes all envelops have sigs for the same tx
   #envs can be arrays of envelops or env_merge(envA,envB,envC)
   #this can be used to collect all the signers of a multi-sign transaction
-  env = envs[0][0]
+  puts "got to env_merge"
+  puts "envs.length:  #{envs.length}"
+  puts ""
+  puts "envs.inspect:  #{envs.inspect}"
+  puts ""
+  #puts "envs[0].length #{envs[0].length}"
+  #puts ""
+  #puts "envs[0].inspect:  #{envs[0].inspect}"
+  #puts ""
+  #puts "envs[0][0].inspect:  #{envs[0][0].inspect}"
+
+  #env = envs[0][0]
+  env = envs[0]
   #puts "envs[0][0]:  #{envs[0][0].inspect}"
   tx = env.tx
   sigs = []
   envs.each do |env|
     #puts "env sig #{env.signatures}"
-    env2 = env[0]
+    #env2 = env[0]
+    env2 = env
     sigs.concat(env2.signatures)
   end
   #puts "sigs #{sigs}"  
@@ -746,22 +773,22 @@ def setup_multi_sig_acc_hash(master_pair,*signers)
   # all master and signer weights will default to 1
   #tx_title will be the hash32 (ten leters) of hash created 
   #it will return a hash that can be submited to send_to_multi_sign_server function
-  create_acc = {"action"=>"create_acc","tx_title"=>"none","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...","signers_total"=>"2", "thesholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>{"GDZ4AF..."=>"1","GDOJM..."=>"1","zzz"=>"1"}}
+  create_acc = {"action"=>"create_acc","tx_title"=>"none","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...", "start_balance"=>100, "signers_total"=>"2", "thresholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>{"GDZ4AF..."=>"1","GDOJM..."=>"1","zzz"=>"1"}}
   signer_count = signers.length
-  puts "sigs: #{signer_count}"
+  #puts "sigs: #{signer_count}"
   signer_weights = {}
   signers.each do |row|
     row = convert_keypair_to_address(row)
     signer_weights[row] = 1
   end
-  puts "signer_weights: #{signer_weights}"  
+  #puts "signer_weights: #{signer_weights}"  
   create_acc["master_address"] = master_pair.address
   create_acc["master_seed"] = master_pair.seed
   create_acc["signer_weights"] = signer_weights
   create_acc["signers_total"] = signer_count + 1
-  create_acc["thesholds"]["med"] = signer_count + 1
-  create_acc["thesholds"]["high"] = signer_count + 1
-  create_acc["thesholds"]["master_weight"] = 1
+  create_acc["thresholds"]["med"] = signer_count + 1
+  create_acc["thresholds"]["high"] = signer_count + 1
+  create_acc["thresholds"]["master_weight"] = 1  
   tx_codex = hash32(create_acc.to_json)
   create_acc["tx_title"] = tx_codex
   return create_acc
@@ -783,14 +810,43 @@ def setup_multi_sig_tx_hash(tx, master_keypair, signer_keypair=master_keypair)
   return tx_hash
 end 
 
-def create_account_from_acc_hash(acc_hash, funder)
-  to_pair = Stellar::KeyPair.from_seed(acc_hash["master_seed"])
+def create_account_from_acc_hash(acc_hash, funder = nil)
+  #this will create a b64 formated transaction from the standard formated acc_hash 
+  #see acc_hash = setup_multi_sig_acc_hash(master_pair,*signers) for more details
+  # if funder keypair is provided we will fund the master_seed account in the acc_hash with it  
+  if funder.nil?
+    #no funder was provided so see if master_seed is valid seed length
+    if acc_hash["master_seed"].length == 56
+      #it looks valid so we will assume here that the master_seed is a funded account
+      # so we will use it to change the thresholds on the account
+      to_pair = Stellar::KeyPair.from_seed(acc_hash["master_seed"])
+      bal = get_native_balance(to_pair)
+      # lets see if the master_seed is really funded
+      if bal < 30        
+        #nope not enuf funds so nothing we can do here but return and do nothing
+        puts "not enuf funds provided to make changes to thresholds, will do nothing"
+        return "no funds"
+      end
+    else
+      #nope not a valid master_seed address so we will do nothing
+      puts "master_seed not valid so will do nothing"
+      return "no funds"
+    end
+  else
+    #the funder keypair is present so will use it to create and fund a new to_pair account
+    puts "have funder, will create new account with it starting bal: #{acc_hash["start_balance"]}" 
+    to_pair = Stellar::KeyPair.from_seed(acc_hash["master_seed"])
+    puts "funder.seed:  #{funder.seed}"
+    puts "funder.address:  #{funder.address}"
+    puts "to_pair.seed:  #{to_pair.seed}"
+    puts "to_pair.address:  #{to_pair.address}"
+    result = create_account(to_pair, funder, acc_hash["start_balance"])
+    puts "res create_account:  #{result}"  
+  end
+  tx = [] 
   signers = acc_hash["signer_weights"]
   puts "to_pair:  #{to_pair.address}"
-  puts "funder:  #{funder.address}"
-  tx = []
-  tx[0] = create_account_tx(to_pair, funder, 106)
-  pos = 1
+  pos = 0
   signers.drop(0).each do |acc, wt|
     puts "acc:#{acc}  wt:#{wt}"
     keypair = Stellar::KeyPair.from_address(acc)
@@ -800,7 +856,7 @@ def create_account_from_acc_hash(acc_hash, funder)
     pos = pos + 1
   end
   #puts "tx: #{tx[0].inspect}"  
-  th = acc_hash["thesholds"]
+  th = acc_hash["thresholds"]
   env = set_thresholds(to_pair, master_weight: th["master_weight"].to_i, low: th["low"].to_i, medium: th["med"].to_i, high: th["high"].to_i)
   tx[pos] = env.tx
   puts "tx.length:  #{tx.length}"
@@ -843,6 +899,14 @@ def merge_signatures_tx(tx,*sigs)
   return envnew	    
 end
 
+def decode_thresholds_b64(b64)
+  #convert threshold values found in stellar-core db accounts threshold example "AQADAw=="
+  #to a more human readable format of: {:master_weight=>1, :low=>0, :medium=>3, :high=>3}
+  bytes = Stellar::Convert.from_base64 b64
+  result = Stellar::Thresholds.parse bytes
+  puts "res.inpsect:  #{result.inspect}"
+end
+
 def decode_txbody_b64(b64)
   #this can be used to view what is inside of a stellar db txhistory txbody in a more human readable format than b64
   #example data seen 
@@ -873,6 +937,16 @@ def decode_txresult_b64(b64)
   puts "tranPair.inspect:  #{tranPair.inspect}"
   return tranPair.inspect
 end
+
+def decode_txmeta_b64(b64)
+   #converts the data found in stellar-core db in txtransactions  txmeta colum into more human readable content
+   #example output:  res:  #<Stellar::TransactionMeta:0x00000002c821f0 @switch=0, @arm=:v0, @value=#<Stellar::TransactionMeta::V0:0x00000002c74aa0 @attributes={:changes=>[#<Stellar::LedgerEntryChange:0x00000002c773e0 @switch=Stellar::LedgerEntryChangeType.ledger_entry_updated(1), @arm=:updated, @value=#<Stellar::LedgerEntry:0x00000002c74730 @attributes={:last_modified_ledger_seq=>164045, :data=>#<Stellar::LedgerEntry::Data:0x00000002c77638 @switch=Stellar::LedgerEntryType.account(0), @arm=:account, @value=#<Stellar::AccountEntry:0x00000002c74410 @attributes={:account_id=>#<Stellar::PublicKey:0x00000002c741e0 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value="e\xCD\x84\xBA\xE1\x1A\xD9mO\x00\xA9\x9A\xA9Z\xAE\x1E\xEC\xD40v\x84\x89\e?\xFF\xE3\x839\xF8\x16\x8B?">, :balance=>82874009994550, :seq_num=>141733921313, :num_sub_entries=>0, :inflation_dest=>nil, :flags=>0, :home_domain=>"", :thresholds=>"\x01\x00\x00\x00", :signers=>[], :ext=>#<Stellar::AccountEntry::Ext:0x00000002c77700 @switch=0, @arm=nil, @value=:void>}>>, :ext=>#<Stellar::LedgerEntry::Ext:0x00000002c77408 @switch=0, @arm=nil, @value=:void>}>>], :operations=>[#<Stellar::OperationMeta:0x00000002c77200 @attributes={:changes=>[#<Stellar::LedgerEntryChange:0x00000002c7c890 @switch=Stellar::LedgerEntryChangeType.ledger_entry_created(0), @arm=:created, @value=#<Stellar::LedgerEntry:0x00000002c76f08 @attributes={:last_modified_ledger_seq=>164045, :data=>#<Stellar::LedgerEntry::Data:0x00000002c7cae8 @switch=Stellar::LedgerEntryType.account(0), @arm=:account, @value=#<Stellar::AccountEntry:0x00000002c7e8e8 @attributes={:account_id=>#<Stellar::PublicKey:0x00000002c7e398 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value="B\xCF\x05Yy\x0Fl;d\xDE\x15\x12\r\xF0\xBB%\xCA\xAB}\xC2\xDBO\xB4\xA1\x8A5\xE8\x81\xBF2:\xF7">, :balance=>100000000000, :seq_num=>704567910072320, :num_sub_entries=>0, :inflation_dest=>nil, :flags=>0, :home_domain=>"", :thresholds=>"\x01\x00\x00\x00", :signers=>[], :ext=>#<Stellar::AccountEntry::Ext:0x00000002c7cb88 @switch=0, @arm=nil, @value=:void>}>>, :ext=>#<Stellar::LedgerEntry::Ext:0x00000002c7c8e0 @switch=0, @arm=nil, @value=:void>}>>, #<Stellar::LedgerEntryChange:0x00000002c82358 @switch=Stellar::LedgerEntryChangeType.ledger_entry_updated(1), @arm=:updated, @value=#<Stellar::LedgerEntry:0x00000002c7c6b0 @attributes={:last_modified_ledger_seq=>164045, :data=>#<Stellar::LedgerEntry::Data:0x00000002c82650 @switch=Stellar::LedgerEntryType.account(0), @arm=:account, @value=#<Stellar::AccountEntry:0x00000002c7c098 @attributes={:account_id=>#<Stellar::PublicKey:0x00000002c7bcd8 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value="e\xCD\x84\xBA\xE1\x1A\xD9mO\x00\xA9\x9A\xA9Z\xAE\x1E\xEC\xD40v\x84\x89\e?\xFF\xE3\x839\xF8\x16\x8B?">, :balance=>82774009994550, :seq_num=>141733921313, :num_sub_entries=>0, :inflation_dest=>nil, :flags=>0, :home_domain=>"", :thresholds=>"\x01\x00\x00\x00", :signers=>[], :ext=>#<Stellar::AccountEntry::Ext:0x00000002c826a0 @switch=0, @arm=nil, @value=:void>}>>, :ext=>#<Stellar::LedgerEntry::Ext:0x00000002c823a8 @switch=0, @arm=nil, @value=:void>}>>]}>]}>>
+
+  result = Stellar::TransactionMeta.from_xdr Stellar::Convert.from_base64 b64
+  puts "res:  #{result.inspect}"
+  return result
+end
+
 
 end # end class Utils
 end #end module Stellar_utilitiy

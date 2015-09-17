@@ -5,7 +5,8 @@ gem 'sqlite3'
 gem 'base32'
 #gem "json"
 #gem "stellar-base" ,"0.1.4"
-gem "stellar-base"  ,"0.3.0"
+#gem "stellar-base"  ,"0.3.0"
+gem "stellar-base"
 gem "faraday"
 gem "faraday_middleware"
 gem "pg"

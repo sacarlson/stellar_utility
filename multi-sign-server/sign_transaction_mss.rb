@@ -66,12 +66,12 @@ def setup_multi_sig_sign_hash(tx_code,keypair)
 end
 
 #this code must be changed to the tx_code created when submit_transaction created it.
-tx_code = "ODEDFG4QER"
+tx_code = "W3M4PUQE3J"
 
 sign_hash = setup_multi_sig_sign_hash(tx_code,signerA_keypair)
 puts ""
-puts "sign_hash:  #{sign_hash}"
-
+puts "sign_hashA:  #{sign_hash}"
+puts ""
 #example of what was returned in sign_hash:
 #sign_hash:  {"action"=>"sign_tx", "tx_title"=>"ODEDFG4QER", "tx_code"=>"ODEDFG4QER", "signer_address"=>"GB2HYLGOZLUSSKEP47EY2GQE66KMEYT4AMFBV6NCBJGEKYONG6S5BMBO", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAAAFiNI2HQ5glD03WWMluyTdaN531sZBGTiCWjxhduGzxIAAAACgAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAACHRlc3Q4ODE0AAAAAAAAAAAAAAACzTel0AAAAEAL/QFdoLkWub9Q+hjjYMQtSUdvVilDcRpKHGVDq6HQfpshiDIU9v7UexU6J1Bn/LDAw8MeLCxF98LFB3rJgHcBbhs8SAAAAECnAXIm6tt8WUcATFpM5R4rWS9YVw2oRSyN9omRLDjCvz3HW6EToDCCUAp4Nnl9dChwN88Mf3ohTUm7gWFP8q0L", "signer_sig"=>"JIDYR..."}
 
@@ -93,6 +93,7 @@ puts "sign_hash:  #{sign_hash}"
 #this is setup to send the second of the two singers signatures
 # normaly this would be performed by another client user in a different location, this is just to show how it works
 sign_hash = setup_multi_sig_sign_hash(tx_code,signerB_keypair)
+puts "sign_hashB:  #{sign_hash}"
 result = Utils.send_to_multi_sign_server(sign_hash)
 puts "sign result: #{result}"
 

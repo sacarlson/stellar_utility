@@ -24,11 +24,10 @@ puts "sever started"
 
 class Multi_sign
 
-   attr_accessor :configs, :db
+   attr_accessor :configs, :db, :Utils
 
   def initialize(configs)  
     # Instance variables 
-
     @configs = configs  
     #puts "db file: #{@configs["db_file_path"]}"
     @db = SQLite3::Database.open @configs["mss_db_file_path"]
@@ -82,25 +81,27 @@ def sign_tx(hash)
   return check_tx_status(hash["tx_code"],level="high")
 end
 
-def add_acc(hash)
-  #create_acc = {"action"=>"create_acc","tx_title"=>"first multi-sig tx","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...","signers_total"=>"2", "thesholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>["GDZ4AF..."=>"1","GDOJM..."=>"1"]}
-  #puts "hash: #{hash}"
-  query = "INSERT or IGNORE INTO Multi_sign_acc VALUES(NULL,'#{hash["tx_title"]}','#{hash["master_address"]}','#{hash["master_seed"]}','#{hash["signers_total"]}');"
+def add_acc(acc_hash)
+  #acc_hash = {"action"=>"create_acc", "tx_title"=>"TP5NV7WN53", "master_address"=>"GDKQJNX4DQRHVE76ZOIGQSYZR2PDX4XSDT3CAKM7F6NSZBOQ6D5QDLBD", "master_seed"=>"SDEH6BEVCMLFGAO5SAOQOWVDIFT5XS466OJQ3CZEU6OSYOXJPQQ66CYR", "start_balance"=>41, "signers_total"=>3, "thresholds"=>{"master_weight"=>1, "low"=>"0", "med"=>3, "high"=>3}, "signer_weights"=>{"GA2F3NNTSJEX2L7QJHPS4GMSQKGUMKZESTUIRXUZLHZXSQGBNBIJCMET"=>1, "GBCGQWBATTLZW6PWX7H4TNRDDWDFCZAWCGTXWYPHRHRS534HMC5HXWUY"=>1}}
+  #puts "acc_hash: #{acc_hash}"
+  query = "INSERT or IGNORE INTO Multi_sign_acc VALUES(NULL,'#{acc_hash["tx_title"]}','#{acc_hash["master_address"]}','#{acc_hash["master_seed"]}','#{acc_hash["signers_total"]}');"
   #puts "query: #{query}"
   #puts "class get_db: #{get_db.class}"
   #query2 = "SELECT * FROM Acc_threshold_levels WHERE master_address = 'test'"
   get_db(query)
-  query = "INSERT or IGNORE INTO Acc_threshold_levels VALUES(NULL,'#{hash["master_address"]}','#{hash["thesholds"]["master_weight"]}','#{hash["thesholds"]["low"]}','#{hash["thesholds"]["med"]}','#{hash["thesholds"]["high"]}');"
+  query = "INSERT or IGNORE INTO Acc_threshold_levels VALUES(NULL,'#{acc_hash["master_address"]}','#{acc_hash["thresholds"]["master_weight"]}','#{acc_hash["thresholds"]["low"]}','#{acc_hash["thresholds"]["med"]}','#{acc_hash["thresholds"]["high"]}');"
   get_db(query)
-  signers = hash["signer_weights"].to_json
-  query = "INSERT or IGNORE INTO Acc_signers VALUES(NULL,'#{hash["master_address"]}','#{signers}');"
+  signers = acc_hash["signer_weights"].to_json
+  query = "INSERT or IGNORE INTO Acc_signers VALUES(NULL,'#{acc_hash["master_address"]}','#{signers}');"
   #puts "query: #{query}"
   get_db(query)
-  return get_Multi_sign_acc(hash["master_address"])
+  #if the funds are available we will make needed changes to thresholds
+  @Utils.create_account_from_acc_hash(acc_hash)
+  return get_Multi_sign_acc(acc_hash["master_address"])
 end
 
 def create_db(db_file_path=@configs["mss_db_file_path"])
-  #create_acc = {"action"=>"create_acc","tx_title"=>"first multi-sig tx","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...","signers_total"=>"2", "thesholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>["GDZ4AF..."=>"1","GDOJM..."=>"1"]}
+  #create_acc = {"action"=>"create_acc","tx_title"=>"first multi-sig tx","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...","signers_total"=>"2", "thresholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>["GDZ4AF..."=>"1","GDOJM..."=>"1"]}
   #submit_tx = {"action"=>"submit_tx","tx_title"=>"test multi sig tx","master_address"=>"GDZ4AF...", "tx_envelope_b64"=>"AAAA..."}
   #sign_tx = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA..." "signer_sig_b64"=>"JIEYS..."}
   db = SQLite3::Database.open db_file_path
@@ -250,7 +251,7 @@ configs = {}
   @mult_sig.create_db
 
 #setup mock transaction post json data structures and other test data
-multi_sig_account_create = {"action"=>"create_acc","tx_title"=>"first multi-sig tx","master_address"=>"GDZ4AFAB...","master_seed"=>"SDRES6...","signers_total"=>"2", "thesholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>{"GDZ4AF..."=>"1","GDOJM..."=>"1","zzz"=>"1"}}
+multi_sig_account_create = {"action"=>"create_acc","tx_title"=>"first multi-sig tx","master_address"=>"GDZ4AFAB...","master_seed"=>"SDRES6...","signers_total"=>"2", "thresholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>{"GDZ4AF..."=>"1","GDOJM..."=>"1","zzz"=>"1"}}
 
 multi_sig_tx_submit = {"action"=>"submit_tx","tx_title"=>"test multi sig tx","master_address"=>"GDZ4AFAB...", "tx_envelope_b64"=>"AAAA..."}
 

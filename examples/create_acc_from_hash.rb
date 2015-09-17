@@ -13,10 +13,11 @@ funder = master
 
 
 
-acc_hash = {"action"=>"create_acc", "tx_title"=>"HHHM7L2GSH", "master_address"=>"GCUVO6WE54N7RUZSKW246BE76P4AQHF4RQJ2HA5LFWHPZMY2OHDBI3S2", "master_seed"=>"SDXRQELU2NXBPJRPDZEAWMNWHXCJUCLLPSCF6ID6U7ZSTHD4KXAGVHH5", "signers_total"=>3, "thesholds"=>{"master_weight"=>1, "low"=>"0", "med"=>1, "high"=>1}, "signer_weights"=>{"GAUKOWGRSXVQVGYXQZ5EWXIHKW3V6LUGUUSERUCPIGDRB6F244XMW5KY"=>1, "GABH7PJKTMTZMO7NJ4TD7KCOV5FC3OK4EDU2DRRZSJ4LO433NNXZR3OC"=>1}}
+acc_hash = {"action"=>"create_acc", "tx_title"=>"TP5NV7WN53", "master_address"=>"GDKQJNX4DQRHVE76ZOIGQSYZR2PDX4XSDT3CAKM7F6NSZBOQ6D5QDLBD", "master_seed"=>"SDEH6BEVCMLFGAO5SAOQOWVDIFT5XS466OJQ3CZEU6OSYOXJPQQ66CYR", "start_balance"=>41, "signers_total"=>3, "thresholds"=>{"master_weight"=>1, "low"=>"0", "med"=>3, "high"=>3}, "signer_weights"=>{"GA2F3NNTSJEX2L7QJHPS4GMSQKGUMKZESTUIRXUZLHZXSQGBNBIJCMET"=>1, "GBCGQWBATTLZW6PWX7H4TNRDDWDFCZAWCGTXWYPHRHRS534HMC5HXWUY"=>1}}
 
 
 b64 = Utils.create_account_from_acc_hash(acc_hash,funder)
+#b64 = Utils.create_account_from_acc_hash(acc_hash)
 puts "res: #{b64}"
-result = Utils.send_tx(b64) 
-puts "res: #{result}"
+#result = Utils.send_tx(b64) 
+#puts "res: #{result}"
