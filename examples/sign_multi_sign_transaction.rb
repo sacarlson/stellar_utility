@@ -12,7 +12,7 @@ puts "Utils version: #{Utils.version}"
 puts "configs: #{Utils.configs}"
 puts ""
 
-create_key_testset_and_account(@configs["start_balance"])
+Utils.create_key_testset_and_account(@configs["start_balance"])
 multi_sig_account_keypair = YAML.load(File.open("./multi_sig_account_keypair.yml"))
 signerA_keypair = YAML.load(File.open("./signerA_keypair.yml"))
 signerB_keypair = YAML.load(File.open("./signerB_keypair.yml"))

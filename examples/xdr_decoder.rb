@@ -24,35 +24,44 @@ puts "configs: #{Utils.configs}"
 
 #examples of usage:
 puts ""
+
+if 1==0
 #txmeta data
 b64 = "AAAAAAAAAAEAAAABAAKAzQAAAAAAAAAAZc2EuuEa2W1PAKmaqVquHuzUMHaEiRs//+ODOfgWiz8AAEtfm+1FNgAAACEAAAIhAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAAAAoDNAAAAAAAAAABCzwVZeQ9sO2TeFRIN8Lslyqt9wttPtKGKNeiBvzI69wAAABdIdugAAAKAzQAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAEAAoDNAAAAAAAAAABlzYS64RrZbU8AqZqpWq4e7NQwdoSJGz//44M5+BaLPwAAS0hTdl02AAAAIQAAAiEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAA=="
 Utils.decode_txmeta_b64(b64)
-
 exit -1
+end
 
+if 1==0
 #account thresholds
 #b64 = 'AQAAAA=='
 #{:master_weight=>1, :low=>0, :medium=>3, :high=>3}
 b64 = "AQADAw=="
 Utils.decode_thresholds_b64(b64)
 exit -1
+end
 
+if 1==1
 #this can be used to view what is inside of a stellar db txhistory txresult in a more human readable format than b64
 #TransactionResultPair 
 b64 = '3E2ToLG5246Hu+cyMqanBh0b0aCON/JPOHi8LW68gZYAAAAAAAAACgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA=='
 b64 = 'vbk+9tuTcnX5JdRUcY3E9fqwG3fnGPH0WVBGeC3QDtIAAAAAAAAACv////8AAAABAAAAAAAAAAX/////AAAAAA=='
 b64 = 'o1+xo6/fzgtu4ryqv7EyjOX7BUnbYEr6U1YaQaXti5IAAAAAAAAACv////8AAAABAAAAAAAAAAD////9AAAAAA=='
+b64 = '68oKNtU3ST9+pQ0VHAKwe2IzSgaWfwgl0QlnCFIMpooAAAAAAAAACgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA=='
 result = Utils.decode_txresult_b64(b64)
 #puts "result:  #{result}" 
 #:CreateAccountResultCode.create_account_low_reserve(-3)
-
 exit -1
+end
 
+
+if 1==0
 b64 = 'AAAAAGXNhLrhGtltTwCpmqlarh7s1DB2hIkbP//jgzn4Fos/AAAACgAAACEAAAGwAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAPsbtuH+tyUkMFS7Jglb5xLEpSxGGW0dn/Ryb1K60u4IAAAAXSHboAAAAAAAAAAAB+BaLPwAAAEDmsy29BbAv/oXdKMTYTKFiqPTKgMO0lpzBTJSaH5ZT2LFdpIT+fWnOjknlRlmXwazn0IaV8nlokS4ETTPPqgEK'
 #this can be used to view what is inside of a stellar db txhistory txbody in a more human readable format than b64
 result = Utils.decode_txbody_b64(b64)
 #puts "result:  #{result}"
-
+end
+exit -1
 __END__
 
 tx = Utils.create_account_tx(multi_sig_account_keypair, signerB_keypair, starting_balance, seqadd=0)

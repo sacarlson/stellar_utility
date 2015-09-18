@@ -9,6 +9,8 @@
 # so here we sign the tx envelope with signerA_keypair and signerB_keypair and verify that the tx submit for multi_sig_account_keypair account the will work
 # this test version of the same sign_mult.. was only to demonstrate the new funtion env_merge(envA,envB) that is meant to merge two or more tx envelopes
 # we think this might be the funtion or functions like it to used to combine groups of signers tx sigs in the future.
+
+#to really get this to work I want to see Utils.env_merge(envA,envB) work with arrays of envelopes and coma deliminated env.  seems only one or the other will work
 require '../lib/stellar_utility/stellar_utility.rb'
 Utils = Stellar_utility::Utils.new("horizon")
 puts "Utils version: #{Utils.version}"
@@ -33,6 +35,7 @@ tx = Utils.set_options_tx(multi_sig_account_keypair,home_domain: rndstring)
 exit -1
 envA = tx.to_envelope(signerA_keypair)
 envB = tx.to_envelope(signerB_keypair)
+array = [envA,envB]
 envelope = Utils.env_merge(envA,envB)
 #this also works as a mirror function
 #envelope = Utils.envelope_merge(envA,envB)

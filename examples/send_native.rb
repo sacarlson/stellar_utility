@@ -1,14 +1,16 @@
 #!/usr/bin/ruby
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
+#this is just a basic test to create two stellar accounts and then do native transactions between the two new accounts.
+#this is tested as working on horizon4 only 1 out of 3 times, it works in localcore mode every time  sept 18, 2015
+
 require '../lib/stellar_utility/stellar_utility.rb'
 Utils = Stellar_utility::Utils.new("horizon")
+#Utils = Stellar_utility::Utils.new("/home/sacarlson/github/stellar/stellar_utility/examples/stellar_utilities.cfg")
+#Utils = Stellar_utility::Utils.new()
 puts "Utils version: #{Utils.version}"
 puts "configs: #{Utils.configs}"
 puts ""
-#starting_balance = @configs["start_balance"]
-#starting_balance = 1000_000000
 
-#master      = Stellar::KeyPair.from_raw_seed("allmylifemyhearthasbeensearching") 
 #master  = eval( @configs["master_keypair"])
 master  = Stellar::KeyPair.master
 
@@ -25,8 +27,7 @@ puts "to_pair   #{to_pair.address}"
 puts "starting_balance: #{Utils.configs["start_balance"]}"
 
 before = Utils.get_native_balance(to_pair.address)
-puts "before balance = #{before}"
-exit -1
+puts "before account created balance on to_pair = #{before}"
 
 result = Utils.create_account(from_pair, master)
 puts "#{result}"
@@ -37,12 +38,12 @@ sleep 10
 
 amount = 1.4321234
 before = Utils.get_native_balance(to_pair.address)
-puts "before balance = #{before}"
+puts "after account creation balance = #{before}"
 result = Utils.send_native(from_pair, to_pair.address, amount)
 puts "#{result}"
 sleep 10
 after = Utils.get_native_balance(to_pair.address)
-puts "after send_native #{after}"
+puts "after send_native #{amount} transaction  #{after}"
 
 puts "#{result}"
 

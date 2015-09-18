@@ -9,6 +9,7 @@
 require '../lib/stellar_utility/stellar_utility.rb'
 
 Utils = Stellar_utility::Utils.new("horizon")
+#Utils = Stellar_utility::Utils.new()
 puts "Utils version: #{Utils.version}"
 puts "configs: #{Utils.configs}"
 

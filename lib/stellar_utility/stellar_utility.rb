@@ -26,7 +26,7 @@ attr_accessor :configs
 
 def initialize(load="default")
 
-  if load == "def_file"
+  if load == "default"
     #load default config file    
     @configs = YAML.load(File.open("./stellar_utilities.cfg")) 
     Stellar.default_network = eval(@configs["default_network"])
@@ -34,7 +34,7 @@ def initialize(load="default")
     #localcore mode
     @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "multi_sign_server_url"=>"localhost:9494", "mode"=>"localcore", "fee"=>10, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
     Stellar.default_network = eval(@configs["default_network"])
-  elsif load == "default" || "horizon"
+  elsif load == "horizon"
     #horizon mode, if nothing entered for load this is default
     @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "multi_sign_server_url"=>"localhost:9494", "mode"=>"horizon", "fee"=>10, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
     Stellar.default_network = eval(@configs["default_network"])
@@ -53,7 +53,7 @@ end
 def get_db(query)
   #returns query hash from database that is dependent on mode
   if @configs["mode"] == "localcore"
-    #puts "db file #{@configs["db_file_path"]}"
+    puts "db file #{@configs["db_file_path"]}"
     db = SQLite3::Database.open @configs["db_file_path"]
     db.execute "PRAGMA journal_mode = WAL"
     db.results_as_hash=true
@@ -159,8 +159,9 @@ def next_sequence(account)
   address = convert_keypair_to_address(account)
   #puts "address for next_seq #{address}"
   result =  get_sequence(address)
-  #puts "seqnum:  #{result}"
-  return (result.to_i + 1)
+  puts "seqnum:  #{result}"
+  #sleep 6
+  return (result.to_i + 1)  
 end
 
 def bal_STR(account)
@@ -261,7 +262,7 @@ end
 
 def send_tx_horizon(b64)
   values = CGI::escape(b64)
-  #puts "url #{@configs["url_horizon"]}"
+  puts "url:  #{@configs["url_horizon"]}"
   headers = {
     :content_type => 'application/x-www-form-urlencoded'
   }
@@ -271,7 +272,11 @@ def send_tx_horizon(b64)
   begin
     response = RestClient.post(@configs["url_horizon"]+"/transactions", {tx: b64}, headers)
   rescue => e
-    response = e.response
+    puts "rescue failure at send_tx_horizon response.class #{response.class}: "
+    puts response
+    puts "e.response.class  #{e.response.class}: "
+    puts e.response
+    responce = e.response
   end
   #puts response
   return response
@@ -282,11 +287,14 @@ def send_tx(b64)
     return "no funds"
   end
   if @configs["mode"] == "horizon"
-    return send_tx_horizon(b64)
+    result = send_tx_horizon(b64)
+    sleep 12
+    return result
   else
-    return send_tx_local(b64)
-  end
-  sleep 11
+    result = send_tx_local(b64)
+    sleep 12
+    return result
+  end  
 end
 
 def create_account_tx(account, funder, starting_balance)
@@ -305,32 +313,16 @@ def create_account_tx(account, funder, starting_balance)
   return tx
 end
 
-def create_account_local(account, funder, starting_balance)
-  tx = create_account_tx(account, funder, starting_balance)
-  b64 = tx.to_envelope(funder).to_xdr(:base64)
-  #puts "b64: #{b64}"
-  send_tx_local(b64)
-end
-
-def create_account_horizon(account, funder, starting_balance)
-  tx = create_account_tx(account, funder, starting_balance)
-  b64 = tx.to_envelope(funder).to_xdr(:base64)
-  #b64 = tx.to_envelope(funder).to_xdr(:hex)
-  send_tx_horizon(b64)
-end
 
 def create_account(account, funder, starting_balance = @configs["start_balance"]) 
   #this will create an activated account using funds from funder account
   # both account and funder are stellar account pairs, only the funder pair needs to have an active secrete key and needed funds
   # @configs["mode"] can point output to "horizon" api website or "local" to direct output to localy running stellar-core
   # this also includes the aprox delay needed before results can be seen on network 
-  if @configs["mode"] == "horizon"
-    puts "start bal: #{starting_balance}"
-    result = create_account_horizon(account, funder, starting_balance)
-  else
-    result = create_account_local(account, funder, starting_balance)
-  end
-  return result
+  tx = create_account_tx(account, funder, starting_balance)
+  b64 = tx.to_envelope(funder).to_xdr(:base64)
+  #puts "b64: #{b64}"
+  send_tx(b64)
 end
 
 
@@ -488,25 +480,12 @@ def send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, cu
   return tx
 end
 
-def send_currency_local(from_account_pair, to_account_pair, issuer_pair, amount, currency)
-  tx = send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, currency)
-  b64 = tx.to_envelope(from_account_pair).to_xdr(:base64)
-  send_tx_local(b64)
-end
-
-def send_currency_horizon(from_account_pair, to_account_pair, issuer_pair, amount, currency)
-  tx = send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, currency)
-  b64 = tx.to_envelope(from_account_pair).to_xdr(:base64)
-  send_tx_horizon(b64)
-end
-
 def send_currency(from_account_pair, to_account_pair, issuer_pair, amount, currency)
-  if @configs["mode"] == "horizon"
-    result = send_currency_horizon(from_account_pair, to_account_pair, issuer_pair, amount, currency)
-  else
-    result send_currency_local(from_account_pair, to_account_pair, issuer_pair, amount, currency)
-  end
-  return result
+  # to_account_pair and issuer_pair can be ether a pair or just account address
+  # from_account_pair must have full pair with secreet key
+  tx = send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, currency)
+  b64 = tx.to_envelope(from_account_pair).to_xdr(:base64)
+  send_tx(b64)
 end
 
 def send_CHP(from_issuer_pair, to_account_pair, amount)
@@ -709,8 +688,10 @@ end
 
 def env_merge(*envs)
   #this assumes all envelops have sigs for the same tx
+  #this really only merges the signatures in each env not the contents of the envelopes
   #envs can be arrays of envelops or env_merge(envA,envB,envC)
   #this can be used to collect all the signers of a multi-sign transaction
+  if 1==0
   puts "got to env_merge"
   puts "envs.length:  #{envs.length}"
   puts ""
@@ -718,8 +699,10 @@ def env_merge(*envs)
   puts ""
   #puts "envs[0].length #{envs[0].length}"
   #puts ""
-  #puts "envs[0].inspect:  #{envs[0].inspect}"
-  #puts ""
+  puts "envs[0].inspect:  #{envs[0].inspect}"
+  puts ""
+  puts "envs[1].inspect:  #{envs[1].inspect}"
+  end 
   #puts "envs[0][0].inspect:  #{envs[0][0].inspect}"
 
   #env = envs[0][0]

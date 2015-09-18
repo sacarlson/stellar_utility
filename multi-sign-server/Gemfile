@@ -6,6 +6,7 @@ gem 'base32'
 #gem "json"
 #gem "stellar-base" ,"0.1.4"
 #gem "stellar-base"  ,"0.3.0"
+#gem "stellar-base" ,"0.4.0"
 gem "stellar-base"
 gem "faraday"
 gem "faraday_middleware"
