@@ -12,7 +12,7 @@ require 'active_support'
     return_get_tx = {"status"=>"pending","tx_num"=>"123","tx_envelope_b64"=>"AAAA..."}
     sign_tx = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA..."}
     return_sign_tx = {"status"=>"pending","tx_code"=>"URWOTGHR"}
-    send_tx = {"action"=>"send_tx","tx_code"=>"W3M4PUQE3J"}
+    send_tx = {"action"=>"send_tx","tx_code"=>"7QZP7W6FOM"}
     
     return_status_tx = {"status"=>"sent","tx_num"=>"123","sign_count"=>"2","signed"=>["GDZ4AF...","GDOJM..."]}
     #status pending means that the transaction hasn't got all the needed signers yet, sent means we got the signers and it was transacted

@@ -7,7 +7,8 @@
  
 require '../lib/stellar_utility/stellar_utility.rb'
 
-Utils = Stellar_utility::Utils.new("horizon")
+#Utils = Stellar_utility::Utils.new("horizon")
+Utils = Stellar_utility::Utils.new()
 puts "Utils version: #{Utils.version}"
 puts "configs: #{Utils.configs}"
 
@@ -66,7 +67,7 @@ def setup_multi_sig_sign_hash(tx_code,keypair)
 end
 
 #this code must be changed to the tx_code created when submit_transaction created it.
-tx_code = "W3M4PUQE3J"
+tx_code = "7QZP7W6FOM"
 
 sign_hash = setup_multi_sig_sign_hash(tx_code,signerA_keypair)
 puts ""
@@ -84,11 +85,12 @@ puts ""
 # in most cases the default signer_weight is good.
 # we could also later pull the signer weights from the stellar-core network db instead of tracking it at the mss-server, but again I haven't writen that yet.
 # but the way it is presently writen the mss-server can now run on a system without any local stellar-core running by using horizion to do final submitions.
-
-#we then take the sign_hash above and send it back the signed transaction to the mms-server
- #result = Utils.send_to_multi_sign_server(sign_hash)
- #puts "sign result: #{result}"
-
+if 1==0
+ #we then take the sign_hash above and send it back the signed transaction to the mms-server
+ result = Utils.send_to_multi_sign_server(sign_hash)
+ puts "sign result: #{result}"
+ exit -1
+end
 
 #this is setup to send the second of the two singers signatures
 # normaly this would be performed by another client user in a different location, this is just to show how it works

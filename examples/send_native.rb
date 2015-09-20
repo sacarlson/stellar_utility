@@ -31,17 +31,17 @@ puts "before account created balance on to_pair = #{before}"
 
 result = Utils.create_account(from_pair, master)
 puts "#{result}"
-sleep 10
+
 result = Utils.create_account(to_pair, master)
 puts "#{result}"
-sleep 10
+
 
 amount = 1.4321234
 before = Utils.get_native_balance(to_pair.address)
 puts "after account creation balance = #{before}"
 result = Utils.send_native(from_pair, to_pair.address, amount)
 puts "#{result}"
-sleep 10
+
 after = Utils.get_native_balance(to_pair.address)
 puts "after send_native #{amount} transaction  #{after}"
 

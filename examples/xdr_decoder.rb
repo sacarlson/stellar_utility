@@ -32,16 +32,20 @@ Utils.decode_txmeta_b64(b64)
 exit -1
 end
 
-if 1==0
+if 1==1
 #account thresholds
+# default {:master_weight=>1, :low=>0, :medium=>0, :high=>0}
 #b64 = 'AQAAAA=='
+
 #{:master_weight=>1, :low=>0, :medium=>3, :high=>3}
-b64 = "AQADAw=="
+#b64 = "AQADAw=="
+
+b64 = "AQAAAA=="
 Utils.decode_thresholds_b64(b64)
 exit -1
 end
 
-if 1==1
+if 1==0
 #this can be used to view what is inside of a stellar db txhistory txresult in a more human readable format than b64
 #TransactionResultPair 
 b64 = '3E2ToLG5246Hu+cyMqanBh0b0aCON/JPOHi8LW68gZYAAAAAAAAACgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA=='

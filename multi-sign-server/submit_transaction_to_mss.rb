@@ -12,7 +12,8 @@
   # this is still a work in progress not completed
 require '../lib/stellar_utility/stellar_utility.rb'
 
-Utils = Stellar_utility::Utils.new("horizon")
+#Utils = Stellar_utility::Utils.new("horizon")
+Utils = Stellar_utility::Utils.new()
 puts "Utils version: #{Utils.version}"
 puts "configs: #{Utils.configs}"
 
@@ -34,6 +35,7 @@ puts "#{rndstring}"
 
 # this is a simple transaction created to test the MSS
 # to prove it worked we will detect the change of home_domain of the multi_sig_account when all sigs are collected the mss-server sends the tx to the network
+# this is a set_options transaction so it will require level high authority threshold to be validated
 tx = Utils.set_options_tx(multi_sig_account_keypair,home_domain: rndstring)
 
 #create tx_hash that will be used to setup what's needed to send to send_to_multi_sign_server(tx_hash)

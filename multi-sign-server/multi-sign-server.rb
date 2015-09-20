@@ -33,7 +33,7 @@ class Multi_sign
     @db = SQLite3::Database.open @configs["mss_db_file_path"]
     @db.execute "PRAGMA journal_mode = WAL"
     @db.results_as_hash=true
-    @Utils = Stellar_utility::Utils.new("horizon")
+    @Utils = Stellar_utility::Utils.new()
     puts "Utils version: #{@Utils.version}"
     puts "configs: #{@Utils.configs}"
     #@conn
@@ -192,13 +192,23 @@ def send_multi_sig_tx(tx_code)
   env_master_b64 = tx["tx_envelope_b64"]
   env_master = @Utils.b64_to_envelope(env_master_b64)
   #total = levels["master_weight"].to_i
+  env_array = []
+  env_array[0] = env_master
+  puts ""
+  puts "env_master:  #{env_master.inspect}"
+  pos = 1
   signed.each do |row|
     puts "env_b64: #{row["tx_envelope_b64"]}"
     newenv = @Utils.b64_to_envelope(row["tx_envelope_b64"])
-    env_master = @Utils.envelope_merge(env_master,newenv)
-    #total = total + row["signer_weight"].to_i
-    #puts "row: #{row["signer_weight"].to_i}"
+    puts ""
+    puts "newenv:  #{newenv.inspect}"
+    env_array[pos] = newenv
+    pos = pos + 1
   end
+  puts "env_array.length:  #{env_array.length}"
+  env_master = @Utils.envelope_merge(env_array)
+  puts ""
+  puts "env_send:  #{env_master.inspect}"
   b64 = @Utils.envelope_to_b64(env_master)
   puts "send_tx"
   result = @Utils.send_tx(b64)

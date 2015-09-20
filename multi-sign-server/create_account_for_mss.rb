@@ -13,13 +13,14 @@
 # the thresholds are set as master_weight: 1, low: 0, medium: 3, high: 3.
 # This means that all 3 signers will need to sign this transaction to be validated and processed to be seen
 # on the stellar network.
-# after you run this program see  sign_transaction_mss.rb and submit_transaction_to_mss.rb that shows how this account and key sets are used to make a transaction that requires this account and these keys to transact.
+# after you run this program see  submit_transaction_to_mss.rb and then sign_transaction_mss.rb  that shows how this account and key sets are used to make a transaction that requires this account and these keys to transact.
 
 # you will have to privide a master_keypair account in ./stellar_utility.cfg that has the funds needed to do this operation
 # you will need 31 lunes minimum that will be used to activate and fund the multi_sig_account_keypair 
 require '../lib/stellar_utility/stellar_utility.rb'
 
-Utils = Stellar_utility::Utils.new("horizon")
+#Utils = Stellar_utility::Utils.new("horizon")
+Utils = Stellar_utility::Utils.new()
 puts "Utils version: #{Utils.version}"
 puts "configs: #{Utils.configs}"
 puts ""

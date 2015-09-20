@@ -32,11 +32,11 @@ def initialize(load="default")
     Stellar.default_network = eval(@configs["default_network"])
   elsif load == "db2"
     #localcore mode
-    @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "multi_sign_server_url"=>"localhost:9494", "mode"=>"localcore", "fee"=>10, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
+    @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "url_mss_server"=>"localhost:9494", "mode"=>"localcore", "fee"=>10, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
     Stellar.default_network = eval(@configs["default_network"])
   elsif load == "horizon"
     #horizon mode, if nothing entered for load this is default
-    @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "multi_sign_server_url"=>"localhost:9494", "mode"=>"horizon", "fee"=>10, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
+    @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "url_mss_server"=>"localhost:9494", "mode"=>"horizon", "fee"=>10, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
     Stellar.default_network = eval(@configs["default_network"])
   else
     #load custom config file
@@ -124,13 +124,24 @@ def get_sequence_local(account)
   return result["seqnum"].to_i
 end
 
+def get_thresholds_local(account)
+  result = get_accounts_local(account)
+  if result.nil?
+    return "nil"
+  end
+  thresholds_b64 = result["thresholds"]
+  decode_thresholds_b64(thresholds_b64)
+end
+
+
 
 def get_account_info_horizon(account)
     account = convert_keypair_to_address(account)
     params = '/accounts/'
     url = @configs["url_horizon"]
+    #puts "url_horizon:  #{url}"
     send = url + params + account
-    #puts "#{send}"
+    #puts "sending:  #{send}"
     begin
     postdata = RestClient.get send
     rescue => e
@@ -160,7 +171,6 @@ def next_sequence(account)
   #puts "address for next_seq #{address}"
   result =  get_sequence(address)
   puts "seqnum:  #{result}"
-  #sleep 6
   return (result.to_i + 1)  
 end
 
@@ -262,7 +272,7 @@ end
 
 def send_tx_horizon(b64)
   values = CGI::escape(b64)
-  puts "url:  #{@configs["url_horizon"]}"
+  #puts "url:  #{@configs["url_horizon"]}"
   headers = {
     :content_type => 'application/x-www-form-urlencoded'
   }
@@ -272,11 +282,12 @@ def send_tx_horizon(b64)
   begin
     response = RestClient.post(@configs["url_horizon"]+"/transactions", {tx: b64}, headers)
   rescue => e
-    puts "rescue failure at send_tx_horizon response.class #{response.class}: "
+    #puts "rescue failure at send_tx_horizon response.class #{response.class}: "
     puts response
-    puts "e.response.class  #{e.response.class}: "
-    puts e.response
-    responce = e.response
+    #puts "e.response.class  #{e.response.class}: "
+    puts  JSON.parse(e.response)
+    responce = JSON.parse(e.response)
+    responce = decode_error(responce["error"])
   end
   #puts response
   return response
@@ -326,7 +337,7 @@ def create_account(account, funder, starting_balance = @configs["start_balance"]
 end
 
 
-def create_key_testset_and_account(start_balance = 0)
+def create_key_testset_and_account(start_balance = @configs["start_balance"])
   if !File.file?("./multi_sig_account_keypair.yml")
     #if the file didn't exist we will create the needed set of keypair files and fund the needed account.
     multi_sig_account_keypair = Stellar::KeyPair.random
@@ -350,9 +361,10 @@ def create_key_testset_and_account(start_balance = 0)
     puts "save to file #{to_file}"
     File.open(to_file, "w") {|f| f.write(signerB_keypair.to_yaml) }
     if start_balance != 0
-      #fund the multi sign account we will use in the steps bellow 
+      #activate and fund the  account 
       master  = eval( @configs["master_keypair"])
-      puts "create_account multi_sig_account_keypair"
+      puts "create_account #{multi_sig_account_keypair.address}"
+      puts "funded by #{master.address} with start balance: #{start_balance}"
       result = create_account(multi_sig_account_keypair, master, start_balance)
       puts "#{result}"
     end
@@ -378,27 +390,13 @@ def send_native_tx(from_pair, to_account, amount, seqadd=0)
   return tx   
 end
 
-def send_native_local(from_pair, to_account, amount)
-  tx = send_native_tx(from_pair, to_account, amount)
-  b64 = tx.to_envelope(from_pair).to_xdr(:base64)
-  send_tx_local(b64)
-end
-
-def send_native_horizon(from_pair, to_account, amount)
-  tx = send_native_tx(from_pair, to_account, amount)
-  b64 = tx.to_envelope(from_pair).to_xdr(:base64)
-  send_tx_horizon(b64)
-end
-
 def send_native(from_pair, to_account, amount)
   # this will send native lunes from_pair account to_account
   # from_pair must be an active stellar key pair with the needed funds for amount
   # to_account can be an account address or an account pair with no need for secrete key.
-  if @configs["mode"] == "horizon"
-    return send_native_horizon(from_pair, to_account, amount)
-  else
-    return send_native_local(from_pair, to_account, amount)
-  end
+  tx = send_native_tx(from_pair, to_account, amount)
+  b64 = tx.to_envelope(from_pair).to_xdr(:base64)
+  send_tx(b64)
 end
 
 def add_trust_tx(issuer_account,to_pair,currency,limit)
@@ -415,25 +413,10 @@ def add_trust_tx(issuer_account,to_pair,currency,limit)
   return tx
 end
 
-def add_trust_local(issuer_account,to_pair,currency,limit=900000000000)
-  tx = add_trust_tx(issuer_account,to_pair,currency,limit)
-  b64 = tx.to_envelope(to_pair).to_xdr(:base64)
-  send_tx_local(b64)
-end
-
-def add_trust_horizon(issuer_account,to_pair,currency,limit=900000000000)
-  tx = add_trust_tx(issuer_account,to_pair,currency,limit)
-  b64 = tx.to_envelope(to_pair).to_xdr(:base64)
-  send_tx_horizon(b64)
-end
-
 def add_trust(issuer_account,to_pair,currency,limit=900000000000)
-  if @configs["mode"] == "horizon"
-    result = add_trust_horizon(issuer_account,to_pair,currency,limit)
-  else
-    result = add_trust_local(issuer_account,to_pair,currency,limit)
-  end
-  return result
+  tx = add_trust_tx(issuer_account,to_pair,currency,limit)
+  b64 = tx.to_envelope(to_pair).to_xdr(:base64)
+  send_tx(b64)
 end
 
 def allow_trust_tx(account, trustor, code, authorize=true)
@@ -689,8 +672,11 @@ end
 def env_merge(*envs)
   #this assumes all envelops have sigs for the same tx
   #this really only merges the signatures in each env not the contents of the envelopes
-  #envs can be arrays of envelops or env_merge(envA,envB,envC)
+  #envs can be an arrays of envelops or env_merge(envA,envB,envC)
+  #env_array = [envA, envB, envC] ;  newenv = env_merge(env_array)
   #this can be used to collect all the signers of a multi-sign transaction
+  #this uses the first array elements envs[0].tx as the transaction to work from
+  # the other envelopes we just take there signatures and sign the first elements tx to create a new envelope
   if 1==0
   puts "got to env_merge"
   puts "envs.length:  #{envs.length}"
@@ -704,17 +690,24 @@ def env_merge(*envs)
   puts "envs[1].inspect:  #{envs[1].inspect}"
   end 
   #puts "envs[0][0].inspect:  #{envs[0][0].inspect}"
-
   #env = envs[0][0]
   env = envs[0]
   #puts "envs[0][0]:  #{envs[0][0].inspect}"
+  #puts "env.class:  #{env.class}"
+  #puts "env.inspect  #{env.inspect}"
+  if env.class == Array
+    env = env[0]
+    envs = envs[0]
+  end
   tx = env.tx
   sigs = []
   envs.each do |env|
-    #puts "env sig #{env.signatures}"
-    #env2 = env[0]
-    env2 = env
-    sigs.concat(env2.signatures)
+    s = env.signatures
+    if s.length > 1
+      s = s[0]
+      s = [s]
+    end
+    sigs.concat(s)
   end
   #puts "sigs #{sigs}"  
   envnew = tx.to_envelope()
@@ -739,8 +732,8 @@ def send_to_multi_sign_server(hash)
     puts " send hash was nil returning nothingn done"
     return nil
   end
-  url = @configs["multi_sign_server_url"]
-  #puts "url #{url}"
+  url = @configs["url_mss_server"]
+  puts "url #{url}"
   #puts "sent: #{hash.to_json}"
   result = RestClient.post url, hash.to_json
   #puts "send results: #{result}"
@@ -786,7 +779,9 @@ def setup_multi_sig_tx_hash(tx, master_keypair, signer_keypair=master_keypair)
   tx_hash = {"action"=>"submit_tx","tx_title"=>"test tx", "signer_address"=>"RUTIWOPF", "signer_weight"=>"1", "master_address"=>"GAJYPMJ...","tx_envelope_b64"=>"AAAA...","signer_sig"=>""}
   tx_hash["signer_address"] = signer_address
   tx_hash["master_address"] = master_address
-  envelope = tx.to_envelope(signer_keypair)
+  envelope = tx.to_envelope(master_keypair)
+  puts ""
+  puts "envelope: #{envelope.inspect}"
   b64 = envelope_to_b64(envelope)
   tx_hash["tx_title"] = hash32(b64)
   tx_hash["tx_envelope_b64"] = b64
@@ -882,12 +877,22 @@ def merge_signatures_tx(tx,*sigs)
   return envnew	    
 end
 
+def decode_error(b64)
+  bytes = Stellar::Convert.from_base64(b64)
+  # decode to the in-memory TransactionResult
+  tr = Stellar::TransactionResult.from_xdr bytes
+  # the actual code is embedded in the "result" field of the 
+  # TransactionResult.
+  puts "#{tr.result.code}"
+  return tr.result.code
+end
+
 def decode_thresholds_b64(b64)
   #convert threshold values found in stellar-core db accounts threshold example "AQADAw=="
   #to a more human readable format of: {:master_weight=>1, :low=>0, :medium=>3, :high=>3}
   bytes = Stellar::Convert.from_base64 b64
   result = Stellar::Thresholds.parse bytes
-  puts "res.inpsect:  #{result.inspect}"
+  #puts "res.inpsect:  #{result.inspect}"
 end
 
 def decode_txbody_b64(b64)
