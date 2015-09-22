@@ -89,6 +89,38 @@ def get_accounts_local(account)
     return get_db(query) 
 end
 
+def get_sell_offers(asset,issuer, limit = 5)
+  limit = limit.to_i
+  if limit > 10
+    limit = 10
+  end
+  if issuer == "any"
+    query = "SELECT * FROM offers WHERE sellingassetcode='#{asset}' limit '#{limit}'"
+  else
+    query = "SELECT * FROM offers WHERE sellingassetcode='#{asset}' AND sellingissuer='#{issuer}' limit '#{limit}' "
+  end
+  if asset == "any"
+    query = "SELECT * FROM offers WHERE  sellingissuer='#{issuer}' limit '#{limit}'"
+  end
+  return get_db(query) 
+end
+
+def get_buy_offers(asset,issuer, limit = 5)
+  limit = limit.to_i
+  if limit > 10
+    limit = 10
+  end
+  if issuer == "any"
+    query = "SELECT * FROM offers WHERE buyingassetcode='#{asset}' limit '#{limit}'"
+  else
+    query = "SELECT * FROM offers WHERE buyingassetcode='#{asset}' AND buyingissuer='#{issuer}' limit '#{limit}'"
+  end
+  if asset == "any"
+    query = "SELECT * FROM offers WHERE  buyingissuer='#{issuer}' limit '#{limit}'"
+  end
+  return get_db(query) 
+end
+
 def get_lines_balance_local(account,issuer,currency)
   # balance of trustlines on the Stellar account from localy running Stellar-core db
   # you must setup your local path to @stellar_db_file_path for this to work
@@ -720,9 +752,9 @@ def env_merge(*envs)
 end
 
 def hash32(string)
-  #a shortened 10 letter base32 SHA256 hash, not likely to be duplicate with small numbers of tx
+  #a shortened 8 letter base32 SHA256 hash, not likely to be duplicate with small numbers of tx
   # example output "7ZZUMOSZ26"
-  Base32.encode(Digest::SHA256.digest(string))[0..9]
+  Base32.encode(Digest::SHA256.digest(string))[0..7]
 end
 
 def send_to_multi_sign_server(hash)
@@ -747,7 +779,7 @@ def setup_multi_sig_acc_hash(master_pair,*signers)
   #master_pair is an active funded account, signers is an array of all signers to be included in this multi-signed account that can be address or keypairs
   #the default master_weights will be the number low=0, med=number_of_signers_plus1 high= same_as_med, plus1 means all signers and master must sign before tx valid
   # all master and signer weights will default to 1
-  #tx_title will be the hash32 (ten leters) of hash created 
+  #tx_title will default to the hash32 (8 leters) starting with "A" of hash created 
   #it will return a hash that can be submited to send_to_multi_sign_server function
   create_acc = {"action"=>"create_acc","tx_title"=>"none","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...", "start_balance"=>100, "signers_total"=>"2", "thresholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>{"GDZ4AF..."=>"1","GDOJM..."=>"1","zzz"=>"1"}}
   signer_count = signers.length
@@ -765,13 +797,13 @@ def setup_multi_sig_acc_hash(master_pair,*signers)
   create_acc["thresholds"]["med"] = signer_count + 1
   create_acc["thresholds"]["high"] = signer_count + 1
   create_acc["thresholds"]["master_weight"] = 1  
-  tx_codex = hash32(create_acc.to_json)
+  tx_codex = "A_"+hash32(create_acc.to_json)
   create_acc["tx_title"] = tx_codex
   return create_acc
 end
 
 def setup_multi_sig_tx_hash(tx, master_keypair, signer_keypair=master_keypair)
-  #setup a tx_hash that will be sent to send_to_multi_sign_server(tx_hash) to publish tx to multi-sign server
+  #setup a tx_hash that will be sent to send_to_multi_sign_server(tx_hash) to publish a tx to the multi-sign server
   # you have the option to customize the hash after this creates a basic template
   # you can change tx_title, signer_weight, signer_sig, if desired before sending it to the multi-sign-server
   signer_address = convert_keypair_to_address(signer_keypair)
@@ -783,9 +815,51 @@ def setup_multi_sig_tx_hash(tx, master_keypair, signer_keypair=master_keypair)
   puts ""
   puts "envelope: #{envelope.inspect}"
   b64 = envelope_to_b64(envelope)
-  tx_hash["tx_title"] = hash32(b64)
+  tx_hash["tx_title"] = "T_"+hash32(b64)
   tx_hash["tx_envelope_b64"] = b64
   return tx_hash
+end
+
+def setup_multi_sig_sign_hash2(tx_code,keypair)
+  #this will search the multi-sign-server for the published transaction with a matching tx_code.
+  #if the transaction is found it will get the b64 encoded transaction from the server 
+  #and sign it with this keypair that is assumed to be a valid signer for this transaction.
+  #after it signs the transaction it will send the signed transaction back to the multi-sign-server
+  #that will continue to collect more signatures from other signers until the total signer weight threshold is met,
+  #at witch point the multi-sign-server will send the fully signed transaction to the stellar network for validation
+  # this function only returns the sig_hash to be sent to send_to_multi_sign_server(sig_hash) to publish signing of tx_code
+  # this sig_hash can be modified before it is sent 
+  # example: 
+  # sig_hash["tx_title"] = "some cool transaction"
+  # sig_hash["signer_weight"] = 2
+  # the other values should already be filled in by the function that for the most part should not be changed.
+
+  #this action get_tx when sent to the mss-server will returns the master created transaction with added info,  
+  #{"tx_num"=>1, "signer"=>0, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test multi sig tx", "signer_address"=>"", "signer_weight"=>"", "master_address"=>"GDZ4AFAB...", "tx_envelope_b64"=>"AAAA...","signer_sig"=>"URYE..."}
+  get_tx = {"action"=>"get_tx","tx_code"=>"7ZZUMOSZ26"}
+  get_tx["tx_code"] = tx_code
+  result = send_to_multi_sign_server(get_tx)
+  puts "mss result: #{result}"
+  puts "env_b64: #{result["tx_envelope_b64"]}"
+  env = b64_to_envelope(result["tx_envelope_b64"])
+  if env.nil?
+    puts "env was nil"
+    return nil
+  end
+  tx = env.tx
+  signature = sign_transaction_env(env,keypair)
+  envnew = envelope_addsigners(env, tx, keypair)
+  tx_envelope_b64 = envelope_to_b64(envnew)
+  submit_sig = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA...","signer_sig"=>"JIDYR..."}
+  submit_sig["tx_code"] = tx_code
+  submit_sig["tx_title"] = tx_code
+  sig_b64 = Stellar::Convert.to_base64 signature
+  submit_sig["signer_sig"] = sig_b64
+  #sig_bytes = Stellar::Convert.from_base64 sig_b64
+  #sig_b64 = Stellar::Convert.to_base64 sig_bytes
+  submit_sig["tx_envelope_b64"] = tx_envelope_b64
+  submit_sig["signer_address"] = keypair.address
+  return submit_sig
 end 
 
 def create_account_from_acc_hash(acc_hash, funder = nil)
@@ -806,8 +880,9 @@ def create_account_from_acc_hash(acc_hash, funder = nil)
         return "no funds"
       end
     else
-      #nope not a valid master_seed address so we will do nothing
-      puts "master_seed not valid so will do nothing"
+      #nope not a valid master_seed address so we will do nothing but add to mss db
+      puts "master_seed not valid so assume account already created on stellar network"
+      puts "will do nothing but add this account to the mss server db"
       return "no funds"
     end
   else
@@ -825,7 +900,7 @@ def create_account_from_acc_hash(acc_hash, funder = nil)
   signers = acc_hash["signer_weights"]
   puts "to_pair:  #{to_pair.address}"
   pos = 0
-  signers.drop(0).each do |acc, wt|
+  signers.each do |acc, wt|
     puts "acc:#{acc}  wt:#{wt}"
     keypair = Stellar::KeyPair.from_address(acc)
     public_key = keypair.public_key
@@ -850,7 +925,12 @@ def sign_transaction_tx(tx,keypair)
   # todo: make it so tx can be a raw tx or an envelope that already has some sigs in it.
   # just depending on the class of tx
   envelope = tx.to_envelope(keypair)
-  return envelope.signatures
+  sig = envelope.signatures
+  if sig.length > 1
+    sig = sig[0]
+    sig = [sig]
+  end
+  return sig
 end
 
 def sign_transaction_env(env,keypair)
@@ -859,8 +939,7 @@ def sign_transaction_env(env,keypair)
   # todo: make it so tx can be a raw tx or an envelope that already has some sigs in it.
   # just depending on the class of tx
   tx = env.tx
-  envelope = tx.to_envelope(keypair)
-  return envelope.signatures
+  sign_transaction_tx(tx,keypair)
 end
 
 def merge_signatures_tx(tx,*sigs)

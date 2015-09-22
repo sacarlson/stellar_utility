@@ -26,8 +26,8 @@ puts "signerB_keypair address #{signerB_keypair.address}"
 
 
 #note this function will later be moved to stellar_utility.rb when dev completed at that point an added Utils.**** will need to be added
-# also note the all the Utils.*** will need to be removed from this function when it is moved
-def setup_multi_sig_sign_hash(tx_code,keypair)
+# also note that all the Utils.*** will need to be removed from this function when it is moved
+def setup_multi_sig_sign_hash2(tx_code,keypair)
   #this will search the multi-sign-server for the published transaction with a matching tx_code.
   #if the transaction is found it will get the b64 encoded transaction from the server 
   #and sign it with this keypair that is assumed to be a valid signer for this transaction.
@@ -55,12 +55,16 @@ def setup_multi_sig_sign_hash(tx_code,keypair)
   end
   tx = env.tx
   signature = Utils.sign_transaction_env(env,keypair)
+  #sig_b64 = ??
   envnew = Utils.envelope_addsigners(env, tx, keypair)
   tx_envelope_b64 = Utils.envelope_to_b64(envnew)
   submit_sig = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA...","signer_sig"=>"JIDYR..."}
   submit_sig["tx_code"] = tx_code
   submit_sig["tx_title"] = tx_code
-  #submit_sig["signer_sig"] = signature
+  sig_b64 = Stellar::Convert.to_base64 signature
+  submit_sig["signer_sig"] = sig_b64
+  #sig_bytes = Stellar::Convert.from_base64 sig_b64
+  #sig_b64 = Stellar::Convert.to_base64 sig_bytes
   submit_sig["tx_envelope_b64"] = tx_envelope_b64
   submit_sig["signer_address"] = keypair.address
   return submit_sig
@@ -69,7 +73,7 @@ end
 #this code must be changed to the tx_code created when submit_transaction created it.
 tx_code = "7QZP7W6FOM"
 
-sign_hash = setup_multi_sig_sign_hash(tx_code,signerA_keypair)
+sign_hash = Utils.setup_multi_sig_sign_hash(tx_code,signerA_keypair)
 puts ""
 puts "sign_hashA:  #{sign_hash}"
 puts ""

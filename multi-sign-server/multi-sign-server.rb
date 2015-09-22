@@ -39,6 +39,10 @@ class Multi_sign
     #@conn
   end  
 
+  def version()
+    version = "su: "+@Utils.version+"  mss_version: " + @configs["version"] + " core_version: " + @configs["core_version"]
+  end
+
 def get_db(query="none")
   #puts "q: #{query}"
   #returns query hash from database that is dependent on mode
@@ -68,7 +72,7 @@ end
 
 def add_tx(hash)
   #hash = {"action"=>"submit_tx","tx_title"=>"test tx", "signer_address"=>"RUTIWOPF", "signer_weight"=>"1", "master_address"=>"GAJYPMJ...","tx_envelope_b64"=>"AAAA...","signer_sig"=>""}
-  tx_code = hash32(hash["tx_envelope_b64"])
+  tx_code = "T_"+hash32(hash["tx_envelope_b64"])
   query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,0,'#{tx_code}','#{hash["tx_title"]}','#{hash["signer_address"]}','#{hash["signer_weight"]}','#{hash["master_address"]}','#{hash["tx_envelope_b64"]}','#{hash["signer_sig"]}');"
   get_db(query)
   return check_tx_status(tx_code,level="high")
@@ -84,15 +88,16 @@ end
 def add_acc(acc_hash)
   #acc_hash = {"action"=>"create_acc", "tx_title"=>"TP5NV7WN53", "master_address"=>"GDKQJNX4DQRHVE76ZOIGQSYZR2PDX4XSDT3CAKM7F6NSZBOQ6D5QDLBD", "master_seed"=>"SDEH6BEVCMLFGAO5SAOQOWVDIFT5XS466OJQ3CZEU6OSYOXJPQQ66CYR", "start_balance"=>41, "signers_total"=>3, "thresholds"=>{"master_weight"=>1, "low"=>"0", "med"=>3, "high"=>3}, "signer_weights"=>{"GA2F3NNTSJEX2L7QJHPS4GMSQKGUMKZESTUIRXUZLHZXSQGBNBIJCMET"=>1, "GBCGQWBATTLZW6PWX7H4TNRDDWDFCZAWCGTXWYPHRHRS534HMC5HXWUY"=>1}}
   #puts "acc_hash: #{acc_hash}"
-  query = "INSERT or IGNORE INTO Multi_sign_acc VALUES(NULL,'#{acc_hash["tx_title"]}','#{acc_hash["master_address"]}','#{acc_hash["master_seed"]}','#{acc_hash["signers_total"]}');"
+  query = "INSERT or REPLACE INTO Multi_sign_acc VALUES(NULL,'#{acc_hash["tx_title"]}','#{acc_hash["master_address"]}','#{acc_hash["master_seed"]}','#{acc_hash["signers_total"]}');"
   #puts "query: #{query}"
   #puts "class get_db: #{get_db.class}"
   #query2 = "SELECT * FROM Acc_threshold_levels WHERE master_address = 'test'"
   get_db(query)
-  query = "INSERT or IGNORE INTO Acc_threshold_levels VALUES(NULL,'#{acc_hash["master_address"]}','#{acc_hash["thresholds"]["master_weight"]}','#{acc_hash["thresholds"]["low"]}','#{acc_hash["thresholds"]["med"]}','#{acc_hash["thresholds"]["high"]}');"
+  query = "INSERT or REPLACE INTO Acc_threshold_levels VALUES(NULL,'#{acc_hash["master_address"]}','#{acc_hash["thresholds"]["master_weight"]}','#{acc_hash["thresholds"]["low"]}','#{acc_hash["thresholds"]["med"]}','#{acc_hash["thresholds"]["high"]}');"
   get_db(query)
   signers = acc_hash["signer_weights"].to_json
-  query = "INSERT or IGNORE INTO Acc_signers VALUES(NULL,'#{acc_hash["master_address"]}','#{signers}');"
+  #query = "INSERT or IGNORE INTO Acc_signers VALUES(NULL,'#{acc_hash["master_address"]}','#{signers}');"
+  query = "INSERT or REPLACE INTO Acc_signers VALUES(NULL,'#{acc_hash["master_address"]}','#{signers}');"
   #puts "query: #{query}"
   get_db(query)
   #if the funds are available we will make needed changes to thresholds
@@ -108,7 +113,7 @@ def create_db(db_file_path=@configs["mss_db_file_path"])
   db.execute "CREATE TABLE IF NOT EXISTS Multi_sign_acc(acc_num INTEGER PRIMARY KEY, 
         tx_title TEXT, master_address TEXT UNIQUE, master_seed TEXT, signers_total TEXT);"
   db.execute "CREATE TABLE IF NOT EXISTS Acc_threshold_levels(acc_num INTEGER PRIMARY KEY, master_address TEXT UNIQUE, 
-        master_weight TEXT,low TEXT UNIQUE, med TEXT, high TEXT);"
+        master_weight TEXT,low TEXT, med TEXT, high TEXT);"
   db.execute "CREATE TABLE IF NOT EXISTS Acc_signers(acc_num INTEGER PRIMARY KEY, master_address TEXT UNIQUE, signers TEXT);"
   # signer = 1 for being a signer of a tx, signer = 0 for being the master writer of the tx
   db.execute "CREATE TABLE IF NOT EXISTS Multi_sign_tx(tx_num INTEGER PRIMARY KEY, signer INTEGER, tx_code TEXT, tx_title TEXT,signer_address TEXT,signer_weight TEXT, master_address TEXT, tx_envelope_b64 TEXT,signer_sig_b64 TEXT);"
@@ -177,10 +182,11 @@ def hash32(string)
   #a shortened 10 letter base32 SHA256 hash, not likely to be duplicate with small numbers of tx
   # example output "7ZZUMOSZ26"
   # this is duplicated in Stellar_utility::Utils, if we change this remember to change the other
-  Base32.encode(Digest::SHA256.digest(string))[0..9]
+  #Base32.encode(Digest::SHA256.digest(string))[0..7]
+  @Utils.hash32(string)
 end
 
-def send_multi_sig_tx(tx_code)
+def send_multi_sig_tx_v1(tx_code)
   if tx_code == "7ZZUMOSZ26"
     puts "test mode disable send_multi_sig_tx"
     return
@@ -207,6 +213,48 @@ def send_multi_sig_tx(tx_code)
   end
   puts "env_array.length:  #{env_array.length}"
   env_master = @Utils.envelope_merge(env_array)
+  puts ""
+  puts "env_send:  #{env_master.inspect}"
+  b64 = @Utils.envelope_to_b64(env_master)
+  puts "send_tx"
+  result = @Utils.send_tx(b64)
+  puts "result send_tx #{result}"
+  return result
+end
+
+def send_multi_sig_tx(tx_code)
+  if tx_code == "7ZZUMOSZ26"
+    puts "test mode disable send_multi_sig_tx"
+    return
+  end
+  # this will merge all signed transaction for transaction tx_code and send it to stellar network for processing
+  tx = get_Tx(tx_code)
+  #{"tx_num"=>2, "signer"=>1, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test tx", "signer_address"=>"GAJYGYIa...", "signer_weight"=>"1", "master_address"=>"", "tx_envelope_b64"=>"AAAAzz...", "signer_sig_b64"=>""}
+  signed = get_Tx_signed(tx_code)
+  env_master_b64 = tx["tx_envelope_b64"]
+  env_master = @Utils.b64_to_envelope(env_master_b64)
+  #total = levels["master_weight"].to_i
+  sig_array = []
+  sig_master = env_master.signatures
+  if sig_master.length > 1
+    sig_master = sig_master[0]
+    sig_master = [sig_master]
+  end
+  sig_array[0] = sig_master
+  puts ""
+  puts "env_master:  #{env_master.inspect}"
+  pos = 1
+  signed.each do |row|
+    puts "sig_b64: #{row["signer_sig_b64"]}"
+    newsig = Stellar::Convert.from_base64(row["signer_sig_b64"])
+    puts ""
+    puts "newsig:  #{newsig.inspect}"
+    sig_array[pos] = newsig
+    pos = pos + 1
+  end
+  puts "sig_array.length:  #{sig_array.length}"
+  env_master = merge_signatures_tx(env_master.tx,sig_array)
+  #env_master = @Utils.envelope_merge(env_array)
   puts ""
   puts "env_send:  #{env_master.inspect}"
   b64 = @Utils.envelope_to_b64(env_master)
@@ -247,6 +295,10 @@ def check_tx_status(tx_code,level="high")
     retval["count_needed"] = need
     return retval
   end
+end
+
+def get_account_info(account)
+  @Utils.get_accounts_local(account)
 end
 
 end #end class Multi_sign
@@ -407,7 +459,6 @@ post '/' do
   #request_payload = JSON.parse(s)
   request_payload = ActiveSupport::JSON.decode(s)  
   puts "payload: #{request_payload}"
-  if 1==1
   if request_payload["action"] == "create_acc"
     #puts "payload: #{request_payload}"
     result = @mult_sig.add_acc(request_payload)
@@ -434,9 +485,26 @@ post '/' do
   elsif request_payload["action"] == "send_tx"
     results = @mult_sig.send_multi_sig_tx(request_payload["tx_code"])
     results.to_json
+  elsif request_payload["action"] == "get_account_info"
+    results = @mult_sig.get_account_info(request_payload["account"])
+    results.to_json
+  elsif request_payload["action"] == "get_lines_balance"
+    results = @mult_sig.Utils.get_lines_balance_local(request_payload["account"],request_payload["issuer"],request_payload["asset"])
+    results.to_json
+  elsif request_payload["action"] == "get_sell_offers"
+    results = @mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"], limit = 5)
+    results.to_json
+  elsif request_payload["action"] == "get_buy_offers"
+    results = @mult_sig.Utils.get_buy_offers(request_payload["asset"],request_payload["issuer"], limit = 5)
+    results.to_json
+  elsif request_payload["action"] == "send_b64"
+    results = @mult_sig.Utils.send_tx(request_payload["envelope_b64"])
+    results.to_json
+  elsif request_payload["action"] == "version"
+    '{"status":"success", "version":"'+@mult_sig.version+'"]'
   else
-    'error bad action code in json: #{request_payload["action"]}'
-  end
+    #'error bad action code in json: #{request_payload["action"]}'
+    '{"error":"bad_action_code", "action":"'+request_payload["action"]+'"}'
   end
 end
 

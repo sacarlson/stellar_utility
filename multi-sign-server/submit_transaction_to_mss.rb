@@ -19,7 +19,7 @@ puts "configs: #{Utils.configs}"
 
 
 if !File.file?("./multi_sig_account_keypair.yml")
-  puts "you must run create_multi_sign_account.rb before you run this to create needed keys and accounts used here, will exit now"
+  puts "you must run create_account_for_mss.rb before you run this to create needed keys and accounts used here, will exit now"
   exit -1
 end
 multi_sig_account_keypair = YAML.load(File.open("./multi_sig_account_keypair.yml"))
