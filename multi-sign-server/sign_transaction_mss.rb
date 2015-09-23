@@ -71,7 +71,7 @@ def setup_multi_sig_sign_hash2(tx_code,keypair)
 end
 
 #this code must be changed to the tx_code created when submit_transaction created it.
-tx_code = "7QZP7W6FOM"
+tx_code = "T_RQHKC7XD"
 
 sign_hash = Utils.setup_multi_sig_sign_hash(tx_code,signerA_keypair)
 puts ""
@@ -98,7 +98,7 @@ end
 
 #this is setup to send the second of the two singers signatures
 # normaly this would be performed by another client user in a different location, this is just to show how it works
-sign_hash = setup_multi_sig_sign_hash(tx_code,signerB_keypair)
+sign_hash = Utils.setup_multi_sig_sign_hash(tx_code,signerB_keypair)
 puts "sign_hashB:  #{sign_hash}"
 result = Utils.send_to_multi_sign_server(sign_hash)
 puts "sign result: #{result}"

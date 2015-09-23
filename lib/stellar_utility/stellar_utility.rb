@@ -709,24 +709,7 @@ def env_merge(*envs)
   #this can be used to collect all the signers of a multi-sign transaction
   #this uses the first array elements envs[0].tx as the transaction to work from
   # the other envelopes we just take there signatures and sign the first elements tx to create a new envelope
-  if 1==0
-  puts "got to env_merge"
-  puts "envs.length:  #{envs.length}"
-  puts ""
-  puts "envs.inspect:  #{envs.inspect}"
-  puts ""
-  #puts "envs[0].length #{envs[0].length}"
-  #puts ""
-  puts "envs[0].inspect:  #{envs[0].inspect}"
-  puts ""
-  puts "envs[1].inspect:  #{envs[1].inspect}"
-  end 
-  #puts "envs[0][0].inspect:  #{envs[0][0].inspect}"
-  #env = envs[0][0]
   env = envs[0]
-  #puts "envs[0][0]:  #{envs[0][0].inspect}"
-  #puts "env.class:  #{env.class}"
-  #puts "env.inspect  #{env.inspect}"
   if env.class == Array
     env = env[0]
     envs = envs[0]
@@ -740,8 +723,7 @@ def env_merge(*envs)
       s = [s]
     end
     sigs.concat(s)
-  end
-  #puts "sigs #{sigs}"  
+  end 
   envnew = tx.to_envelope()
   pos = 0
   sigs.each do |sig|
@@ -750,6 +732,30 @@ def env_merge(*envs)
   end
   return envnew	    
 end
+
+def merge_signatures_tx(tx,*sigs)
+  #merge an array of signing signatures onto a transaction
+  #output is a signed envelope
+  #envelope = merge_signatures(tx,sig1,sig2,sig3)
+  #array = [sig1,sig2,sig3] ; envelope = merge_signatures(tx,array)
+  # todo: make it so tx can be raw tx or envelope with sigs already in it.
+  envnew = tx.to_envelope()
+  #puts ""
+  #puts "envnew.inspect:  #{envnew.inspect}"
+  pos = 0
+  #puts "sigs.inspect:   #{sigs.inspect}"
+  if sigs[0].class == Array
+    sigs = sigs[0]
+  end
+  sigs.each do |sig|
+    #puts "sig.inspect:   #{sig.inspect}"
+    envnew.signatures[pos] = sig
+    pos = pos + 1
+  end
+  #puts "envnew.sig:   #{envnew.signatures}"
+  return envnew	    
+end
+
 
 def hash32(string)
   #a shortened 8 letter base32 SHA256 hash, not likely to be duplicate with small numbers of tx
@@ -805,10 +811,10 @@ end
 def setup_multi_sig_tx_hash(tx, master_keypair, signer_keypair=master_keypair)
   #setup a tx_hash that will be sent to send_to_multi_sign_server(tx_hash) to publish a tx to the multi-sign server
   # you have the option to customize the hash after this creates a basic template
-  # you can change tx_title, signer_weight, signer_sig, if desired before sending it to the multi-sign-server
+  # you can change tx_title, signer_weight, signer_sig_b64, if desired before sending it to the multi-sign-server
   signer_address = convert_keypair_to_address(signer_keypair)
   master_address = convert_keypair_to_address(master_keypair)
-  tx_hash = {"action"=>"submit_tx","tx_title"=>"test tx", "signer_address"=>"RUTIWOPF", "signer_weight"=>"1", "master_address"=>"GAJYPMJ...","tx_envelope_b64"=>"AAAA...","signer_sig"=>""}
+  tx_hash = {"action"=>"submit_tx","tx_title"=>"test tx", "signer_address"=>"RUTIWOPF", "signer_weight"=>"1", "master_address"=>"GAJYPMJ...","tx_envelope_b64"=>"AAAA...","signer_sig_b64"=>""}
   tx_hash["signer_address"] = signer_address
   tx_hash["master_address"] = master_address
   envelope = tx.to_envelope(master_keypair)
@@ -820,11 +826,12 @@ def setup_multi_sig_tx_hash(tx, master_keypair, signer_keypair=master_keypair)
   return tx_hash
 end
 
-def setup_multi_sig_sign_hash2(tx_code,keypair)
+def setup_multi_sig_sign_hash(tx_code,keypair,sigmode=0)
   #this will search the multi-sign-server for the published transaction with a matching tx_code.
   #if the transaction is found it will get the b64 encoded transaction from the server 
   #and sign it with this keypair that is assumed to be a valid signer for this transaction.
-  #after it signs the transaction it will send the signed transaction back to the multi-sign-server
+  #after it signs the transaction it will send the signed b64 envelope of the transaction back to the multi-sign-server
+  # or it will just send back a b64 encoded decorated signature of the transaction (now default)
   #that will continue to collect more signatures from other signers until the total signer weight threshold is met,
   #at witch point the multi-sign-server will send the fully signed transaction to the stellar network for validation
   # this function only returns the sig_hash to be sent to send_to_multi_sign_server(sig_hash) to publish signing of tx_code
@@ -833,31 +840,37 @@ def setup_multi_sig_sign_hash2(tx_code,keypair)
   # sig_hash["tx_title"] = "some cool transaction"
   # sig_hash["signer_weight"] = 2
   # the other values should already be filled in by the function that for the most part should not be changed.
+  # in sigmode=1 we disable publishing the tx_envelope_b64 since we no longer need it in V2
+  # sigmode=1 will reduce the size of the send packet to the mss-server by a few 100 bytes.  faster? not sure.
+  # sigmode=0 we still send both the signature and the signed envelope just for testing for now (and present default).
 
   #this action get_tx when sent to the mss-server will returns the master created transaction with added info,  
-  #{"tx_num"=>1, "signer"=>0, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test multi sig tx", "signer_address"=>"", "signer_weight"=>"", "master_address"=>"GDZ4AFAB...", "tx_envelope_b64"=>"AAAA...","signer_sig"=>"URYE..."}
+  #{"tx_num"=>1, "signer"=>0, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test multi sig tx", "signer_address"=>"", "signer_weight"=>"", "master_address"=>"GDZ4AFAB...", "tx_envelope_b64"=>"AAAA...","signer_sig_b64"=>"URYE..."}
   get_tx = {"action"=>"get_tx","tx_code"=>"7ZZUMOSZ26"}
   get_tx["tx_code"] = tx_code
   result = send_to_multi_sign_server(get_tx)
   puts "mss result: #{result}"
   puts "env_b64: #{result["tx_envelope_b64"]}"
   env = b64_to_envelope(result["tx_envelope_b64"])
-  if env.nil?
-    puts "env was nil"
+  if result["signer_sig_b64"].nil?
+    puts "records returned for txcode #{tx_code}"
     return nil
   end
   tx = env.tx
   signature = sign_transaction_env(env,keypair)
   envnew = envelope_addsigners(env, tx, keypair)
   tx_envelope_b64 = envelope_to_b64(envnew)
-  submit_sig = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA...","signer_sig"=>"JIDYR..."}
+  submit_sig = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"none_provided","signer_sig_b64"=>"JIDYR..."}
   submit_sig["tx_code"] = tx_code
   submit_sig["tx_title"] = tx_code
-  sig_b64 = Stellar::Convert.to_base64 signature
-  submit_sig["signer_sig"] = sig_b64
+  #sig_b64 = Stellar::Convert.to_base64 signature.to_yaml
+  sig_b64 = signature[0].to_xdr(:base64)
+  submit_sig["signer_sig_b64"] = sig_b64
   #sig_bytes = Stellar::Convert.from_base64 sig_b64
   #sig_b64 = Stellar::Convert.to_base64 sig_bytes
-  submit_sig["tx_envelope_b64"] = tx_envelope_b64
+  if sigmode == 0
+    submit_sig["tx_envelope_b64"] = tx_envelope_b64
+  end
   submit_sig["signer_address"] = keypair.address
   return submit_sig
 end 
@@ -940,20 +953,6 @@ def sign_transaction_env(env,keypair)
   # just depending on the class of tx
   tx = env.tx
   sign_transaction_tx(tx,keypair)
-end
-
-def merge_signatures_tx(tx,*sigs)
-  #merge an array of signing signatures onto a transaction
-  #output is a signed envelope
-  #envelope = merge_signatures(tx,sig1,sig2,sig3)
-  # todo: make it so tx can be raw tx or envelope with sigs already in it.
-  envnew = tx.to_envelope()
-  pos = 0
-  sigs.each do |sig|
-    envnew.signatures[pos] = sig
-    pos = pos + 1
-  end
-  return envnew	    
 end
 
 def decode_error(b64)

@@ -12,7 +12,7 @@ require 'active_support'
     return_get_tx = {"status"=>"pending","tx_num"=>"123","tx_envelope_b64"=>"AAAA..."}
     sign_tx = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA..."}
     return_sign_tx = {"status"=>"pending","tx_code"=>"URWOTGHR"}
-    send_tx = {"action"=>"send_tx","tx_code"=>"7QZP7W6FOM"}
+    send_tx = {"action"=>"send_tx","tx_code"=>"T_RQHKC7XD"}
     get_account_info = {"action"=>"get_account_info", "account"=>"GCYFPRSLBKMREKY4GF6Z6WDTNRUYFQW4URL2JL3GUAXSG33DMGZF2NKF"}
     get_lines_balance = {"action"=>"get_lines_balance", "account"=>"GAJYGYI...", "issuer"=>"GDZ4AF...", "asset"=>"USD"} 
     get_sell_offers = {"action"=>"get_sell_offers", "issuer"=>"GDZ4AF...","asset"=>"USD","limit"=>"10"}
@@ -33,7 +33,7 @@ require 'active_support'
     #dataout = {"signed"=>[xyz,zyx]}
     #data = get_tx
     #data = get_account_info
-    data = create_account
+    data = send_tx
     url = "localhost:9494"
     s = data.to_json
     puts "sent: #{data.to_json}"

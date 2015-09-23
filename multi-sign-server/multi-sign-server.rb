@@ -71,16 +71,16 @@ def get_db(query="none")
 end
 
 def add_tx(hash)
-  #hash = {"action"=>"submit_tx","tx_title"=>"test tx", "signer_address"=>"RUTIWOPF", "signer_weight"=>"1", "master_address"=>"GAJYPMJ...","tx_envelope_b64"=>"AAAA...","signer_sig"=>""}
+  #hash = {"action"=>"submit_tx","tx_title"=>"test tx", "signer_address"=>"RUTIWOPF", "signer_weight"=>"1", "master_address"=>"GAJYPMJ...","tx_envelope_b64"=>"AAAA...","signer_sig_b64"=>""}
   tx_code = "T_"+hash32(hash["tx_envelope_b64"])
-  query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,0,'#{tx_code}','#{hash["tx_title"]}','#{hash["signer_address"]}','#{hash["signer_weight"]}','#{hash["master_address"]}','#{hash["tx_envelope_b64"]}','#{hash["signer_sig"]}');"
+  query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,0,'#{tx_code}','#{hash["tx_title"]}','#{hash["signer_address"]}','#{hash["signer_weight"]}','#{hash["master_address"]}','#{hash["tx_envelope_b64"]}','#{hash["signer_sig_b64"]}');"
   get_db(query)
   return check_tx_status(tx_code,level="high")
 end
 
 def sign_tx(hash)
-  #hash = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA...","signer_sig"=>"JIDYR..."}
-  query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,1,'#{hash["tx_code"]}','#{hash["tx_title"]}','#{hash["signer_address"]}', '#{hash["signer_weight"]}','#{hash["master_address"]}','#{hash["tx_envelope_b64"]}','#{hash["signer_sig"]}');"
+  #hash = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA...","signer_sig_b64"=>"JIDYR..."}
+  query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,1,'#{hash["tx_code"]}','#{hash["tx_title"]}','#{hash["signer_address"]}', '#{hash["signer_weight"]}','#{hash["master_address"]}','#{hash["tx_envelope_b64"]}','#{hash["signer_sig_b64"]}');"
   get_db(query)
   return check_tx_status(hash["tx_code"],level="high")
 end
@@ -161,7 +161,7 @@ end
 
 def get_Tx(tx_code)
   #this returns the master created transaction with added info,  
-  #{"tx_num"=>1, "signer"=>0, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test multi sig tx", "signer_address"=>"", "signer_weight"=>"", "master_address"=>"GDZ4AFAB...", "tx_envelope_b64"=>"AAAA...","signer_sig"=>"URYE..."}
+  #{"tx_num"=>1, "signer"=>0, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test multi sig tx", "signer_address"=>"", "signer_weight"=>"", "master_address"=>"GDZ4AFAB...", "tx_envelope_b64"=>"AAAA...","signer_sig_b64"=>"URYE..."}
   query = "SELECT * FROM Multi_sign_tx WHERE tx_code = '#{tx_code}' AND signer = '0';"
   rs = get_db(query)
   result = rs.next
@@ -173,7 +173,7 @@ end
 
 def get_Tx_signed(tx_code)
  #this will return an array of signer records,  need rs.each do |row| from returned data
- #{"tx_num"=>2, "signer"=>1, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test tx", "signer_address"=>"GAJYGYIa...", "signer_weight"=>"1", "master_address"=>"", "tx_envelope_b64"=>"AAAAzz...","signer_sig"=>"RUYHFY..."}
+ #{"tx_num"=>2, "signer"=>1, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test tx", "signer_address"=>"GAJYGYIa...", "signer_weight"=>"1", "master_address"=>"", "tx_envelope_b64"=>"AAAAzz...","signer_sig_b64"=>"RUYHFY..."}
  query = "SELECT * FROM Multi_sign_tx WHERE tx_code = '#{tx_code}' AND signer = '1';"
  rs = get_db(query)
 end
@@ -186,7 +186,13 @@ def hash32(string)
   @Utils.hash32(string)
 end
 
+def send_multi_sig_tx(tx_code)
+  send_multi_sig_tx_v2(tx_code)
+end
+
 def send_multi_sig_tx_v1(tx_code)
+  #old version probly delete later, it worked but just takes more data space to send
+  # whole envelope instead of just signatures so  a bit more bandwidth needed and ??
   if tx_code == "7ZZUMOSZ26"
     puts "test mode disable send_multi_sig_tx"
     return
@@ -204,7 +210,7 @@ def send_multi_sig_tx_v1(tx_code)
   puts "env_master:  #{env_master.inspect}"
   pos = 1
   signed.each do |row|
-    puts "env_b64: #{row["tx_envelope_b64"]}"
+    #puts "env_b64: #{row["tx_envelope_b64"]}"
     newenv = @Utils.b64_to_envelope(row["tx_envelope_b64"])
     puts ""
     puts "newenv:  #{newenv.inspect}"
@@ -217,12 +223,13 @@ def send_multi_sig_tx_v1(tx_code)
   puts "env_send:  #{env_master.inspect}"
   b64 = @Utils.envelope_to_b64(env_master)
   puts "send_tx"
-  result = @Utils.send_tx(b64)
+  #result = @Utils.send_tx(b64)
   puts "result send_tx #{result}"
   return result
 end
 
-def send_multi_sig_tx(tx_code)
+def send_multi_sig_tx_v2(tx_code)
+  #this version uses just signatures instead of envelopes in tx_code return to merge
   if tx_code == "7ZZUMOSZ26"
     puts "test mode disable send_multi_sig_tx"
     return
@@ -240,23 +247,28 @@ def send_multi_sig_tx(tx_code)
     sig_master = sig_master[0]
     sig_master = [sig_master]
   end
-  sig_array[0] = sig_master
-  puts ""
-  puts "env_master:  #{env_master.inspect}"
+  sig_array[0] = sig_master[0]
+  #puts ""
+  #puts "env_master:  #{env_master.inspect}"
   pos = 1
   signed.each do |row|
-    puts "sig_b64: #{row["signer_sig_b64"]}"
-    newsig = Stellar::Convert.from_base64(row["signer_sig_b64"])
-    puts ""
-    puts "newsig:  #{newsig.inspect}"
+    #puts "sig_b64: #{row["signer_sig_b64"]}"
+    # comes from this
+    #sig_b64 = signature[0].to_xdr(:base64)
+    bytes = Stellar::Convert.from_base64(row["signer_sig_b64"])
+    newsig = Stellar::DecoratedSignature.from_xdr bytes
+    #puts ""
+    #puts "newsig:  #{newsig.inspect}"
     sig_array[pos] = newsig
     pos = pos + 1
   end
-  puts "sig_array.length:  #{sig_array.length}"
-  env_master = merge_signatures_tx(env_master.tx,sig_array)
+  #puts ""
+  #puts "sig_array.length:  #{sig_array.length}"
+  #puts "sig_array.inspect:  #{sig_array.inspect}"
+  env_master = @Utils.merge_signatures_tx(env_master.tx,sig_array)
   #env_master = @Utils.envelope_merge(env_array)
-  puts ""
-  puts "env_send:  #{env_master.inspect}"
+  #puts ""
+  #puts "env_send:  #{env_master.inspect}"
   b64 = @Utils.envelope_to_b64(env_master)
   puts "send_tx"
   result = @Utils.send_tx(b64)
