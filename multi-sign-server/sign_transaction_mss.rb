@@ -80,6 +80,12 @@ puts ""
 #example of what was returned in sign_hash:
 #sign_hash:  {"action"=>"sign_tx", "tx_title"=>"ODEDFG4QER", "tx_code"=>"ODEDFG4QER", "signer_address"=>"GB2HYLGOZLUSSKEP47EY2GQE66KMEYT4AMFBV6NCBJGEKYONG6S5BMBO", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAAAFiNI2HQ5glD03WWMluyTdaN531sZBGTiCWjxhduGzxIAAAACgAAAAAAAAABAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAACHRlc3Q4ODE0AAAAAAAAAAAAAAACzTel0AAAAEAL/QFdoLkWub9Q+hjjYMQtSUdvVilDcRpKHGVDq6HQfpshiDIU9v7UexU6J1Bn/LDAw8MeLCxF98LFB3rJgHcBbhs8SAAAAECnAXIm6tt8WUcATFpM5R4rWS9YVw2oRSyN9omRLDjCvz3HW6EToDCCUAp4Nnl9dChwN88Mf3ohTUm7gWFP8q0L", "signer_sig"=>"JIDYR..."}
 
+#puts""
+#this is what the JSON format of the acc_hash looks like that is sent to the mss-server
+#puts "acc_hash in json format:  #{ActiveSupport::JSON.encode(sign_hash)}"
+#exit -1
+
+
 #we could again modify this before we send it to the mss-server example:
 #sign_hash["tx_title"] = "change the tx title"
 # we could later send the signer_sig instead of the signed tx_envelope_b64 if desired, but I haven't writen that part yet.

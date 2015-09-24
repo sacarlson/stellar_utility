@@ -41,6 +41,11 @@ tx = Utils.set_options_tx(multi_sig_account_keypair,home_domain: rndstring)
 #create tx_hash that will be used to setup what's needed to send to send_to_multi_sign_server(tx_hash)
 tx_hash = Utils.setup_multi_sig_tx_hash(tx, multi_sig_account_keypair)
 
+#puts""
+#this is what the JSON format of the acc_hash looks like that is sent to the mss-server
+#puts "acc_hash in json format:  #{ActiveSupport::JSON.encode(tx_hash)}"
+#exit -1
+
 #at this point we could make some modifications to the final tx_hash before we publish or send it to the MSS server
 #example:
 #tx_hash["tx_title"]="first test of the multi-sign-server"

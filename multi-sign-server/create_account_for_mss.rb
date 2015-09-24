@@ -53,6 +53,11 @@ puts "acc_hash: #{acc_hash}"
 #example out:
 #{"action"=>"create_acc", "tx_title"=>"TP5NV7WN53", "master_address"=>"GDKQJNX4DQRHVE76ZOIGQSYZR2PDX4XSDT3CAKM7F6NSZBOQ6D5QDLBD", "master_seed"=>"SDEH6BEVCMLFGAO5SAOQOWVDIFT5XS466OJQ3CZEU6OSYOXJPQQ66CYR", "start_balance"=>41, "signers_total"=>3, "thresholds"=>{"master_weight"=>1, "low"=>"0", "med"=>3, "high"=>3}, "signer_weights"=>{"GA2F3NNTSJEX2L7QJHPS4GMSQKGUMKZESTUIRXUZLHZXSQGBNBIJCMET"=>1, "GBCGQWBATTLZW6PWX7H4TNRDDWDFCZAWCGTXWYPHRHRS534HMC5HXWUY"=>1}}
 
+#puts""
+#this is what the JSON format of the acc_hash looks like that is sent to the mss-server
+#puts "acc_hash in json format:  #{ActiveSupport::JSON.encode(acc_hash)}"
+#exit -1
+
 # at this point you could customize the acc_hash to modify how you want the account thresholds and signer weights to be
 # examples:
 # acc_hash["signer_weights"]["GDZ4AF..."] = 2
