@@ -151,6 +151,7 @@ end
 def get_sequence_local(account)
   result = get_accounts_local(account)
   if result.nil?
+    puts "account #{account} not found, so will return sequence 0"
     return 0
   end
   return result["seqnum"].to_i
@@ -515,8 +516,13 @@ def create_new_account_with_CHP_trust(acc_issuer_pair)
   return to_pair
 end
 
-
 def offer(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price)
+  tx = offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price)
+  b64 = tx.to_envelope(account).to_xdr(:base64)
+  return b64
+end
+
+def offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price)
   tx = Stellar::Transaction.manage_offer({
     account:    account,
     sequence:   next_sequence(account),
@@ -526,8 +532,7 @@ def offer(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,pri
     fee:        @configs["fee"].to_i,
     price:      price.to_s,
   })
-  b64 = tx.to_envelope(account).to_xdr(:base64)
-  return b64
+  return tx
 end
 
 def tx_merge(*tx)
@@ -668,6 +673,10 @@ end
 
 def get_public_key(keypair)
   keypair.public_key
+end
+
+def public_key_to_address(pk)
+  Stellar::Util::StrKey.check_encode(:account_id, pk.ed25519!)
 end
 
 #Contract Symbol, Stellar::KeyPair => Any
@@ -1012,6 +1021,230 @@ def decode_txmeta_b64(b64)
   puts "res:  #{result.inspect}"
   return result
 end
+
+def envelope_to_hash(envelope_b64)
+  env = b64_to_envelope(envelope_b64)
+  hash = {} 
+  tx = env.tx
+  pk = tx.source_account
+  hash["source_address"] = public_key_to_address(pk)
+  hash["fee"] = tx.fee
+  hash["seq_num"] = tx.seq_num
+  hash["time_bounds"] = tx.time_bounds
+  if tx.memo.type == Stellar::MemoType.memo_none()
+    hash["memo.type"] = "memo_none"
+  end
+  if tx.memo.type == :memo_none
+    hash["memo.type"] = "memo_none"
+  end 
+  if tx.memo.type == Stellar::MemoType.memo_text()
+    hash["memo.type"] = "memo_text"
+    hash["memo.text"] = tx.memo.text
+  end
+  # we don't use tx.ext yet so I'll leave it alone for now
+  #puts "tx.ext:  #{tx.ext}"
+  #hash["ext"] = tx.ext
+  # seems we can have more than one operation per tx but I've only ever sent one at a time
+  hash["op_length"] = tx.operations.length
+  hash["operation"] = tx.operations[0].body.arm
+  case tx.operations[0].body.arm
+  when :payment_op
+    hash["destination_address"] = public_key_to_address(tx.operations[0].body.value.destination)
+    if tx.operations[0].body.value.asset.to_s == "native"
+      hash["asset"] = "native"
+    else
+      hash["asset"] = tx.operations[0].body.value.asset.code
+      hash["issuer"] = public_key_to_address(tx.operations[0].body.value.asset.issuer)
+    end
+    hash["amount"] = (tx.operations[0].body.value.amount)/1e7
+  when :set_options_op 
+    hash["inflation_dest"] = tx.operations[0].body.value.inflation_dest
+    hash["clear_flags"] = tx.operations[0].body.value.clear_flags
+    hash["set_flags"] = tx.operations[0].body.value.set_flags
+    hash["master_weight"] = tx.operations[0].body.value.master_weight
+    hash["low_threshold"] = tx.operations[0].body.value.low_threshold
+    hash["med_threshold"] = tx.operations[0].body.value.med_threshold
+    hash["high_threshold"] = tx.operations[0].body.value.high_threshold
+    hash["home_domain"] = tx.operations[0].body.value.home_domain
+  when :change_trust_op
+    hash["line"] = tx.operations[0].body.value.line
+    hash["limit"] = tx.operations[0].body.value.limit
+  when :create_account_op
+    hash["destination_address"] = public_key_to_address(tx.operations[0].body.value.destination)
+    hash["starting_balance"] = (tx.operations[0].body.value.starting_balance)/1e7
+  when :manage_offer_op
+    if tx.operations[0].body.value.selling.to_s == "native"
+      hash["selling.asset"] = "native"
+    else
+      hash["selling.asset"] = tx.operations[0].body.value.selling.code
+      hash["selling.issuer"] = public_key_to_address(tx.operations[0].body.value.selling.issuer)
+    end
+    if tx.operations[0].body.value.buying.to_s == "native"
+      hash["buying.asset"] = "native"
+    else
+      hash["buying.asset"] = tx.operations[0].body.value.selling.code
+      hash["buying.issuer"] = public_key_to_address(tx.operations[0].body.value.selling.issuer)
+    end
+    hash["amount"] = (tx.operations[0].body.value.amount)/1e7
+    hash["price"] = tx.operations[0].body.value.price
+    hash["offer_id"] = tx.operations[0].body.value.offer_id   
+  else 
+    hash["operation_not_recognized"] = tx.operations[0].body.arm
+  end
+  return hash
+end
+
+def compare_hash(hash1, hash2)
+  if (hash2.size > hash1.size)
+    difference = hash2.to_a - hash1.to_a
+  else
+    difference = hash1.to_a - hash2.to_a
+  end
+  Hash[*difference.flatten]
+end
+
+def compare_env_with_hash(envelope_b64,hash_template)
+  #this will compare the values of a hash_template with an envelopes values
+  #with it's values being in a base64 xdr encoded transaction envelope format.
+  # the template can be created with the envelope_to_hash(envelope_b64) function using 
+  # a similar transaction input to the function to create it
+  # the hash can then be modified to have the desired changes that should match if correct and return 0.
+  # a return of a positive integer indicates the number of differences found.
+  #this function will also compensate for the difference in sequence number 
+  # of the new transaction
+  new_hash = envelope_to_hash(envelope_b64)
+  hash_template["seq_num"] = next_sequence(new_hash["source_address"])
+  diff = compare_hash(new_hash, hash_template)
+  diff_len = diff.length
+  if diff.length > 0
+    puts "diff:  #{diff}"
+  end
+  return diff.length
+end
+
+def view_envelope(envelope_b64)
+  env = b64_to_envelope(envelope_b64)
+  hash = {}
+  #puts "env.inspect:  #{env.inspect}"
+  #puts ""
+  tx = env.tx
+  #puts "tx.inspect:  #{tx.inspect}"
+  #puts ""
+  #puts "tx.source_account:  #{tx.source_account}"
+  pk = tx.source_account
+  puts "source_address:  #{public_key_to_address(pk)}"
+  hash["source_address"] = public_key_to_address(pk)
+  #sa = tx.source_account
+  puts "tx.fee:  #{tx.fee}"
+  hash["fee"] = tx.fee
+  puts "tx.seq_num:  #{tx.seq_num}"
+  hash["seq_num"] = tx.seq_num
+  puts "tx.time_bounds:  #{tx.time_bounds}"
+  hash["time_bounds"] = tx.time_bounds
+  if tx.memo.type == Stellar::MemoType.memo_none()
+    puts "memo.type:  memo_none"
+    hash["memo.type"] = "memo_none"
+  end
+  if tx.memo.type == :memo_none
+    puts "memo_none:  #{tx.memo.text}"
+    hash["memo.type"] = "memo_none"
+  end 
+  if tx.memo.type == Stellar::MemoType.memo_text()
+    puts "memo_txt:  #{tx.memo.text}"
+    hash["memo.type"] = "memo_text"
+    hash["memo.text"] = tx.memo.text
+  end
+  puts "tx.ext:  #{tx.ext}"
+  #puts "tx.operations:  #{tx.operations}"
+  # seems we can have more than one operation per tx but I've only ever sent one at a time
+  puts "tx.op.length:  #{tx.operations.length}"
+  hash["op_length"] = tx.operations.length
+  #puts "tx.op.body:  #{tx.operations[0].body}"
+
+  #puts "tx.op.body.inspect #{tx.operations[0].body.inspect}"
+  #puts "tx.op.body.value:  #{tx.operations[0].body.value}"
+  #puts "tx.op.body.switch:  #{tx.operations[0].body.switch}"
+  #puts "tx.op.body.arm:  #{tx.operations[0].body.arm}"
+  puts ""
+  puts "operation_type:  #{tx.operations[0].body.arm}"
+  hash["operation"] = tx.operations[0].body.arm
+  case tx.operations[0].body.arm
+  when :payment_op
+    #puts "tx.op.body.value.destination #{tx.operations[0].body.value.destination}"
+    puts "destination_address:  #{public_key_to_address(tx.operations[0].body.value.destination)}"
+    hash["destination_address"] = public_key_to_address(tx.operations[0].body.value.destination)
+    #puts "asset.class:  #{tx.operations[0].body.value.asset.class}"
+    if tx.operations[0].body.value.asset.to_s == "native"
+      puts "asset:  #{tx.operations[0].body.value.asset}"
+      hash["asset"] = "native"
+    else
+      puts "asset:  #{tx.operations[0].body.value.asset.code}"
+      puts "issuer:  #{public_key_to_address(tx.operations[0].body.value.asset.issuer)}"
+      hash["asset"] = tx.operations[0].body.value.asset.code
+      hash["issuer"] = public_key_to_address(tx.operations[0].body.value.asset.issuer)
+    end
+    puts "amount: #{(tx.operations[0].body.value.amount)/1e7}"
+    hash["amount"] = (tx.operations[0].body.value.amount)/1e7
+  when :set_options_op 
+    puts "inflation_dest: #{tx.operations[0].body.value.inflation_dest}"
+    hash["inflation_dest"] = tx.operations[0].body.value.inflation_dest
+    puts "clear_flags:    #{tx.operations[0].body.value.clear_flags}"
+    hash["clear_flags"] = tx.operations[0].body.value.clear_flags
+    puts "set_flags:      #{tx.operations[0].body.value.set_flags}"
+    hash["set_flags"] = tx.operations[0].body.value.set_flags
+    puts "master_weight:  #{tx.operations[0].body.value.master_weight}"
+    hash["master_weight"] = tx.operations[0].body.value.master_weight
+    puts "low_threshold:  #{tx.operations[0].body.value.low_threshold}"
+    hash["low_threshold"] = tx.operations[0].body.value.low_threshold
+    puts "med_threshold:  #{tx.operations[0].body.value.med_threshold}"
+    hash["med_threshold"] = tx.operations[0].body.value.med_threshold
+    puts "high_threshold: #{tx.operations[0].body.value.high_threshold}"
+    hash["high_threshold"] = tx.operations[0].body.value.high_threshold
+    puts "home_domain:    #{tx.operations[0].body.value.home_domain}"
+    hash["home_domain"] = tx.operations[0].body.value.home_domain
+    puts "signer:         #{tx.operations[0].body.value.signer}"
+  when :change_trust_op
+    puts "line:   #{tx.operations[0].body.value.line}"
+    hash["line"] = tx.operations[0].body.value.line
+    puts "limit:  #{tx.operations[0].body.value.limit}"
+    hash["limit"] = tx.operations[0].body.value.limit
+  when :create_account_op
+    puts "destination_address:  #{public_key_to_address(tx.operations[0].body.value.destination)}"
+    hash["destination_address"] = public_key_to_address(tx.operations[0].body.value.destination)
+    puts "starting_balance:     #{(tx.operations[0].body.value.starting_balance)/1e7}"
+    hash["starting_balance"] = (tx.operations[0].body.value.starting_balance)/1e7
+  when :manage_offer_op
+    if tx.operations[0].body.value.selling.to_s == "native"
+      puts "selling.asset:  native"
+      hash["selling.asset"] = "native"
+    else
+      puts "selling.asset:  #{tx.operations[0].body.value.selling.code}"
+      puts "selling.issuer:  #{public_key_to_address(tx.operations[0].body.value.selling.issuer)}"
+      hash["selling.asset"] = tx.operations[0].body.value.selling.code
+      hash["selling.issuer"] = public_key_to_address(tx.operations[0].body.value.selling.issuer)
+    end
+    if tx.operations[0].body.value.buying.to_s == "native"
+      puts "buying.asset:  #{tx.operations[0].body.value.asset}"
+      hash["buying.asset"] = "native"
+    else
+      puts "buying.asset:  #{tx.operations[0].body.value.buying.code}"
+      puts "buying.issuer:  #{public_key_to_address(tx.operations[0].body.value.buying.issuer)}"
+      hash["buying.asset"] = tx.operations[0].body.value.selling.code
+      hash["buying.issuer"] = public_key_to_address(tx.operations[0].body.value.selling.issuer)
+    end
+    puts "amount:    #{(tx.operations[0].body.value.amount)/1e7}"
+    hash["amount"] = (tx.operations[0].body.value.amount)/1e7
+    puts "price:     #{tx.operations[0].body.value.price}"
+    hash["price"] = tx.operations[0].body.value.price
+    puts "offer_id:  #{tx.operations[0].body.value.offer_id}"
+    hash["offer_id"] = tx.operations[0].body.value.offer_id   
+  else 
+    puts "operation not recognized #{tx.operations[0].body.arm}"
+  end
+  return hash
+end
+
+
 
 
 end # end class Utils

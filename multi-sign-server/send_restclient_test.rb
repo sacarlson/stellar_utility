@@ -21,7 +21,9 @@ require 'active_support'
     get_acc_mss = {"action"=>"get_acc_mss", "account"=>"GDM6RBPBTDY3YE35I7LLU53LP4IZH26PIFE5IFPITGCEOZBX66IFZIDH"}
     version = {"action"=>"version"}
     return_version = {"status"=>"success", "version"=>"0.1.0"}
-    send_b64 = {"action"=>"send_b64", "envelope_b64"=>"AAAA..."}
+    send_b64 = {"action"=>"send_b64", "envelope_b64"=>"AAAAAOo1QK/3upA74NLkdq4Io3DQAQZPi4TVhuDnvCYQTKIVAAAACgAAH8AAAAABAAAAAAAAAAAAAAABAAAAAQAAAADqNUCv97qQO+DS5HauCKNw0AEGT4uE1Ybg57wmEEyiFQAAAAEAAAAAZc2EuuEa2W1PAKmaqVquHuzUMHaEiRs//+ODOfgWiz8AAAAAAAAAAAAAA+gAAAAAAAAAARBMohUAAABAPnnZL8uPlS+c/AM02r4EbxnZuXmP6pQHvSGmxdOb0SzyfDB2jUKjDtL+NC7zcMIyw4NjTa9Ebp4lvONEf4yDBA=="}
+
+    send_b64 = {"action"=>"send_b64", "envelope_b64"=>"AAAAAOo1QK/3upA74NLkdq4Io3DQAQZPi4TVhuDnvCYQTKIVAAAACgAAH8AAAAABAAAAAAAAAAAAAAABAAAAAQAAAADqNUCv97qQO+DS5HauCKNw0AEGT4uE1Ybg57wmEEyiFQAAAAEAAAAAZc2EuuEa2W1PAKmaqVquHuzUMHaEiRs//+ODOfgWiz8AAAAAAAAAAAAAA+gAAAAAAAAAARBMohUAAABAPnnZL8uPlS+c/AM02r4EbxnZuXmP6pQHvSGmxdOb0SzyfDB2jUKjDtL+NC7zcMIyw4NjTa9Ebp4lvONEf4yDBA=="}
 
     create_account = {"action"=>"create_acc", "tx_title"=>"A_M7U2T7A", "master_address"=>"GDM6RBPBTDY3YE35I7LLU53LP4IZH26PIFE5IFPITGCEOZBX66IFZIDH", "master_seed"=>"none_provided", "start_balance"=>100, "signers_total"=>3, "thresholds"=>{"master_weight"=>1, "low"=>"0", "med"=>3, "high"=>3}, "signer_weights"=>{"GCHOUZUXO2CKBJJICJ6R4EHRLSKCANGD3QTACE5QZJ27T7TSGMD4JP5U"=>1, "GCFZMOSTNINJB65VOSXY3RKATANT7DQJJVUMJGSXMCAOBUUENSQME4ZZ"=>1}}
 
@@ -38,7 +40,7 @@ require 'active_support'
     #dataout = {"signed"=>[xyz,zyx]}
     #data = get_tx
     #data = get_account_info
-    data = sign_tx
+    data = send_b64
 
     url = "localhost:9494"
     if data.class != String    

@@ -102,7 +102,7 @@ def add_acc(acc_hash)
   get_db(query)
   #if the funds are available we will make needed changes to thresholds
   @Utils.create_account_from_acc_hash(acc_hash)
-  return get_Multi_sign_acc(acc_hash["master_address"])
+  return get_acc_mss(acc_hash["master_address"])
 end
 
 def create_db(db_file_path=@configs["mss_db_file_path"])
@@ -128,18 +128,21 @@ def get_acc(search_hash)
   query = "SELECT #{search_hash["select"]} FROM #{search_hash["table"]} WHERE #{search_hash["where"]} = '#{search_hash["value"]}'"
   #puts "query: #{query}"
   rs = get_db(query)
-  rs.next
+  #puts "rs.inspect:  #{rs.inspect}"
+  #puts "rs.next:  #{rs.next}"
+  return rs.next
 end
 
-def get_Multi_sign_acc(master_address,acc_num=0)
+def get_acc_mss(master_address,acc_num=0)
   search_hash = {"table"=>"Multi_sign_acc", "where"=>"master_address", "value"=>"GDZ4AF...","select"=>"*"}
   if acc_num == 0
+    #puts "master_address:  #{master_address}"
     search_hash["value"] = master_address
-    get_acc(search_hash) 
+    return get_acc(search_hash) 
   else
     search_hash["value"] = acc_num
     search_hash["where"] = "acc_num"
-    get_acc(search_hash) 
+    return get_acc(search_hash) 
   end
 end
 
@@ -417,12 +420,12 @@ else
   puts " #{result}"
 end
 
-result = @mult_sig.get_Multi_sign_acc(master_address)
+result = @mult_sig.get_acc_mss(master_address)
 #puts "result: #{result}"
 if result == {"acc_num"=>1, "tx_title"=>"first multi-sig tx", "master_address"=>"GDZ4AFAB...", "master_seed"=>"SDRES6...", "signers_total"=>"2"}
-  puts " @mult_sig.get_Multi_sign_acc(master_address) results ok"
+  puts " @mult_sig.get_acc_mss(master_address) results ok"
 else
-  puts " @mult_sig.get_Multi_sign_acc(master_address) results bad"
+  puts " @mult_sig.get_acc_mss(master_address) results bad"
   puts " #{result}"
 end
 
@@ -502,7 +505,7 @@ post '/' do
     results.to_json
   elsif request_payload["action"] == "get_lines_balance"
     results = @mult_sig.Utils.get_lines_balance_local(request_payload["account"],request_payload["issuer"],request_payload["asset"])
-    results.to_json
+    '{"issuer":"'+request_payload["issuer"]+'", "asset":"'+request_payload["asset"]+'", "balance":'+results.to_s+'}'
   elsif request_payload["action"] == "get_sell_offers"
     results = @mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"], limit = 5)
     results.to_json
@@ -512,8 +515,11 @@ post '/' do
   elsif request_payload["action"] == "send_b64"
     results = @mult_sig.Utils.send_tx(request_payload["envelope_b64"])
     results.to_json
+  elsif request_payload["action"] == "get_acc_mss"
+    results = @mult_sig.get_acc_mss(request_payload["account"])
+    results.to_json
   elsif request_payload["action"] == "version"
-    '{"status":"success", "version":"'+@mult_sig.version+'"]'
+    '{"status":"success", "version":"'+@mult_sig.version+'"}'
   else
     #'error bad action code in json: #{request_payload["action"]}'
     '{"error":"bad_action_code", "action":"'+request_payload["action"]+'"}'
