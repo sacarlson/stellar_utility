@@ -40,7 +40,7 @@ require 'active_support'
     #dataout = {"signed"=>[xyz,zyx]}
     #data = get_tx
     #data = get_account_info
-    data = send_b64
+    data = version
 
     url = "localhost:9494"
     if data.class != String    
