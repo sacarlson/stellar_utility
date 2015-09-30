@@ -32,11 +32,11 @@ def initialize(load="default")
     Stellar.default_network = eval(@configs["default_network"])
   elsif load == "db2"
     #localcore mode
-    @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "url_mss_server"=>"localhost:9494", "mode"=>"localcore", "fee"=>10, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
+    @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "url_mss_server"=>"localhost:9494", "mode"=>"localcore", "fee"=>100, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
     Stellar.default_network = eval(@configs["default_network"])
   elsif load == "horizon"
     #horizon mode, if nothing entered for load this is default
-    @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "url_mss_server"=>"localhost:9494", "mode"=>"horizon", "fee"=>10, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
+    @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "url_mss_server"=>"localhost:9494", "mode"=>"horizon", "fee"=>100, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
     Stellar.default_network = eval(@configs["default_network"])
   else
     #load custom config file
@@ -315,12 +315,11 @@ def send_tx_horizon(b64)
   begin
     response = RestClient.post(@configs["url_horizon"]+"/transactions", {tx: b64}, headers)
   rescue => e
-    #puts "rescue failure at send_tx_horizon response.class #{response.class}: "
-    puts response
-    #puts "e.response.class  #{e.response.class}: "
     puts  JSON.parse(e.response)
-    responce = JSON.parse(e.response)
-    responce = decode_error(responce["error"])
+    response = JSON.parse(e.response)
+    response["decoded_error"] = decode_error(response["extras"]["result_xdr"])
+    puts "decoded_error:  #{response["decoded_error"]}"    
+    return response
   end
   #puts response
   return response

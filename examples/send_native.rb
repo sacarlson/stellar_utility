@@ -4,9 +4,9 @@
 #this is tested as working on horizon4 only 1 out of 3 times, it works in localcore mode every time  sept 18, 2015
 
 require '../lib/stellar_utility/stellar_utility.rb'
-Utils = Stellar_utility::Utils.new("horizon")
+#Utils = Stellar_utility::Utils.new("horizon")  #hard coded horizon mode in testnet 
+Utils = Stellar_utility::Utils.new()  # default points to ./stellar_utilities.cfg file recomended
 #Utils = Stellar_utility::Utils.new("/home/sacarlson/github/stellar/stellar_utility/examples/stellar_utilities.cfg")
-#Utils = Stellar_utility::Utils.new()
 puts "Utils version: #{Utils.version}"
 puts "configs: #{Utils.configs}"
 puts ""
