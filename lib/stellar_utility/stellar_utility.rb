@@ -53,7 +53,7 @@ end
 def get_db(query)
   #returns query hash from database that is dependent on mode
   if @configs["mode"] == "localcore"
-    puts "db file #{@configs["db_file_path"]}"
+    #puts "db file #{@configs["db_file_path"]}"
     db = SQLite3::Database.open @configs["db_file_path"]
     db.execute "PRAGMA journal_mode = WAL"
     db.results_as_hash=true
@@ -87,6 +87,18 @@ def get_accounts_local(account)
     #puts "account #{account}"
     query = "SELECT * FROM accounts WHERE accountid='#{account}'"
     return get_db(query) 
+end
+
+def get_txhistory(txid)
+  #return line of txhistory table with this txid
+  query = "SELECT * FROM txhistory WHERE txid='#{txid}'"
+  txhistory = get_db(query)
+  if !txhistory.nil?
+    txhistory.delete("txbody")
+    txhistory.delete("txmeta")
+    txhistory.delete("txindex")
+  end
+  return txhistory 
 end
 
 def get_sell_offers(asset,issuer, limit = 5)
@@ -281,6 +293,7 @@ end
 def send_tx_local(b64)
   # this assumes you have a stellar-core listening on this address
   # this sends the tx base64 transaction to the local running stellar-core
+  txid = envelope_to_txid(b64)
   $server = Faraday.new(url: @configs["url_stellar_core"]) do |conn|
     conn.response :json
     conn.adapter Faraday.default_adapter
@@ -299,9 +312,31 @@ def send_tx_local(b64)
     puts "#{tr.result.code}"
     return tr.result.code
   end
-  #puts "#result.body: #{result.body}"
-  return result.body
+  puts "#result.body: #{result.body}" 
+  txhistory = get_txhistory(txid) 
+  count = 0
+  while txhistory.nil? || count > 15
+    puts "count:  #{count}"
+    sleep 1
+    txhistory = get_txhistory(txid)
+    count = count + 1 
+  end
+  txhistory["body"] = result.body
+  txhistory["resultcode"] = txresult_resultcode(txhistory["txresult"])
+  return txhistory
 end
+
+def txresult_resultcode(b64)
+  bytes = Stellar::Convert.from_base64 b64
+  tranpair = Stellar::TransactionResultPair.from_xdr bytes
+  x = tranpair.result.result
+  hash = {}
+  x.instance_variables.each {|var| 
+  hash[var.to_s.delete("@")] = x.instance_variable_get(var) }
+  #p hash["switch"]
+  return hash["switch"]
+end
+
 
 def send_tx_horizon(b64)
   values = CGI::escape(b64)
@@ -321,7 +356,8 @@ def send_tx_horizon(b64)
     puts "decoded_error:  #{response["decoded_error"]}"    
     return response
   end
-  #puts response
+  puts response
+  sleep 12
   return response
 end
 
@@ -331,18 +367,16 @@ def send_tx(b64)
   end
   if @configs["mode"] == "horizon"
     result = send_tx_horizon(b64)
-    sleep 12
     return result
   else
     result = send_tx_local(b64)
-    sleep 12
     return result
   end  
 end
 
 def create_account_tx(account, funder, starting_balance)
   #puts "starting_balance #{starting_balance}"
-  starting_balance = starting_balance.to_i
+  starting_balance = starting_balance.to_f
   account = convert_address_to_keypair(account)
   nxtseq = next_sequence(funder)
   #puts "create_account nxtseq #{nxtseq}"     
@@ -549,7 +583,7 @@ def tx_merge(*tx)
     #puts "row.source_account: #{row.source_account}"
     tx0 = tx0.merge(row)
   end
-  tx0.fee = count * 10
+  tx0.fee = count * @configs["fee"].to_i
   return tx0 
 end
 
@@ -621,7 +655,8 @@ def set_options_tx(account, args)
   }
 
   if args[:inflation_dest].present?
-    params[:inflation_dest] = get_account args[:inflation_dest]
+    puts "inf: #{args[:inflation_dest]}"
+    params[:inflation_dest] = convert_address_to_keypair(args[:inflation_dest])
   end
 
   if args[:set_flags].present?
@@ -834,13 +869,66 @@ def setup_multi_sig_tx_hash(tx, master_keypair, signer_keypair=master_keypair)
   return tx_hash
 end
 
+def sign_mss_hash(keypair,mss_get_tx_hash,sigmode=0)
+  #this will accept a mss_get_tx_hash that was pulled from the  multi-sign-server
+  #using the get_tx function to recover the published transaction with a matching tx_code.
+  # it will take the b64 encoded transaction from the mss_get_tx_hash 
+  #and sign it with this keypair that is assumed to be a valid signer for this transaction.
+  #after it signs the transaction it will create a sign_tx action hash to be sent back to the mss-server
+  # or it will just send back a b64 encoded decorated signature of the transaction (now default) depending on sigmode
+  # after reiceved the server will continue to collect more signatures from other signers until the total signer weight threshold is met,
+  #at witch point the multi-sign-server will send the fully signed transaction to the stellar network for validation
+  # this function only returns the sig_hash to be sent to send_to_multi_sign_server(sig_hash) to publish a signing of tx_code
+  # this sig_hash can be modified before it is sent 
+  # example: 
+  # sig_hash["tx_title"] = "some cool transaction"
+  # sig_hash["signer_weight"] = 2
+  # the other values should already be filled in by the function that for the most part should not be changed.
+  # in sigmode=1 we disable publishing the tx_envelope_b64 since we no longer need it in V2
+  # sigmode=1 will reduce the size of the send packet to the mss-server by a few 100 bytes.  faster? not sure.
+  # sigmode=0 we still send both the signature and the signed envelope just for testing for now (and present default).
+  puts "mss result: #{mss_get_tx_hash}"
+  puts "env_b64: #{mss_get_tx_hash["tx_envelope_b64"]}"
+  env = b64_to_envelope(mss_get_tx_hash["tx_envelope_b64"])
+  if mss_get_tx_hash["signer_sig_b64"].nil?
+    puts "records returned for txcode #{tx_code}"
+    return nil
+  end
+  tx = env.tx
+  signature = sign_transaction_env(env,keypair)
+  envnew = envelope_addsigners(env, tx, keypair)
+  tx_envelope_b64 = envelope_to_b64(envnew)
+  submit_sig = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"none_provided","signer_sig_b64"=>"JIDYR..."}
+  submit_sig["tx_code"] = mss_get_tx_hash["tx_code"]
+  submit_sig["tx_title"] = mss_get_tx_hash["tx_code"]
+  #sig_b64 = Stellar::Convert.to_base64 signature.to_yaml
+  sig_b64 = signature[0].to_xdr(:base64)
+  submit_sig["signer_sig_b64"] = sig_b64
+  #sig_bytes = Stellar::Convert.from_base64 sig_b64
+  #sig_b64 = Stellar::Convert.to_base64 sig_bytes
+  if sigmode == 0
+    submit_sig["tx_envelope_b64"] = tx_envelope_b64
+  end
+  submit_sig["signer_address"] = keypair.address
+  return submit_sig
+end 
+
 def setup_multi_sig_sign_hash(tx_code,keypair,sigmode=0)
+  get_tx = {"action"=>"get_tx","tx_code"=>"7ZZUMOSZ26"}
+  get_tx["tx_code"] = tx_code
+  mss_get_tx_hash = send_to_multi_sign_server(get_tx)
+  return sign_mss_hash(keypair,mss_get_tx_hash,sigmode)
+end
+
+def setup_multi_sig_sign_hash2(tx_code,keypair,sigmode=0)
+  #this is the old version, I had to break the function in half to support websocket. see sign_mss_hash(keypair,mss_get_tx_hash,sigmode=0)
+  #this will later be deleted
   #this will search the multi-sign-server for the published transaction with a matching tx_code.
   #if the transaction is found it will get the b64 encoded transaction from the server 
   #and sign it with this keypair that is assumed to be a valid signer for this transaction.
   #after it signs the transaction it will send the signed b64 envelope of the transaction back to the multi-sign-server
-  # or it will just send back a b64 encoded decorated signature of the transaction (now default)
-  #that will continue to collect more signatures from other signers until the total signer weight threshold is met,
+  # or it will just send back a b64 encoded decorated signature of the transaction (now default) depending on sigmode
+  #the server will continue to collect more signatures from other signers until the total signer weight threshold is met,
   #at witch point the multi-sign-server will send the fully signed transaction to the stellar network for validation
   # this function only returns the sig_hash to be sent to send_to_multi_sign_server(sig_hash) to publish signing of tx_code
   # this sig_hash can be modified before it is sent 
@@ -987,7 +1075,7 @@ def decode_txbody_b64(b64)
   #b64 = 'AAAAAGXNhLrhGtltTwCpmqlarh7s1DB2hIkbP//jgzn4Fos/AAAACgAAACEAAAGwAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAPsbtuH+tyUkMFS7Jglb5xLEpSxGGW0dn/Ryb1K60u4IAAAAXSHboAAAAAAAAAAAB+BaLPwAAAEDmsy29BbAv/oXdKMTYTKFiqPTKgMO0lpzBTJSaH5ZT2LFdpIT+fWnOjknlRlmXwazn0IaV8nlokS4ETTPPqgEK'
 
   #example output:
-  #tx.inpect #<Stellar::Transaction:0x0000000317cb60 @attributes={:source_account=>#<Stellar::PublicKey:0x0000000317c110 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value="e\xCD\x84\xBA\xE1\x1A\xD9mO\x00\xA9\x9A\xA9Z\xAE\x1E\xEC\xD40v\x84\x89\e?\xFF\xE3\x839\xF8\x16\x8B?">, :fee=>10, :seq_num=>141733921200, :time_bounds=>nil, :memo=>#<Stellar::Memo:0x00000003094fe0 @switch=Stellar::MemoType.memo_none(0), @arm=nil, @value=:void>, :operations=>[#<Stellar::Operation:0x00000003094950 @attributes={:source_account=>nil, :body=>#<Stellar::Operation::Body:0x00000003093a78 @switch=Stellar::OperationType.create_account(0), @arm=:create_account_op, @value=#<Stellar::CreateAccountOp:0x00000003094220 @attributes={:destination=>#<Stellar::PublicKey:0x00000003093cf8 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value=">\xC6\xED\xB8\x7F\xAD\xC9I\f\x15.\xC9\x82V\xF9\xC4\xB1)K\x11\x86[Gg\xFD\x1C\x9B\xD4\xAE\xB4\xBB\x82">, :starting_balance=>100000000000}>>}>], :ext=>#<Stellar::Transaction::Ext:0x00000003093668 @switch=0, @arm=nil, @value=:void>}>
+  #tx.inpect #<Stellar::Transaction:0x0000000317cb60 @attributes={:source_account=>#<Stellar::PublicKey:0x0000000317c110 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value="e\xCD\x84\xBA\xE1\x1A\xD9mO\x00\xA9\x9A\xA9Z\xAE\x1E\xEC\xD40v\x84\x89\e?\xFF\xE3\x839\xF8\x16\x8B?">, :fee=>100, :seq_num=>141733921200, :time_bounds=>nil, :memo=>#<Stellar::Memo:0x00000003094fe0 @switch=Stellar::MemoType.memo_none(0), @arm=nil, @value=:void>, :operations=>[#<Stellar::Operation:0x00000003094950 @attributes={:source_account=>nil, :body=>#<Stellar::Operation::Body:0x00000003093a78 @switch=Stellar::OperationType.create_account(0), @arm=:create_account_op, @value=#<Stellar::CreateAccountOp:0x00000003094220 @attributes={:destination=>#<Stellar::PublicKey:0x00000003093cf8 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value=">\xC6\xED\xB8\x7F\xAD\xC9I\f\x15.\xC9\x82V\xF9\xC4\xB1)K\x11\x86[Gg\xFD\x1C\x9B\xD4\xAE\xB4\xBB\x82">, :starting_balance=>100000000000}>>}>], :ext=>#<Stellar::Transaction::Ext:0x00000003093668 @switch=0, @arm=nil, @value=:void>}>
 
   env = b64_to_envelope(b64)
   tx = env.tx
@@ -1003,8 +1091,8 @@ def decode_txresult_b64(b64)
   #b64 = '3E2ToLG5246Hu+cyMqanBh0b0aCON/JPOHi8LW68gZYAAAAAAAAACgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA=='
 
   #example out:
-  #tranPair.inspect:  #<Stellar::TransactionResultPair:0x00000001816ae0 @attributes={:transaction_hash=>"\xDCM\x93\xA0\xB1\xB9\xDB\x8E\x87\xBB\xE722\xA6\xA7\x06\x1D\e\xD1\xA0\x8E7\xF2O8x\xBC-n\xBC\x81\x96", :result=>#<Stellar::TransactionResult:0x00000001816180 @attributes={:fee_charged=>10, :result=>#<Stellar::TransactionResult::Result:0x0000000170fbb0 @switch=Stellar::TransactionResultCode.tx_success(0), @arm=:results, @value=[#<Stellar::OperationResult:0x0000000170fc00 @switch=Stellar::OperationResultCode.op_inner(0), @arm=:tr, @value=#<Stellar::OperationResult::Tr:0x0000000170fca0 @switch=Stellar::OperationType.create_account(0), @arm=:create_account_result, @value=#<Stellar::CreateAccountResult:0x0000000170fcf0 @switch=Stellar::CreateAccountResultCode.create_account_success(0), @arm=nil, @value=:void>>>]>, :ext=>#<Stellar::TransactionResult::Ext:0x0000000170f868 @switch=0, @arm=nil, @value=:void>}>}>
-#<Stellar::TransactionResultPair:0x00000001816ae0 @attributes={:transaction_hash=>"\xDCM\x93\xA0\xB1\xB9\xDB\x8E\x87\xBB\xE722\xA6\xA7\x06\x1D\e\xD1\xA0\x8E7\xF2O8x\xBC-n\xBC\x81\x96", :result=>#<Stellar::TransactionResult:0x00000001816180 @attributes={:fee_charged=>10, :result=>#<Stellar::TransactionResult::Result:0x0000000170fbb0 @switch=Stellar::TransactionResultCode.tx_success(0), @arm=:results, @value=[#<Stellar::OperationResult:0x0000000170fc00 @switch=Stellar::OperationResultCode.op_inner(0), @arm=:tr, @value=#<Stellar::OperationResult::Tr:0x0000000170fca0 @switch=Stellar::OperationType.create_account(0), @arm=:create_account_result, @value=#<Stellar::CreateAccountResult:0x0000000170fcf0 @switch=Stellar::CreateAccountResultCode.create_account_success(0), @arm=nil, @value=:void>>>]>, :ext=>#<Stellar::TransactionResult::Ext:0x0000000170f868 @switch=0, @arm=nil, @value=:void>}>}>
+  #tranPair.inspect:  #<Stellar::TransactionResultPair:0x00000001816ae0 @attributes={:transaction_hash=>"\xDCM\x93\xA0\xB1\xB9\xDB\x8E\x87\xBB\xE722\xA6\xA7\x06\x1D\e\xD1\xA0\x8E7\xF2O8x\xBC-n\xBC\x81\x96", :result=>#<Stellar::TransactionResult:0x00000001816180 @attributes={:fee_charged=>100, :result=>#<Stellar::TransactionResult::Result:0x0000000170fbb0 @switch=Stellar::TransactionResultCode.tx_success(0), @arm=:results, @value=[#<Stellar::OperationResult:0x0000000170fc00 @switch=Stellar::OperationResultCode.op_inner(0), @arm=:tr, @value=#<Stellar::OperationResult::Tr:0x0000000170fca0 @switch=Stellar::OperationType.create_account(0), @arm=:create_account_result, @value=#<Stellar::CreateAccountResult:0x0000000170fcf0 @switch=Stellar::CreateAccountResultCode.create_account_success(0), @arm=nil, @value=:void>>>]>, :ext=>#<Stellar::TransactionResult::Ext:0x0000000170f868 @switch=0, @arm=nil, @value=:void>}>}>
+#<Stellar::TransactionResultPair:0x00000001816ae0 @attributes={:transaction_hash=>"\xDCM\x93\xA0\xB1\xB9\xDB\x8E\x87\xBB\xE722\xA6\xA7\x06\x1D\e\xD1\xA0\x8E7\xF2O8x\xBC-n\xBC\x81\x96", :result=>#<Stellar::TransactionResult:0x00000001816180 @attributes={:fee_charged=>100, :result=>#<Stellar::TransactionResult::Result:0x0000000170fbb0 @switch=Stellar::TransactionResultCode.tx_success(0), @arm=:results, @value=[#<Stellar::OperationResult:0x0000000170fc00 @switch=Stellar::OperationResultCode.op_inner(0), @arm=:tr, @value=#<Stellar::OperationResult::Tr:0x0000000170fca0 @switch=Stellar::OperationType.create_account(0), @arm=:create_account_result, @value=#<Stellar::CreateAccountResult:0x0000000170fcf0 @switch=Stellar::CreateAccountResultCode.create_account_success(0), @arm=nil, @value=:void>>>]>, :ext=>#<Stellar::TransactionResult::Ext:0x0000000170f868 @switch=0, @arm=nil, @value=:void>}>}>
 
   bytes = Stellar::Convert.from_base64 b64
   tranPair = Stellar::TransactionResultPair.from_xdr bytes
@@ -1241,6 +1329,22 @@ def view_envelope(envelope_b64)
     puts "operation not recognized #{tx.operations[0].body.arm}"
   end
   return hash
+end
+
+def envelope_to_txid(env_base64)
+  #this should convert a b64 envelope into a txid as seen in txhistory 
+  #records in stellar database,  that can be used in database search
+  # to recover any txhistory records there contained. 
+  env_raw = Stellar::Convert.from_base64(env_base64)
+
+  env = Stellar::TransactionEnvelope.from_xdr(env_raw)
+
+  hash_raw = env.tx.hash
+
+  hash_hex = Stellar::Convert.to_hex hash_raw
+
+  hash_hex
+
 end
 
 

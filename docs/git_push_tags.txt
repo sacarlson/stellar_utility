@@ -1,0 +1,4 @@
+#must be an anotated tag with -m message
+#git tag -a horizon5 -m "match horizon5 set"
+git tag -a <tagname> -m '<message>'
+git push --tags origin master

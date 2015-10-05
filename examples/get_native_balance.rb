@@ -1,13 +1,15 @@
 #!/usr/bin/ruby
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
 require '../lib/stellar_utility/stellar_utility.rb'
-Utils = Stellar_utility::Utils.new("horizon")
+#Utils = Stellar_utility::Utils.new("horizon")
+Utils = Stellar_utility::Utils.new()
 puts "Utils version: #{Utils.version}"
 puts "configs: #{Utils.configs}"
 puts ""
 
 master  = Stellar::KeyPair.master
 account = master.address
+#account = YAML.load(File.open("./secret_keypair_Live_GDW3CNKSP5AOTDQ2YCKNGC6L65CE4JDX3JS5BV427OB54HCF2J4PUEVG.yml"))
 #account = 'GDJUIEGLARHHM6IVNFEMV5HRX3A2CQV4YVRYUB5FEHDSBVAFENPKRHBA'
 #keypair = Stellar::KeyPair.random
 #account = keypair.address
