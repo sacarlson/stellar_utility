@@ -1371,6 +1371,48 @@ def verify_signature(envelope, address, sig_b64="")
   return result
 end
 
+def verify_signed_msg(string_msg, address, sig_b64)
+  #verify this string message is signed by this address
+  #with this signature that is in base64 xdr of a decorated signature structure
+  #address can be an address or keypair with no secreet seed needed
+  keypair = convert_address_to_keypair(address)
+  sig = Base64.decode64(sig_b64)  
+  hash = Digest::SHA256.digest(string_msg)
+  result = keypair.verify(sig,hash)
+  return result
+end
+
+def sign_msg(string_msg, keypair)
+  #sign a string text message in string_msg using keypair
+  # this is used with verify_signed_msg function to authenticate messages using stellar keypairs
+  hash = Digest::SHA256.digest(string_msg)
+  result = keypair.sign(hash)
+  Base64.encode64(result)
+end
+
+def check_timestamp(message,timestamp)
+  #timestamp is utc intiger from time.now that can be in string or int format
+  #of the time the message was supposed to be stamped with
+  #this timestamp must be within the real time now within tolerence settings default is +-60 sec
+  # the string of timestamp is also expected to be seen within the message text body
+  tolerence = 60
+  time = Time.now.to_i
+  max = time + tolerence
+  min = time - tolerence
+  if (timestamp.to_i > max) or (timestamp.to_i < min)
+    puts "timestamp is outside present tolerence of #{tolerence}"
+    puts "Time.now seen here is #{time} time stamp value is #{timestamp}"
+    puts "returning false bad"
+    return false
+  end
+  if message.include? timestamp.to_s
+    puts "timestamped message checks out good"
+    return true
+  else
+    puts "timestamp not found within body of message, return false bad"
+    return false
+  end
+end
 
 end # end class Utils
 end #end module Stellar_utilitiy

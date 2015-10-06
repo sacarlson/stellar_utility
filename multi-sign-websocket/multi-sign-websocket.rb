@@ -27,7 +27,7 @@ EM.run {
   EM::WebSocket.run(:host => @configs["mss_bind"], :port => @configs["mss_port"]) do |ws|
     ws.onopen { |handshake|
       @clients.push(ws)
-      puts "clients:  #{@clients}"
+      #puts "clients:  #{@clients}"
       puts "WebSocket connection open"
 
       # Access properties on the EM::WebSocket::Handshake object, e.g.
@@ -108,6 +108,18 @@ EM.run {
         ws.send results.to_json
       when "version"
         ws.send '{"status":"success", "version":"'+@mult_sig.version+'"}'
+      when "broadcast"
+        request_payload.delete("action")
+        request_payload.delete("tx_code")
+        results = request_payload
+        puts "bc: #{results}"
+        ws.send results.to_json
+        @clients.each do |socket|
+          #socket.send results.to_json
+          if socket != ws
+            socket.send results.to_json
+          end
+        end   
       when "stop"
         ws.send '{"status":"stoping_event_loop"}'
         EM::stop_event_loop
