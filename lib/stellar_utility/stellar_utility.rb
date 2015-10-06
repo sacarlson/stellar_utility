@@ -846,8 +846,7 @@ def setup_multi_sig_acc_hash(master_pair,*signers)
   create_acc["thresholds"]["med"] = signer_count + 1
   create_acc["thresholds"]["high"] = signer_count + 1
   create_acc["thresholds"]["master_weight"] = 1  
-  tx_codex = "A_"+hash32(create_acc.to_json)
-  create_acc["tx_title"] = tx_codex
+  create_acc["tx_title"] = "A_"+hash32(create_acc.to_json)
   return create_acc
 end
 
@@ -864,7 +863,8 @@ def setup_multi_sig_tx_hash(tx, master_keypair, signer_keypair=master_keypair)
   puts ""
   puts "envelope: #{envelope.inspect}"
   b64 = envelope_to_b64(envelope)
-  tx_hash["tx_title"] = "T_"+hash32(b64)
+  tx_hash["tx_title"] = "T_"+envelope_to_txid(b64)[0..7]
+  #tx_hash["tx_title"] = "T_"+hash32(b64)
   tx_hash["tx_envelope_b64"] = b64
   return tx_hash
 end
@@ -887,13 +887,12 @@ def sign_mss_hash(keypair,mss_get_tx_hash,sigmode=0)
   # in sigmode=1 we disable publishing the tx_envelope_b64 since we no longer need it in V2
   # sigmode=1 will reduce the size of the send packet to the mss-server by a few 100 bytes.  faster? not sure.
   # sigmode=0 we still send both the signature and the signed envelope just for testing for now (and present default).
-  puts "mss result: #{mss_get_tx_hash}"
-  puts "env_b64: #{mss_get_tx_hash["tx_envelope_b64"]}"
-  env = b64_to_envelope(mss_get_tx_hash["tx_envelope_b64"])
-  if mss_get_tx_hash["signer_sig_b64"].nil?
-    puts "records returned for txcode #{tx_code}"
+  puts "mss_get_tx_hash: #{mss_get_tx_hash}" 
+  if mss_get_tx_hash["tx_envelope_b64"].nil?
+    puts "no records tx_envelope_b64 seen so returning nil"
     return nil
   end
+  env = b64_to_envelope(mss_get_tx_hash["tx_envelope_b64"])
   tx = env.tx
   signature = sign_transaction_env(env,keypair)
   envnew = envelope_addsigners(env, tx, keypair)
@@ -1348,6 +1347,29 @@ def envelope_to_txid(env_base64)
 end
 
 
+def verify_signature(envelope, address, sig_b64="")
+  #verify this envelopes first signature is signed by this address
+  #envelope can be in base64 xdr string or TransactionEnvelope structure format
+  #address can be an address or keypair with no secreet seed needed
+  # sig is optional and can be a b64 encoded decorated signature that will be used instead of the 
+  # first signature found in the envelope
+  if envelope.class == String
+    bytes = Stellar::Convert.from_base64 envelope
+    envelope = Stellar::TransactionEnvelope.from_xdr bytes
+  end
+  keypair = convert_address_to_keypair(address)
+  if sig_b64 == "" 
+    sig = envelope.signatures.first.signature
+  else 
+    #sig_b64 = signature[0].to_xdr(:base64)
+    bytes = Stellar::Convert.from_base64(sig_b64)
+    dsig = Stellar::DecoratedSignature.from_xdr bytes
+    sig = dsig.signature
+  end
+  hash = Digest::SHA256.digest(envelope.tx.signature_base)
+  result = keypair.verify(sig,hash)
+  return result
+end
 
 
 end # end class Utils

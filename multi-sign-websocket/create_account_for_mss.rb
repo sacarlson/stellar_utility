@@ -80,7 +80,7 @@ puts "acc_hash: #{acc_hash}"
 #b64 = Utils.create_account_from_acc_hash(acc_hash,funder)
 b64 = Utils.create_account_from_acc_hash(acc_hash)
 puts "res: #{b64}"
-Utils.view_envelope(b64)
+#Utils.view_envelope(b64)
 # we send the b64 formated transaction here with the send_tx function
 result = Utils.send_tx(b64) 
 puts "res: #{result}"

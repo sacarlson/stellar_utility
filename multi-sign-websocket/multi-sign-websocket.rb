@@ -65,18 +65,23 @@ EM.run {
       when "submit_tx"
         results = @mult_sig.add_tx(request_payload)
         ws.send results.to_json
+        @clients.each do |socket|
+          if socket != ws
+            socket.send results.to_json
+          end
+        end
       when "get_tx"
         #puts "get_tx"
         results = @mult_sig.get_Tx(request_payload["tx_code"])
         ws.send results.to_json
       when "sign_tx"
-        #puts "payload: {#{request_payload}"
         results = @mult_sig.sign_tx(request_payload)
-        #puts "sign_tx results: #{results}"
-        @clients.each do |socket|
-          socket.send results.to_json
-        end
         ws.send results.to_json
+        @clients.each do |socket|
+          if socket != ws
+            socket.send results.to_json
+          end
+        end        
       when "status_tx"
         results = @mult_sig.check_tx_status(request_payload["tx_code"])
         ws.send results.to_json

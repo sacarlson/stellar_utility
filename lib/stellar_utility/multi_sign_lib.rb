@@ -57,7 +57,8 @@ class Multi_sign
 
   def add_tx(hash)
     #hash = {"action"=>"submit_tx","tx_title"=>"test tx", "signer_address"=>"RUTIWOPF", "signer_weight"=>"1", "master_address"=>"GAJYPMJ...","tx_envelope_b64"=>"AAAA...","signer_sig_b64"=>""}
-    tx_code = "T_"+hash32(hash["tx_envelope_b64"])
+    #tx_code = "T_"+hash32(hash["tx_envelope_b64"])
+    tx_code = @Utils.envelope_to_txid(hash["tx_envelope_b64"])
     query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,0,'#{tx_code}','#{hash["tx_title"]}','#{hash["signer_address"]}','#{hash["signer_weight"]}','#{hash["master_address"]}','#{hash["tx_envelope_b64"]}','#{hash["signer_sig_b64"]}');"
     get_db(query)
     return check_tx_status(tx_code,level="high")
@@ -65,10 +66,18 @@ class Multi_sign
 
   def sign_tx(hash)
     #hash = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA...","signer_sig_b64"=>"JIDYR..."}
-    query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,1,'#{hash["tx_code"]}','#{hash["tx_title"]}','#{hash["signer_address"]}', '#{hash["signer_weight"]}','#{hash["master_address"]}','#{hash["tx_envelope_b64"]}','#{hash["signer_sig_b64"]}');"
-    get_db(query)
-    result = check_tx_status(hash["tx_code"],level="high")
-    result["last_signer"] = hash["signer_address"]
+    if @Utils.verify_signature(hash["tx_envelope_b64"], hash["signer_address"], hash["signer_sig_b64"])
+      query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,1,'#{hash["tx_code"]}','#{hash["tx_title"]}','#{hash["signer_address"]}', '#{hash["signer_weight"]}','#{hash["master_address"]}','#{hash["tx_envelope_b64"]}','#{hash["signer_sig_b64"]}');"
+      get_db(query)
+      result = check_tx_status(hash["tx_code"],level="high")
+      result["last_signer"] = hash["signer_address"]
+    else
+      result = {"status" => "bad_signature"}
+      result["tx_code"] = hash["tx_code"]
+      result["signer_address"] = hash["signer_address"]
+      result["signer_sig_b64"] = hash["signer_sig_b64"]
+      result["tx_envelope_b64"] = hash["tx_envelope_b64"]
+    end
     return result
   end
 

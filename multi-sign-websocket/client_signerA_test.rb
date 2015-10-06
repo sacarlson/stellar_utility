@@ -46,7 +46,6 @@ tx_code = "last"
 
 #we could again modify this sign_hash before we send it to the mss-server example:
 #sign_hash["tx_title"] = "change the tx title"
-# we could later send the signer_sig instead of the signed tx_envelope_b64 if desired, but I haven't writen that part yet.
 # also the singers signer_weight is assumed to be 1 here but the writer of the tx could have modified that and the signer can change that here.
 # the signer must know his weight to submit any changes here or the mss-server will attempt to transact the tx with the wrong number of weighted signers.
 #sign_hash["signer_weight"] = 2
@@ -76,17 +75,16 @@ EM.run do
   end
 
   conn.stream do |msg|
-    puts "msg: #{msg.to_s}"
+    puts "raw msg: #{msg.to_s}"
     if !(msg.to_s == "null")
       mss_get_tx_hash = JSON.parse(msg.to_s)
       if (mss_get_tx_hash["tx_code"] == tx_code and signed == 0) or (tx_code == "last" and signed == 0)
-        if (tx_code == "last") and (mss_get_tx_hash["signer"]==1)
+        if (tx_code == "last") and ((mss_get_tx_hash["signer"]==1) or (mss_get_tx_hash["tx_envelope_b64"].nil?))
           tx_code = mss_get_tx_hash["tx_code"]
           get_tx = {"action"=>"get_tx","tx_code"=>"7ZZUMOSZ26"}
           get_tx["tx_code"] = tx_code    
           conn.send_msg get_tx.to_json
         else
-          puts "mss: #{mss_get_tx_hash}" 
           sign_hash = Utils.sign_mss_hash(keypair,mss_get_tx_hash,sigmode=0)
           sign_hash["action"] = "sign_tx"
           puts "sign_hash: #{sign_hash}"
