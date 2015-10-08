@@ -17,10 +17,10 @@ sumit a new transaction on the account created above and submits or publish it t
   submit_transaction_to_mss.rb
 
 example signer 1 picks up the transaction from the mss-server and signs it  and publishes it's signature with the mss-server
-  client_signer1_test.rb
+  client_signerA_test.rb
 
 example signer 2 picks up the transaction and also signs it and publishes the final needed signature to the mss server
-  client_signer2_test.rb
+  client_signerB_test.rb
 
 after the last of these example programs is run the mss-server will combine the signatures of all the signers and submits the transaction to the stellar.org network
 for validation.
@@ -29,7 +29,7 @@ for validation.
 so some filenames may not match, but the format is the same, only the lower level communication protocol has changed.
 at the end of this readme contains the details for install setup and running of the server
 
-multi-sign-server.rb is a JSON formated API server for the stellar.org networks new stellar-core
+multi-sign-server.rb is a JSON formated API server for the stellar.org networks new stellar-core.
 it was originaly created to allow the publishing of multi sign transaction and provide a point of collection for the 
 signers to pickup the original unsigned transaction, sign it and send a validation signature back to the mss-server
 that would collect all the signatures and when weighted threshold is met will send the multi signed transaction to the stellar-core network

@@ -1,25 +1,27 @@
 #!/usr/bin/ruby
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
-# note: I can't get this to work yet Aug 12, 2015
-# see sign_multi_sign_transactions_test.rb that has a closer to working merge_tx
-# when I get that working I'll fix this as a demo
+# this was a test and proof of the tx_merge function
+# note: this was now working on Oct 7 2015
+
 require '../lib/stellar_utility/stellar_utility.rb'
-Utils = Stellar_utility::Utils.new("horizon")
+#Utils = Stellar_utility::Utils.new("horizon")
+Utils = Stellar_utility::Utils.new()
 puts "Utils version: #{Utils.version}"
 puts "configs: #{Utils.configs}"
 puts ""
 
 #master      = Stellar::KeyPair.from_raw_seed("allmylifemyhearthasbeensearching")
-master  = eval( @configs["master_keypair"])
+#master  = eval( @configs["master_keypair"])
+master  = Stellar::KeyPair.master
 
-create_key_testset_and_account(0)
+Utils.create_key_testset_and_account(0)
 
 from_pair = YAML.load(File.open("./multi_sig_account_keypair.yml"))
 to_pair = YAML.load(File.open("./signerA_keypair.yml"))
 #signerB_keypair = YAML.load(File.open("./signerB_keypair.yml"))
-result = create_account(to_pair, master, starting_balance=50)
+result = Utils.create_account(to_pair, master, starting_balance=50)
 puts "#{result}"
-result = create_account(from_pair, master, starting_balance=50)
+result = Utils.create_account(from_pair, master, starting_balance=50)
 puts "#{result}"
 
 
@@ -41,6 +43,7 @@ puts "#{result}"
 result = Utils.send_tx(b64)
 puts "#{result}"
 
+#result after complete was a bal of 114 started at 118 so it worked!!
 result = Utils.get_native_balance(to_pair)
 puts "#{result}"
 

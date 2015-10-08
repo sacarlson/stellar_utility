@@ -12,7 +12,7 @@ puts "Utils version: #{Utils.version}"
 puts "configs: #{Utils.configs}"
 puts ""
 
-Utils.create_key_testset_and_account(@configs["start_balance"])
+Utils.create_key_testset_and_account(Utils.configs["start_balance"])
 multi_sig_account_keypair = YAML.load(File.open("./multi_sig_account_keypair.yml"))
 signerA_keypair = YAML.load(File.open("./signerA_keypair.yml"))
 signerB_keypair = YAML.load(File.open("./signerB_keypair.yml"))
@@ -26,12 +26,14 @@ puts "#{rndstring}"
 tx = Utils.set_options_tx(multi_sig_account_keypair,home_domain: rndstring)
 
 envelope = tx.to_envelope(signerB_keypair)
+puts "sig_good: #{envelope.signed_correctly?}"
 puts "sigs #{envelope.signatures}"
 envelope = Utils.envelope_addsigners(envelope,tx,signerA_keypair)
+puts "sig_good: #{envelope.signed_correctly?}"
 puts "sigs #{envelope.signatures}"
 #envelope = Utils.envelope_addsigners(envelope,tx,multi_sig_account_keypair,signerA_keypair)
 #puts "sigs #{envelope.signatures}"
-#exit -1
+exit -1
 b64 = Utils.envelope_to_b64(envelope)
 puts "send_tx"
 result = Utils.send_tx(b64)
