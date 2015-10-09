@@ -722,6 +722,7 @@ def set_options_tx(account, args)
   #tx.to_envelope(account)
 end
 
+
 #Contract Symbol, Stellar::KeyPair, Num => Any
 def add_signer(account, key, weight)
   #note to add signers you must have +10 min ballance per signer example 20 normal account 30 min to add one signer
@@ -1261,7 +1262,11 @@ def envelope_to_hash(envelope_b64)
   hash["source_address"] = public_key_to_address(pk)
   hash["fee"] = tx.fee
   hash["seq_num"] = tx.seq_num
-  hash["time_bounds"] = tx.time_bounds
+  #hash["time_bounds"] = tx.time_bounds
+  if !(tx.time_bounds.nil?)
+    hash["time_bounds_max_time"] = tx.time_bounds.max_time
+    hash["time_bounds_min_time"] = tx.time_bounds.min_time
+  end
   if tx.memo.type == Stellar::MemoType.memo_none()   
     hash["memo.type"] = "memo_none"
   end
@@ -1271,8 +1276,7 @@ def envelope_to_hash(envelope_b64)
   if tx.memo.type == Stellar::MemoType.memo_text()   
     hash["memo.type"] = "memo_text"
     hash["memo.text"] = tx.memo.text
-  end
-  
+  end  
   # seems we can have more than one operation per tx but I've only ever sent one at a time before
   # but now I need to iterate over multi operations
   hash["op_length"] = tx.operations.length
@@ -1335,6 +1339,8 @@ def envelope_to_hash(envelope_b64)
 end
 
 def view_envelope(envelope_b64)
+  #this is the same as envelope_to_hash(envelope_b64) above with just added prints statments added
+  #at some point we might delete this as I don't want to maintain both. this was used in original design for debuging.
   env = b64_to_envelope(envelope_b64)
   hash = {}
   #puts "env.inspect:  #{env.inspect}"
@@ -1352,7 +1358,12 @@ def view_envelope(envelope_b64)
   puts "tx.seq_num:  #{tx.seq_num}"
   hash["seq_num"] = tx.seq_num
   puts "tx.time_bounds:  #{tx.time_bounds}"
-  hash["time_bounds"] = tx.time_bounds
+  if !(tx.time_bounds.nil?)
+    puts "time_bounds_min: #{tx.time_bounds.min_time}"
+    puts "time_bounds_max: #{tx.time_bounds.max_time}"
+    hash["time_bounds_max_time"] = tx.time_bounds.max_time
+    hash["time_bounds_min_time"] = tx.time_bounds.min_time
+  end
   if tx.memo.type == Stellar::MemoType.memo_none()
     puts "memo.type:  memo_none"
     hash["memo.type"] = "memo_none"
@@ -1468,17 +1479,11 @@ def envelope_to_txid(env_base64)
   #records in stellar database,  that can be used in database search
   # to recover any txhistory records there contained. 
   env_raw = Stellar::Convert.from_base64(env_base64)
-
   env = Stellar::TransactionEnvelope.from_xdr(env_raw)
-
   hash_raw = env.tx.hash
-
   hash_hex = Stellar::Convert.to_hex hash_raw
-
   hash_hex
-
 end
-
 
 def verify_signature(envelope, address, sig_b64="")
   #verify this envelopes first signature is signed by this address
@@ -1506,11 +1511,16 @@ end
 
 def env_signature_info(envelope)
   #output an array of key addresses that have valid signatures on this envelope
+  #envelope can be in ether b64 or Stellar::envelope structure format
+  #this is just a tool to analize the state of the present signatures in the envelope
+  #it returns an array of the present valid signer addresses present and prints a count.
+  if envelope.class == String
+    envelope = b64_to_envelope(envelope)
+  end
   puts "sig.count:  #{envelope.signatures.length}"
   hash = envelope_to_hash(envelope)
   sigs = envelope.signatures
   sig_info = get_signer_info(hash["source_address"])
-  puts "sig_info:  #{sig_info}"
   address = []
   sig_info.each do |row|
     puts "row: #{row}"    
@@ -1534,6 +1544,7 @@ def verify_signed_msg(string_msg, address, sig_b64)
   #verify this string message is signed by this address
   #with this signature that is in base64 xdr of a decorated signature structure
   #address can be an address or keypair with no secreet seed needed
+  #see function sing_msg bellow that is used with this
   keypair = convert_address_to_keypair(address)
   sig = Base64.decode64(sig_b64)  
   hash = Digest::SHA256.digest(string_msg)
@@ -1572,6 +1583,27 @@ def check_timestamp(message,timestamp)
     return false
   end
 end
+
+def add_timebounds(tx,min,max)
+  #this will add timebounds to a transaction
+  #min and max are in utc timestamp int format in ruby we use Time.now.to_i being now
+  # you can add or subtract from that in secounds to get a wanted time window
+  # that a transaction will be valid in
+  timebounds = Stellar::TimeBounds.new
+  if min > 0
+    timebounds.min_time = min.to_i
+  else
+    timebounds.min_time = Time.now.to_i
+  end
+  if max > 0
+    timebounds.max_time = max.to_i
+  else
+    timebounds.max_time = Time.now.to_i * Time.now.to_i
+  end
+  tx.time_bounds = timebounds
+  return tx
+end
+
 
 end # end class Utils
 end #end module Stellar_utilitiy
