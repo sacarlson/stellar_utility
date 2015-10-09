@@ -12,7 +12,9 @@ require './multi_sign_lib.rb'
       exit -1
     end
     
-    
+ witness_keypair = YAML.load(File.open("./secret_keypair_GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX.yml"))
+ puts "witness account: #{witness_keypair.address}"
+  
  puts "multi sign websocket server starting"
  puts ""
 
@@ -119,7 +121,19 @@ EM.run {
           if socket != ws
             socket.send results.to_json
           end
-        end   
+        end
+      when "get_signer_info"
+        results = @mult_sig.Utils.get_signer_info(request_payload["account"],signer_address="")
+        ws.send results.to_json
+      when "get_thresholds_info"
+        results = @mult_sig.Utils.get_thresholds_local(request_payload["account"])
+        ws.send results.to_json 
+      when "get_tx_history"
+        results = @mult_sig.Utils.get_txhistory(request_payload["txid"])
+        ws.send results.to_json
+      when "make_witness"
+        results = @mult_sig.Utils.make_witness_hash(witness_keypair,request_payload["account"],request_payload["asset"],request_payload["issuer"])
+        ws.send results.to_json  
       when "stop"
         ws.send '{"status":"stoping_event_loop"}'
         EM::stop_event_loop

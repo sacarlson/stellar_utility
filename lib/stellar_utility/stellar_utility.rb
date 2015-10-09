@@ -195,11 +195,15 @@ def get_signer_info(target_address,signer_address="")
     query = "SELECT * FROM signers WHERE accountid='#{target_address}' AND publickey='#{signer_address}'"
   end
   if signer_address == ""
-    full = 1
+    result = get_db(query,1)
+    hash = {"signers"=>[]}
+    result.each do |row|
+      hash["signers"].push(row)
+    end
+    return hash
   else
-    full = 0
-  end
-  return get_db(query,full)
+    return get_db(query)
+  end    
 end 
 
 
@@ -1247,6 +1251,35 @@ def compare_env_with_hash(envelope_b64,hash_template)
   return diff.length
 end
 
+def make_witness_hash(witness_keypair,account,asset="",issuer="")
+  account = convert_keypair_to_address(account)
+  witness_account = convert_keypair_to_address(witness_keypair)
+  acc_info = get_accounts_local(account)
+  if asset != "" or !(asset.nil?)
+    bal = get_lines_balance(account,issuer,asset)
+  end
+  thresholds = get_thresholds_local(account)
+  signer_info = get_signer_info(account,signer_address="")
+  timestamp = Time.now.to_i.to_s
+  hash = {"acc_info"=>acc_info, "balance"=>bal, "thresholds"=>thresholds, "signer_info"=>signer_info,"timestamp"=>timestamp, "witness_account"=>witness_account}
+  json_string = hash.to_json  
+  sig = sign_msg(json_string, witness_keypair)
+  hash["signed_json"] = json_string
+  hash["signature"] = sig
+  return hash
+end
+#returns: 
+#{"acc_info"=>{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "balance"=>1219999700, "seqnum"=>11901354377218, "numsubentries"=>1, "inflationdest"=>nil, "homedomain"=>"test.timebonds2", "thresholds"=>"AQAAAA==", "flags"=>0, "lastmodified"=>7867}, "balance"=>0, "thresholds"=>{:master_weight=>1, :low=>0, :medium=>0, :high=>0}, "signer_info"=>{"signers"=>[{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "publickey"=>"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM", "weight"=>1}]}, "timestamp"=>"1444386782", "signed_json"=>"{\"acc_info\":{\"accountid\":\"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO\",\"balance\":1219999700,\"seqnum\":11901354377218,\"numsubentries\":1,\"inflationdest\":null,\"homedomain\":\"test.timebonds2\",\"thresholds\":\"AQAAAA==\",\"flags\":0,\"lastmodified\":7867},\"balance\":0,\"thresholds\":{\"master_weight\":1,\"low\":0,\"medium\":0,\"high\":0},\"signer_info\":{\"signers\":[{\"accountid\":\"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO\",\"publickey\":\"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM\",\"weight\":1}]},\"timestamp\":\"1444386782\"}", "signature"=>"O+WxDbyjk1xD4R/J2LoSjR2LIsnLBQPoHnPIuafPCUcB1wp0FIiyjURNTu9B\nfYAU6+Ug7KKMWM/ogPR4HeMECg==\n"}
+
+def check_witness_hash(hash)
+  #this will check that the witness signing of the hash is valid
+  #the witness_account is a stellar pubic account number of who signed the hash in the
+  #the function make_witness_hash above. the hash is also timestamped to prove the accountid
+  # seen in the hash was in this state at this witnessed time.  
+  verify_signed_msg(hash["signed_json"], hash["witness_account"], hash["signature"])
+end
+
+
 def envelope_to_hash(envelope_b64)
   #envelope_b64 can be base64 format or stellar::envelope structure
   #this will breakdown an envelope into a human readable and ruby workable format of hash
@@ -1544,7 +1577,7 @@ def verify_signed_msg(string_msg, address, sig_b64)
   #verify this string message is signed by this address
   #with this signature that is in base64 xdr of a decorated signature structure
   #address can be an address or keypair with no secreet seed needed
-  #see function sing_msg bellow that is used with this
+  #see function sing_msg(string_msg, keypair) bellow that is used with this
   keypair = convert_address_to_keypair(address)
   sig = Base64.decode64(sig_b64)  
   hash = Digest::SHA256.digest(string_msg)

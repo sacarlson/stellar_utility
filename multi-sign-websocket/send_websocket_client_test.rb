@@ -33,14 +33,27 @@ require 'em-websocket-client'
     submit_tx = '{"action":"submit_tx","tx_title":"T_JD7NBZPV","signer_address":"GDM6RBPBTDY3YE35I7LLU53LP4IZH26PIFE5IFPITGCEOZBX66IFZIDH","signer_weight":"1","master_address":"GDM6RBPBTDY3YE35I7LLU53LP4IZH26PIFE5IFPITGCEOZBX66IFZIDH","tx_envelope_b64":"AAAAANnoheGY8bwTfUfWundrfxGT689BSdQV6JmER2Q395BcAAAACgABh04AAAADAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAACHRlc3Q1NjkyAAAAAAAAAAAAAAABN/eQXAAAAEBaa64v1Pvh3g0eM1w5g9tlli/O6J0T4FPu9ifle3xGDyOLvGo7W2bpZ+uS9q31se2UMbd5gr0HFPivvuZyanYL","signer_sig_b64":""}'
 
     sign_tx = '{"action":"sign_tx","tx_title":"T_RQHKC7XD","tx_code":"T_RQHKC7XD","signer_address":"GCHOUZUXO2CKBJJICJ6R4EHRLSKCANGD3QTACE5QZJ27T7TSGMD4JP5U","signer_weight":"1","tx_envelope_b64":"AAAAANnoheGY8bwTfUfWundrfxGT689BSdQV6JmER2Q395BcAAAACgABh04AAAACAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAACHRlc3Q3NDM2AAAAAAAAAAAAAAACcjMHxAAAAEApyJ3gfjYOZaAzY4ZLnt7uJCPrLlR1cPAos4fMRyrBrF2yrfz6U3dsAbv8tpmCMISiS9vZtKExaDZnsqdB1jcEN/eQXAAAAEB2xFD4v6goEazu9UeLY0naWENxGwDKktFquSF0MJN6MPYrucRuRFzYK/xRofZzl8EIljizva+XBEk/SRioh6QL","signer_sig_b64":"cjMHxAAAAEApyJ3gfjYOZaAzY4ZLnt7uJCPrLlR1cPAos4fMRyrBrF2yrfz6U3dsAbv8tpmCMISiS9vZtKExaDZnsqdB1jcE"}'
-   
+
+    get_signer_info = {"action"=>"get_signer_info", "account"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO"} 
+    #returns: {"signers"=>[{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "publickey"=>"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM", "weight"=>1}]}
+
+    get_thresholds_info = {"action"=>"get_thresholds_info", "account"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO"}
+    #return: {"master_weight"=>1, "low"=>0, "medium"=>0, "high"=>0}    
+
+    get_tx_history = {"action"=>"get_tx_history", "txid"=>"258fbbfb105a99d63665c31ef46cf721446835985103f37de934842fbd68cff6"}
+    #return: {"txid"=>"258fbbfb105a99d63665c31ef46cf721446835985103f37de934842fbd68cff6", "ledgerseq"=>4417, "txresult"=>"JY+7+xBamdY2ZcMe9Gz3IURoNZhRA/N96TSEL71oz/YAAAAAAAAAZAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAA=="}   
+
+    make_witness = {"action"=>"make_witness", "account"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO"}
+    #return:{"acc_info":{"accountid":"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO","balance":1219999700,"seqnum":11901354377218,"numsubentries":1,"inflationdest":null,"homedomain":"test.timebonds2","thresholds":"AQAAAA==","flags":0,"lastmodified":7867},"balance":0,"thresholds":{"master_weight":1,"low":0,"medium":0,"high":0},"signer_info":{"signers":[{"accountid":"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO","publickey":"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM","weight":1}]},"timestamp":"1444389446","witness_account":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","signed_json":"{\"acc_info\":{\"accountid\":\"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO\",\"balance\":1219999700,\"seqnum\":11901354377218,\"numsubentries\":1,\"inflationdest\":null,\"homedomain\":\"test.timebonds2\",\"thresholds\":\"AQAAAA==\",\"flags\":0,\"lastmodified\":7867},\"balance\":0,\"thresholds\":{\"master_weight\":1,\"low\":0,\"medium\":0,\"high\":0},\"signer_info\":{\"signers\":[{\"accountid\":\"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO\",\"publickey\":\"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM\",\"weight\":1}]},\"timestamp\":\"1444389446\",\"witness_account\":\"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX\"}","signature":"URuAwVWLE621J/jI2GdIKZgS/iiMb3efOuFN6m/IGD39pzhpJ+THzC2yW4K0\nA1OTwaU9vsRB7ooT+zXf/a02CQ==\n"}
+#JSON.parse hash: {"acc_info"=>{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "balance"=>1219999700, "seqnum"=>11901354377218, "numsubentries"=>1, "inflationdest"=>nil, "homedomain"=>"test.timebonds2", "thresholds"=>"AQAAAA==", "flags"=>0, "lastmodified"=>7867}, "balance"=>0, "thresholds"=>{"master_weight"=>1, "low"=>0, "medium"=>0, "high"=>0}, "signer_info"=>{"signers"=>[{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "publickey"=>"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM", "weight"=>1}]}, "timestamp"=>"1444389446", "witness_account"=>"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX", "signed_json"=>"{\"acc_info\":{\"accountid\":\"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO\",\"balance\":1219999700,\"seqnum\":11901354377218,\"numsubentries\":1,\"inflationdest\":null,\"homedomain\":\"test.timebonds2\",\"thresholds\":\"AQAAAA==\",\"flags\":0,\"lastmodified\":7867},\"balance\":0,\"thresholds\":{\"master_weight\":1,\"low\":0,\"medium\":0,\"high\":0},\"signer_info\":{\"signers\":[{\"accountid\":\"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO\",\"publickey\":\"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM\",\"weight\":1}]},\"timestamp\":\"1444389446\",\"witness_account\":\"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX\"}", "signature"=>"URuAwVWLE621J/jI2GdIKZgS/iiMb3efOuFN6m/IGD39pzhpJ+THzC2yW4K0\nA1OTwaU9vsRB7ooT+zXf/a02CQ==\n"}
+
     return_status_tx = {"status"=>"sent","tx_num"=>"123","sign_count"=>"2","signed"=>["GDZ4AF...","GDOJM..."]}
     #status pending means that the transaction hasn't got all the needed signers yet, sent means we got the signers and it was transacted
     return_status_tx_not_sent = {"status"=>"pending","tx_num"=>"123","sign_count"=>"1","signed"=>["GDZ4AF..."]}
     #dataout = {"signed"=>[xyz,zyx]}
     #data = get_tx
     #data = get_account_info
-    data = version
+    data = make_witness
 
     url = "ws://localhost:9494"
     if data.class != String         
@@ -69,7 +82,8 @@ EM.run do
   end
 
   conn.stream do |msg|
-    puts "#{msg}"
+    puts "rec raw #{msg}"
+    puts "JSON.parse hash: #{JSON.parse(msg.to_s)}"
     if msg.data == "done"
       conn.close_connection
     end
