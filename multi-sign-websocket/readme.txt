@@ -244,17 +244,82 @@ example return:
 
   Value returned:
     TBD
+
+#get_signer_info: get a list of all the signers on this target account direct from the stellar network database
+  Values sent:
+    account: the target account for the information 
+  Values returned:
+    signers: an array signer hashes the length depending on how many signers the account has
+      accountid: the same as the target account
+      publickey: the address of this signer
+      weight:  the signing weight that this signer has on this account
+
+  example return:
+  {"signers"=>[{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "publickey"=>"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM", "weight"=>1}]}
+
+#get_threshold_info: get the threshold values for this account direct from the stellar database
+  Values sent:
+    account: the target account for the information wanted
+  Values returned:
+    master_weight:  the master signing weight, the signing power that this target account keypair has on this account
+    low: the threshold of low
+    medium: the threshold for medium security, needed to sign transactions to send payments and other
+    high:  the threshold for high security,  needed when you want to sign transactions to change thresholds 
+
+  example return:
+    {"master_weight"=>1, "low"=>0, "medium"=>0, "high"=>0}
+
+#get_tx_history: get the transaction history for this txid direct from the stellar database 
+  Values sent:
+    txid: the transaction number for the target transaction as seen in the stellar database
+  Values return:
+    txid: the txid of what is being searched for
+    ledgerseq: the ledger sequence number of when this transaction was recorded
+    txresult: a base64 encoded txresult seen on the stellar database server, note I should have decoded this for humans as the tools are already available in the libs
+
+  example return:
+   {"txid"=>"258fbbfb105a99d63665c31ef46cf721446835985103f37de934842fbd68cff6", "ledgerseq"=>4417, "txresult"=>"JY+7+xBamdY2ZcMe9Gz3IURoNZhRA/N96TSEL71oz/YAAAAAAAAAZAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAA=="} 
   
+#make_unlock_transaction: create a env_b64 time bound transaction that will be used to unlock a locked account after some window of time
+  Values sent:
+    account: the target_account that will later be locked to be unlocked with this transaction
+  Values return:
+    status: returns success or fail depending on if account settings were within specs
+    target_account: the account that the unlock transaction will unlock
+    timebound:  this is the UTC time stamp of when this transaction begins to be valid on the stellar network
+    timenow:  this is the UTC time stamp of what time it is now just used as a reference to the above to compare
+    unlock_env_b64: a transaction envelope in base64 format that will be sent after the timebound time to unlock the target_account
+
+  Example return: {"status"=>"success", "target_account"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "witness_address"=>"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX", "timebound"=>1444562222, "timenow"=>1444475822, "unlock_env_b64"=>"AAAAAD1O39Zz2qUNUKLDH6BnGEEFOs8+CC/aVz5CUmCj3euQAAAAZAAACtMAAAAEAAAAAQAAAABWGkUuHPTGJ4CTykQAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAQAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAEGjFFJAAAAQI1BcZWFOZzovdQC1SzT4BDJJ7AQsBHu1JXC89zCnUPrTjx7p0xHn/QoIoofT6zmhttXpVsyqdXF3JDdxKc1UQY="}
+
+#make_witness: will create a signed timestamped document of the present state and ballances of a target account
+  Values sent:
+    account: that target account that the document will be write for
+  Values return:
+    accountid: the target account id address
+    balance: the native balance on this account
+    seqnum:  the sequence number of the account as seen at the moment the document was recorded 
+    numsubentries: the number of signers seen on the account at time of recording
+    inflationdest: setting of the inflation destination at time or recording
+    homedomain:  home domain setting on the account
+    master_weight:  the master weight setting on the account
+    low:  theshold setting for the low threshold
+    medium:  theshold setting for the medium threshold
+    high:   threhold setting for the high threshold
+    signers: number of signers returned depends on what the account presently holds, this is an array of signers and there weights
+      accountid: same as above
+      publickey: the public key address of this signer 
+      weight: the weight that this signer has on this account when signing transactions
+    timestamp: the UTC integer timestamp value at the time this record was created
+    witness_account: the stellar account number of the pair that was used to signed this witness document
+    signed_json: all the information above converted into a json string so that it can be signed and time stamped by the witness_account signer and verified by users
+      at this time this is the only real validated information, the other above is just duplicated and later may be removed 
+
+  Example return: {"acc_info":{"accountid":"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO","balance":1219999700,"seqnum":11901354377218,"numsubentries":1,"inflationdest":null,"homedomain":"test.timebonds2","thresholds":"AQAAAA==","flags":0,"lastmodified":7867},"balance":0,"thresholds":{"master_weight":1,"low":0,"medium":0,"high":0},"signer_info":{"signers":[{"accountid":"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO","publickey":"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM","weight":1}]},"timestamp":"1444389446","witness_account":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","signed_json":"{\"acc_info\":{\"accountid\":\"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO\",\"balance\":1219999700,\"seqnum\":11901354377218,\"numsubentries\":1,\"inflationdest\":null,\"homedomain\":\"test.timebonds2\",\"thresholds\":\"AQAAAA==\",\"flags\":0,\"lastmodified\":7867},\"balance\":0,\"thresholds\":{\"master_weight\":1,\"low\":0,\"medium\":0,\"high\":0},\"signer_info\":{\"signers\":[{\"accountid\":\"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO\",\"publickey\":\"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM\",\"weight\":1}]},\"timestamp\":\"1444389446\",\"witness_account\":\"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX\"}","signature":"URuAwVWLE621J/jI2GdIKZgS/iiMb3efOuFN6m/IGD39pzhpJ+THzC2yW4K0\nA1OTwaU9vsRB7ooT+zXf/a02CQ==\n"}
+#JSON.parse hash: {"acc_info"=>{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "balance"=>1219999700, "seqnum"=>11901354377218, "numsubentries"=>1, "inflationdest"=>nil, "homedomain"=>"test.timebonds2", "thresholds"=>"AQAAAA==", "flags"=>0, "lastmodified"=>7867}, "balance"=>0, "thresholds"=>{"master_weight"=>1, "low"=>0, "medium"=>0, "high"=>0}, "signer_info"=>{"signers"=>[{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "publickey"=>"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM", "weight"=>1}]}, "timestamp"=>"1444389446", "witness_account"=>"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX", "signed_json"=>"{\"acc_info\":{\"accountid\":\"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO\",\"balance\":1219999700,\"seqnum\":11901354377218,\"numsubentries\":1,\"inflationdest\":null,\"homedomain\":\"test.timebonds2\",\"thresholds\":\"AQAAAA==\",\"flags\":0,\"lastmodified\":7867},\"balance\":0,\"thresholds\":{\"master_weight\":1,\"low\":0,\"medium\":0,\"high\":0},\"signer_info\":{\"signers\":[{\"accountid\":\"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO\",\"publickey\":\"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM\",\"weight\":1}]},\"timestamp\":\"1444389446\",\"witness_account\":\"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX\"}", "signature"=>"URuAwVWLE621J/jI2GdIKZgS/iiMb3efOuFN6m/IGD39pzhpJ+THzC2yW4K0\nA1OTwaU9vsRB7ooT+zXf/a02CQ==\n"}
 
 
-#to install and setup
-need to add here the dependancies required to run this on Linux Ubuntu or Linux Mint 17 system
-TBD
 
-bundle install
-
-to run:
-bundle exec multi-sign-server.rb
 
 Note: before you run you may need to make some changes to the config file
 
@@ -283,19 +348,20 @@ values explained
 
 db_file_path: points this to the sqlite database that the local stellar-core is now using on this system
               This setting is only needed if mode is set to "localcore" mode.  in "horizon" mode this value is not used
-              only sqlite format is supported at this time, postgress can be added later.
+              only sqlite format is supported at this time, postgress will be added later.
 
 url_horizon: this is the URL of the horizon API instance, this is only needed if you are running in the "horizon" mode
-             by default it it set to the horizon testnet setting but can later be pointed to the live network if desired
+             by default it is set to the horizon testnet setting but can later be pointed to the live network if desired
 
 url_stellar_core: This is the URL or IP address and port that you have the local or even a remote stellar-core running on
                   it is normaly run on the local system so localhost should work but the port can be changed and my settings here are not default to stellers release
 
-url_mss_server:  This is the URL and port that the mulit-sign-server will be set to be listening on to recieve action commands
+url_mss_server:  This is the URL and port that the mulit-sign-websocket will be set to be listening on to recieve action commands
 
-fee: is the fee settings that are used in ruby-stellar-base for transaction fee's, the default in most cases is 10 
+fee: is the fee settings that are used in ruby-stellar-base for transaction fee's, the default in most cases is 100 
 
 start_balance:  is the value in native stellar that will be funded to a newly created stellar account when the create_account function is called
+                when a funder keypair is also provided.
 
 default_network:  defines weather the system will be using the stellar testnet or the stellar live network or maybe some third party network
                   it is defaulted to the testnet setting 
@@ -308,12 +374,12 @@ mss_bind:  This is the bind address setting for the mss-server.  it determines t
            all connected networks on the local system.  it can be set to only listen to itself with localhost setting or only on a sigle nic
            on the system.
 
-mss_port:  this is the port that the multi-sign-server will be listening on the networks for action commands
+mss_port:  this is the port that the multi-sign-websocket will be listening on the networks for action commands
 
 mss_db_mode: this is the setting of the type of database backend used in the mss-server, at this time only the sqlite is tested
              but support for postgress has already also been partly setup but not debuged and tested yet. advise only using sqlite at this time
 
-mss_db_file_path: this is the sqlite database file path used in the multi-sign-server. be sure the location is read writable under the user you are
+mss_db_file_path: this is the sqlite database file path used in the multi-sign-websocket. be sure the location is read writable under the user you are
                   running the system under.
 
 version:  this is the version stellar-utility git hash number displayed when the "version" action command asks for it.  it should be set to the git
@@ -333,5 +399,5 @@ $bundle exec multi-sign-websocket.rb
 
 #dependancies
 most if not all of the dependancies should be contained in the Gemfile in this directory
-other than that you do need bundler and I also run rbenv with ruby 1.9.3-p484 as default but newer should also work
+other than that you do need bundler and I also run rbenv with ruby 1.9.3-p484 as default but newer ruby should also work just never tried
  
