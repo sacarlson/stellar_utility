@@ -133,7 +133,12 @@ EM.run {
         ws.send results.to_json
       when "make_witness"
         results = @mult_sig.Utils.make_witness_hash(witness_keypair,request_payload["account"],request_payload["asset"],request_payload["issuer"])
-        ws.send results.to_json  
+        ws.send results.to_json
+      when "make_unlock_transaction"
+        #provide unlock transaction that will be valid after 24 hours after this is sent
+        timebound = Time.now.to_i + 86400
+        results = @mult_sig.Utils.create_unlock_transaction(request_payload["account"],witness_keypair,timebound)
+        ws.send results.to_json 
       when "stop"
         ws.send '{"status":"stoping_event_loop"}'
         EM::stop_event_loop

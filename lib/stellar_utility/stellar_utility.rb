@@ -646,8 +646,13 @@ def b64_to_envelope(b64)
   if b64.nil?
     return nil
   end
-  bytes = Stellar::Convert.from_base64 b64
-  envelope = Stellar::TransactionEnvelope.from_xdr bytes
+  if b64.class == String
+    bytes = Stellar::Convert.from_base64 b64
+    envelope = Stellar::TransactionEnvelope.from_xdr bytes
+    return envelope
+  else
+    return b64
+  end
 end
 
 def convert_keypair_to_address(account)
@@ -1390,12 +1395,15 @@ def view_envelope(envelope_b64)
   hash["fee"] = tx.fee
   puts "tx.seq_num:  #{tx.seq_num}"
   hash["seq_num"] = tx.seq_num
-  puts "tx.time_bounds:  #{tx.time_bounds}"
+  #puts "tx.time_bounds:  #{tx.time_bounds}"
   if !(tx.time_bounds.nil?)
+    puts "Time.now.to_i: #{Time.now.to_i}"
     puts "time_bounds_min: #{tx.time_bounds.min_time}"
     puts "time_bounds_max: #{tx.time_bounds.max_time}"
     hash["time_bounds_max_time"] = tx.time_bounds.max_time
     hash["time_bounds_min_time"] = tx.time_bounds.min_time
+  else
+    puts "time_bounds: nil"
   end
   if tx.memo.type == Stellar::MemoType.memo_none()
     puts "memo.type:  memo_none"
@@ -1446,6 +1454,7 @@ def view_envelope(envelope_b64)
       hash["clear_flags"] = op.body.value.clear_flags
       puts "set_flags:      #{op.body.value.set_flags}"
       hash["set_flags"] = op.body.value.set_flags
+      #puts "body.value:  #{op.body.value.inspect}"
       puts "master_weight:  #{op.body.value.master_weight}"
       hash["master_weight"] = op.body.value.master_weight
       puts "low_threshold:  #{op.body.value.low_threshold}"
@@ -1547,15 +1556,13 @@ def env_signature_info(envelope)
   #envelope can be in ether b64 or Stellar::envelope structure format
   #this is just a tool to analize the state of the present signatures in the envelope
   #it returns an array of the present valid signer addresses present and prints a count.
-  if envelope.class == String
-    envelope = b64_to_envelope(envelope)
-  end
+  envelope = b64_to_envelope(envelope)
   puts "sig.count:  #{envelope.signatures.length}"
   hash = envelope_to_hash(envelope)
   sigs = envelope.signatures
   sig_info = get_signer_info(hash["source_address"])
   address = []
-  sig_info.each do |row|
+  sig_info["signers"].each do |row|
     puts "row: #{row}"    
     sigs.each do |sig|
       puts "sig_b64:  #{sig.to_xdr(:base64)}"
@@ -1565,7 +1572,7 @@ def env_signature_info(envelope)
         address.push(row["publickey"])
         puts "good key: #{row["publickey"]} with this sig_b64"
       else
-        puts "bad key: #{row["publickey"]}"
+        #puts "bad key: #{row["publickey"]}"
       end
     end
   end
@@ -1635,6 +1642,51 @@ def add_timebounds(tx,min,max)
   end
   tx.time_bounds = timebounds
   return tx
+end
+
+def create_unlock_transaction(target_account,unlocker_keypair,timebound)
+  #this will return a transaction envelope in b64 to set target_account thresholds to 1,0,0,0
+  #the unlocker_keypair address is expected to be one of the presently active signers in the target_account
+  #if not found this function will return nil and it will print the reason for failure.
+  #this function also expects that the present account is not already locked with only 1,0,0,0 thresholds to start
+  #note the sequence number of the created transaction will be +2 from present sequence number of target_account to allow 
+  #locking the target_account after this transaction has been delivered 
+  #  timebound is an integer utc timestamp when this transaction begins to become active or valid
+  target_account = convert_keypair_to_address(target_account) 
+  thresholds = get_thresholds_local(target_account)
+  if !({:master_weight=>1, :low=>0, :medium=>0, :high=>0} == thresholds)
+    puts "the target_account thresholds are not within spec of 1,0,0,0. nothing will be done"
+    puts "present settings: #{thresholds}"
+    return {"status"=>"fail", "target_account"=>target_account,"error"=>"target_account thresholds not set to 1,0,0,0"}
+  end
+  puts "thresholds:  #{thresholds}"
+  signer_info = get_signer_info(target_account)
+  puts "signer_info: #{signer_info}"
+  if signer_info["signers"].length != 2
+    puts "this account has the wrong number of signers, must have 2 with one being the unlocker_address, nothing will be done"
+    #return {"status"=>"fail", "target_account"=>target_account,"error"=>"signer count not eq 3"}
+  end
+  matchfound = false
+  unlocker_address = unlocker_keypair.address
+  signer_info["signers"].each do |signer|
+    if signer["publickey"] = unlocker_address
+      matchfound = true
+    end
+  end
+  if !matchfound
+    puts "the target_account doesn't contain unlocker_address as a valid signer, nothing will be done"
+    return {"status"=>"fail", "target_account"=>target_account, "error"=>"target_account doesn't contain unlocker_address as a valid signer"}
+  end
+  target_keypair = convert_address_to_keypair(target_account)
+  #envelope = set_thresholds(target_keypair, low: 0, medium: 0, high: 0)
+  tx = set_options_tx(target_keypair, master_weight: 1, thresholds: {low: 0, medium: 0, high: 0})
+  seq_num = tx.seq_num
+  puts "seq_num: #{seq_num}"
+  tx.seq_num = tx.seq_num + 1
+  tx = add_timebounds(tx,timebound,0)
+  envelope = tx.to_envelope(unlocker_keypair)
+  env_b64 = envelope_to_b64(envelope)
+  return {"status"=>"success", "target_account"=>target_account, "witness_address"=>unlocker_keypair.address,"timebound" => timebound, "timenow"=>Time.now.to_i, "unlock_env_b64"=>env_b64}
 end
 
 
