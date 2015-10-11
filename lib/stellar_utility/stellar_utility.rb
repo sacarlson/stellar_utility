@@ -347,14 +347,18 @@ def send_tx_local(b64)
   puts "#result.body: #{result.body}" 
   txhistory = get_txhistory(txid) 
   count = 0
-  while txhistory.nil? || count > 15
+  while (txhistory.nil?) and (count < 15)
     puts "count:  #{count}"
     sleep 1
     txhistory = get_txhistory(txid)
     count = count + 1 
   end
-  txhistory["body"] = result.body
-  txhistory["resultcode"] = txresult_resultcode(txhistory["txresult"])
+  if count >= 15
+    txhistory = {"body"=>result.body,"error"=>"timeout from localcore get_tx_history, check sync"}
+  else
+    txhistory["body"] = result.body
+    txhistory["resultcode"] = txresult_resultcode(txhistory["txresult"])
+  end
   return txhistory
 end
 
@@ -842,11 +846,19 @@ def set_master_signer_weight(account, weight)
   set_options account, master_weight: weight
 end
 
+def env_b64_addsigners(env_b64, *keypair)
+  #env_b64 can be base64 envelope or Stellar::envelope structure
+  env = b64_to_envelope(env_b64)
+  b64 = env.tx.to_envelope(*keypair).to_xdr(:base64)
+  return b64
+end
 
 def envelope_addsigners(env,tx,*keypair)
   #this is used to add needed keypair signitures to a transaction
   # and combine your added signed tx with someone elses envelope that has signed tx's in it
   # you can add one or more keypairs to the envelope
+  #this now obsolete use env_b64_addsigners(env_b64, *keypair) instead or something like it
+  # this will later be deleted
   sigs = env.signatures
   envnew = tx.to_envelope(*keypair)
   pos = envnew.signatures.length
@@ -1269,7 +1281,7 @@ def make_witness_hash(witness_keypair,account,asset="",issuer="")
   hash = {"acc_info"=>acc_info, "balance"=>bal, "thresholds"=>thresholds, "signer_info"=>signer_info,"timestamp"=>timestamp, "witness_account"=>witness_account}
   json_string = hash.to_json  
   sig = sign_msg(json_string, witness_keypair)
-  hash["signed_json"] = json_string
+  #hash["signed_json"] = json_string
   hash["signature"] = sig
   return hash
 end
@@ -1280,8 +1292,15 @@ def check_witness_hash(hash)
   #this will check that the witness signing of the hash is valid
   #the witness_account is a stellar pubic account number of who signed the hash in the
   #the function make_witness_hash above. the hash is also timestamped to prove the accountid
-  # seen in the hash was in this state at this witnessed time.  
-  verify_signed_msg(hash["signed_json"], hash["witness_account"], hash["signature"])
+  # seen in the hash was in this state at this witnessed time. 
+  sig_hash = hash["signature"]
+  if !(hash["signed_json"].nil?)
+    hash.delete("signed_json")
+  end
+  hash.delete("signature")
+  json_string = hash.to_json
+  puts "json_string: #{json_string}" 
+  verify_signed_msg(json_string, hash["witness_account"], sig_hash)
 end
 
 
@@ -1379,7 +1398,11 @@ end
 def view_envelope(envelope_b64)
   #this is the same as envelope_to_hash(envelope_b64) above with just added prints statments added
   #at some point we might delete this as I don't want to maintain both. this was used in original design for debuging.
+  #I still like the output format that I'm now used to so didn't delete it yet.
+  #this needs to be rewriten to use envelope_to_hash as it's source
   env = b64_to_envelope(envelope_b64)
+  siglist = env_signature_info(env)
+  puts "siglist: #{siglist}"
   hash = {}
   #puts "env.inspect:  #{env.inspect}"
   #puts ""
@@ -1551,6 +1574,28 @@ def verify_signature(envelope, address, sig_b64="")
   return result
 end
 
+def push_sig(envelope,keypair)
+  #this puts the added key signature from keypair to the first position in signatures array of the returned envelope
+  #instead of adding it to the end, this might be needed if your adding the source_address signature to the envelope
+  # that already has a signature of one of the needed signers in it.
+  # after testing I'm not thinking it maters what order the signatures are in, they seem to work in any order
+  # so this function is not really needed
+  #envelope can be b64 or Stellar::envelope structure
+  #returns a signed b64 envelope
+  envelope = b64_to_envelope(envelope)
+  tx = envelope.tx
+  env2 = tx.to_envelope(keypair)
+  new_sig = env2.signatures
+  puts "new_sig: #{new_sig.inspect}"
+  puts ""
+  #if you want the signature at the end of the array you can push it
+  #envelope.signatures.push(*env2.signatures)
+  #this puts it at the fist position
+  envelope.signatures.unshift(*env2.signatures)   
+  puts "envelope.signatures #{envelope.signatures}"
+  return envelope.to_xdr(:base64)
+end
+
 def env_signature_info(envelope)
   #output an array of key addresses that have valid signatures on this envelope
   #envelope can be in ether b64 or Stellar::envelope structure format
@@ -1560,23 +1605,31 @@ def env_signature_info(envelope)
   puts "sig.count:  #{envelope.signatures.length}"
   hash = envelope_to_hash(envelope)
   sigs = envelope.signatures
+  #sig_b64 = sigs[0].to_xdr(:base64)
+  #check = verify_signature(envelope, hash["source_address"], sig_b64)
+  #puts "check sig0 to source_address: #{check}"
+  source = {"accountid"=>hash["source_address"], "publickey"=>hash["source_address"], "weight"=>1}
   sig_info = get_signer_info(hash["source_address"])
+  #puts "sig_info: #{sig_info.inspect}"
+  sig_info["signers"].push(source)
   address = []
   sig_info["signers"].each do |row|
-    puts "row: #{row}"    
+    #puts "row: #{row}"    
     sigs.each do |sig|
-      puts "sig_b64:  #{sig.to_xdr(:base64)}"
+      #puts "sig_b64:  #{sig.to_xdr(:base64)}"
       sig_b64 = sig.to_xdr(:base64)
       check = verify_signature(envelope, row["publickey"], sig_b64)
       if check
         address.push(row["publickey"])
-        puts "good key: #{row["publickey"]} with this sig_b64"
+        puts "good key: #{row["publickey"]}"
       else
         #puts "bad key: #{row["publickey"]}"
       end
     end
   end
   puts "good_keys.count: #{address.length}"
+  thresholds = get_thresholds_local(hash["source_address"])
+  puts "thresholds: #{thresholds}"
   return address
 end
 
@@ -1629,6 +1682,8 @@ def add_timebounds(tx,min,max)
   #min and max are in utc timestamp int format in ruby we use Time.now.to_i being now
   # you can add or subtract from that in secounds to get a wanted time window
   # that a transaction will be valid in
+  # values of 0 for min is the same as start now or Time.now.to_i
+  # value of 0 for max is the same as never expires
   timebounds = Stellar::TimeBounds.new
   if min > 0
     timebounds.min_time = min.to_i
@@ -1638,6 +1693,7 @@ def add_timebounds(tx,min,max)
   if max > 0
     timebounds.max_time = max.to_i
   else
+    #just make it a very big number, longer than the life of the universe?
     timebounds.max_time = Time.now.to_i * Time.now.to_i
   end
   tx.time_bounds = timebounds
@@ -1647,11 +1703,11 @@ end
 def create_unlock_transaction(target_account,unlocker_keypair,timebound)
   #this will return a transaction envelope in b64 to set target_account thresholds to 1,0,0,0
   #the unlocker_keypair address is expected to be one of the presently active signers in the target_account
-  #if not found this function will return nil and it will print the reason for failure.
+  #if not found this function will return status as failed and it will print the reason for failure.
   #this function also expects that the present account is not already locked with only 1,0,0,0 thresholds to start
   #note the sequence number of the created transaction will be +2 from present sequence number of target_account to allow 
   #locking the target_account after this transaction has been delivered 
-  #  timebound is an integer utc timestamp when this transaction begins to become active or valid
+  #  timebound is an integer utc timestamp when this transaction begins to become active or valid on the stellar network
   target_account = convert_keypair_to_address(target_account) 
   thresholds = get_thresholds_local(target_account)
   if !({:master_weight=>1, :low=>0, :medium=>0, :high=>0} == thresholds)
@@ -1675,7 +1731,7 @@ def create_unlock_transaction(target_account,unlocker_keypair,timebound)
   end
   if !matchfound
     puts "the target_account doesn't contain unlocker_address as a valid signer, nothing will be done"
-    return {"status"=>"fail", "target_account"=>target_account, "error"=>"target_account doesn't contain unlocker_address as a valid signer"}
+    #return {"status"=>"fail", "target_account"=>target_account, "error"=>"target_account doesn't contain unlocker_address as a valid signer"}
   end
   target_keypair = convert_address_to_keypair(target_account)
   #envelope = set_thresholds(target_keypair, low: 0, medium: 0, high: 0)

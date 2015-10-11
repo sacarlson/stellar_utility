@@ -28,6 +28,8 @@ puts ""
 hash = Utils.make_witness_hash(multi_sig_account_keypair,multi_sig_account_keypair,asset="",issuer="")
 puts "hash: #{hash}"
 
-
+puts hash["acc_info"]["balance"]
+#hash["acc_info"]["balance"] = 1
 puts "check: #{Utils.check_witness_hash(hash)}"
 #returns true as it shows that the above hash is signed correctly
+#returns false if I uncomment the line with hash["acc_info"]["balance"] = 1
