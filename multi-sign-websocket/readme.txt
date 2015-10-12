@@ -1,10 +1,10 @@
 
-#Multi Sign websocket Server also still know as mss-server for short
+#Multi Sign websocket Server also know as mss-server or mss-websocket server for short
 
-The mss-webscket server performs the same actions using the same JSON formated strings as the original mss-server does
+The mss-webscket server performs the same actions using the same JSON formated strings as the original mss-server did plus now more
 only using a websocket instead of an http connected server.
 The websocket advantage is that the websocket client can now continue to be connected and get feedback of the current status of the transaction
-in realtime that in ruby can be driven with the EM eventmanager to triger function on transaction events as shown in the client_signer examples contained here.
+in realtime that in ruby can be driven with the EM eventmanager to triger function on transaction events as shown in the client_signer examples also contained here.
 to do a full run of the example sesion you can run each of the samples in a different terminal window to allow seeing the events unfold.
 in this sequence:
 start the server:
@@ -16,17 +16,17 @@ create and account and submit it to the mss server:
 sumit a new transaction on the account created above and submits or publish it to the mss server:
   submit_transaction_to_mss.rb
 
-example signer 1 picks up the transaction from the mss-server and signs it  and publishes it's signature with the mss-server
+example signer A picks up the transaction from the mss-server and signs it  and publishes it's signature with the mss-server
   client_signerA_test.rb
 
-example signer 2 picks up the transaction and also signs it and publishes the final needed signature to the mss server
+example signer B picks up the transaction and also signs it and publishes the final needed signature to the mss server
   client_signerB_test.rb
 
 after the last of these example programs is run the mss-server will combine the signatures of all the signers and submits the transaction to the stellar.org network
 for validation.
 
-#More details of the operations and transaction format of the mss-server is described bellow.  note bellow was writen for the original multi-sign-server 
-so some filenames may not match, but the format is the same, only the lower level communication protocol has changed.
+#More details of the operations and transaction format of the mss-server is described bellow.  note bellow was originaly writen for the  multi-sign-server 
+so some filenames may not match, but the format basicly the same, only the lower level communication protocol has changed.
 at the end of this readme contains the details for install setup and running of the server
 
 multi-sign-server.rb is a JSON formated API server for the stellar.org networks new stellar-core.
@@ -34,8 +34,10 @@ it was originaly created to allow the publishing of multi sign transaction and p
 signers to pickup the original unsigned transaction, sign it and send a validation signature back to the mss-server
 that would collect all the signatures and when weighted threshold is met will send the multi signed transaction to the stellar-core network
 
-The mss-server can now also do some basic stellar network function of getting account balance, sending tx blobs and other functions that are normaly
-done through the horizon server API.
+The mss-server can now also do most stellar network database lookup function of getting account balance, buy sell offers, tx result history and now most
+any data in the stellar database can now be obtained from the mss-server api interface. also the basic function of sending tx blobs and other functions
+that are normaly done through the horizon server API can also be performed on the mss-server.  as the secondary goal of mss-server is to make it posible
+to do most anything you can do with a localcore on site over the mss-server API instead of running one localy by making almost all the steller-core database values accesable over the API.  
 
 
 #The mss-server json action commands and format
@@ -307,7 +309,7 @@ example return:
     medium:  theshold setting for the medium threshold
     high:   threhold setting for the high threshold
     signers: number of signers returned depends on what the account presently holds, this is an array of signers and there weights
-      accountid: same as above
+      accountid: same as above target account address  
       publickey: the public key address of this signer 
       weight: the weight that this signer has on this account when signing transactions
     timestamp: the UTC integer timestamp value at the time this record was created
@@ -315,10 +317,47 @@ example return:
     signature: base64 signature of all the information in the above values and anything else added to the hash signed by the witness_account keypair
      this hash and signing can be validated on the user side with the function Utils.check_witness_hash(hash)
 
-  Example return: {"acc_info":{"accountid":"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO","balance":1219999700,"seqnum":11901354377218,"numsubentries":1,"inflationdest":null,"homedomain":"test.timebonds2","thresholds":"AQAAAA==","flags":0,"lastmodified":7867},"balance":0,"thresholds":{"master_weight":1,"low":0,"medium":0,"high":0},"signer_info":{"signers":[{"accountid":"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO","publickey":"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM","weight":1}]},"timestamp":"1444546624","witness_account":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","signature":"ZYQf/j58m45IntgWIedP1X1kp5O4H6NfZHTd7rVJEy4B4f2gxNtXMt2Jt7u9\naBW6OVrGu+R09WdN6XnbFeW7DA==\n"}
+  Example return: {"acc_info":{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","balance":1219997700,"seqnum":2418066587666,"numsubentries":2,"inflationdest":null,"homedomain":"","thresholds":"AQACAg==","flags":0,"lastmodified":17037},"thresholds":{"master_weight":1,"low":0,"medium":2,"high":2},"signer_info":{"signers":[{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","publickey":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","weight":1},{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","publickey":"GA4GWCCN7YNN5NFUX6MQ3IYPT3LBOFNBRZE3J2JVBJC3P6PNYWWIRPCG","weight":1}]},"timebound":null,"timestamp":"1444647586","witness_account":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","signature":"IGPRXS9aNos5BaYrlwa5kSTdhlZkVsBPKQeP2Ho3DWftJVo7MLTe8LQpZZ0r\nIoxyWA5r1/WJZ9DGwODTh0wvCw==\n"}
 
-JSON.parse hash: {"acc_info"=>{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "balance"=>1219999700, "seqnum"=>11901354377218, "numsubentries"=>1, "inflationdest"=>nil, "homedomain"=>"test.timebonds2", "thresholds"=>"AQAAAA==", "flags"=>0, "lastmodified"=>7867}, "balance"=>0, "thresholds"=>{"master_weight"=>1, "low"=>0, "medium"=>0, "high"=>0}, "signer_info"=>{"signers"=>[{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "publickey"=>"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM", "weight"=>1}]}, "timestamp"=>"1444546624", "witness_account"=>"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX", "signature"=>"ZYQf/j58m45IntgWIedP1X1kp5O4H6NfZHTd7rVJEy4B4f2gxNtXMt2Jt7u9\naBW6OVrGu+R09WdN6XnbFeW7DA==\n"}
 
+#make_witness_unlock: this preforms two actions as it does the same as the above make_witness but also records timestamp and timebound in the mss server database
+                      it also creates and adds an unlock transacton that is timebound per the users request
+  Values sent:
+    account: that target account that the document will be write for
+    timebound: a utc timestamp integer specifing the start time that the unlock tx that will be returned will become active to unlock the account
+
+  Values returned:
+    Values return:
+    accountid: the target account id address
+    balance: the native balance on this account
+    seqnum:  the sequence number of the account as seen at the moment the document was recorded 
+    numsubentries: the number of signers seen on the account at time of recording
+    inflationdest: setting of the inflation destination at time or recording
+    homedomain:  home domain setting on the account
+    master_weight:  the master weight setting on the account
+    low:  theshold setting for the low threshold
+    medium:  theshold setting for the medium threshold
+    high:   threhold setting for the high threshold
+    signers: number of signers returned depends on what the account presently holds, this is an array of signers and there weights
+      accountid: same as above target account address  
+      publickey: the public key address of this signer 
+      weight: the weight that this signer has on this account when signing transactions
+    timebound: the UTC integer timestamp of the start time that the unlock_env_b64 transaction will become valid on the stellar network to unlock the account
+    timestamp: the UTC integer timestamp value at the time this record was created
+    witness_account: the stellar account number of the pair that was used to signed this witness document
+    signature: base64 signature of all the information in the above values and anything else added to the hash signed by the witness_account keypair
+     this hash and signing can be validated on the user side with the function Utils.check_witness_hash(hash)
+    unlock: is the hash returned from the create_unlock_transaction function, it contains the values to unlock a timebound account at some point in time
+     status: the status of the unlock_transaction_function results, returns success or fail
+     target_account: the target address used in the unlock_transaction_function
+     witness_address: the address of the witness server keypair used to sign this unlock transaction
+     timebound: the utc timestame integer of when this unlock will be active
+     timenow: just a reference to compare with the timebound above that is Time.now.to_i that also marks the time this transaction was created
+     unlock_env_b64: a base64 encoded envelope transaction that contains a transaction that will unlock the target_address after some timebound is reached
+     error: if status is failed this will return with the reason the create_unlock_transaction function failed.
+       reasons for error include not enuf signers in target account, account not already locked, timebound not > time.now, witness server account not one of the  signers. and maybe a few more.
+
+  Example return: {"acc_info":{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","balance":1219997700,"seqnum":2418066587666,"numsubentries":2,"inflationdest":null,"homedomain":"","thresholds":"AQACAg==","flags":0,"lastmodified":17037},"thresholds":{"master_weight":1,"low":0,"medium":2,"high":2},"signer_info":{"signers":[{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","publickey":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","weight":1},{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","publickey":"GA4GWCCN7YNN5NFUX6MQ3IYPT3LBOFNBRZE3J2JVBJC3P6PNYWWIRPCG","weight":1}]},"timebound":1444648666,"timestamp":"1444648566","witness_account":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","signature":"CsoU4TKWVeJHW8645P6/uHD45QZIaoSIX/Gb9WJqTQEjMjJuCz58j1HF6jmy\nfb/Vrt9P8SNIC0N8hBciLonrAw==\n","unlock":{"status":"success","target_account":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","witness_address":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","timebound":1444648666,"timenow":1444648566,"unlock_env_b64":"AAAAAHF++eHSNz1b3M59q378jS8MpjHhDfpxX5CUM9NjWzrXAAAAZAAAAjMAAAATAAAAAQAAAABWG5baHPaMEF1SfmQAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAQAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAEGjFFJAAAAQGbbtB58wWShTwCWu/1Fd4D9LrrRAgTDt+wsBmhCwAVWbq0hZNFFqlQqa2IkjeiJRfDPu2E9AMz3abwd6yRi0wc="}}
 
 TODO: I note in most of my example outputs above I have the output in ruby hash format.  On the wire the values are in JSON I just convert them to hash for most of
 my ruby usage and that's what I had as output on my terminal when I was originaly testing them.  sorry if this adds confusion to my docs if used to

@@ -1,3 +1,4 @@
+#(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
 #this is the lib used by the multi-sign-server
 # should we merge this with stellar_utility?
 require 'json'
@@ -113,6 +114,7 @@ class Multi_sign
     db.execute "CREATE TABLE IF NOT EXISTS Acc_signers(acc_num INTEGER PRIMARY KEY, master_address TEXT UNIQUE, signers TEXT);"
     # signer = 1 for being a signer of a tx, signer = 0 for being the master writer of the tx
     db.execute "CREATE TABLE IF NOT EXISTS Multi_sign_tx(tx_num INTEGER PRIMARY KEY, signer INTEGER, tx_code TEXT, tx_title TEXT,signer_address TEXT,signer_weight TEXT, master_address TEXT, tx_envelope_b64 TEXT,signer_sig_b64 TEXT);"
+    db.execute "CREATE TABLE IF NOT EXISTS Witness(id_num INTEGER PRIMARY KEY, address TEXT, timebound DATETIME, event_datetime DATETIME);"
 
   end
 
@@ -314,6 +316,49 @@ class Multi_sign
 
   def get_account_info(account)
     @Utils.get_accounts_local(account)
+  end
+
+  def timestamp_witness(address,timebound)
+    #record the time this address had it's timebound timestamped, used in make_witness function
+    #also checks to see if a timebound was already recorded that has not expired yet,
+    #if unexpired timebound is found it will return the record, if no unexpired timebounds found returns nil
+    address = @Utils.convert_keypair_to_address(address)
+    #db.execute "CREATE TABLE IF NOT EXISTS Witness(id_num INTEGER PRIMARY KEY, address TEXT, timebound DATETIME, event_datetime DATETIME);"
+    puts "time.now:  #{Time.now.to_i}"
+    if timebound < Time.now.to_i
+      puts "timebound is < Time.now so not going to timestamp or witness it, nothing done"
+      return nil
+    end
+    query = "SELECT * FROM Witness WHERE address = '#{address}' and timebound > #{Time.now.to_i};"
+    rs = get_db(query)
+    rs1 = rs.next
+    if rs1.nil?
+      puts "got here so new timebound set"
+      query = "INSERT INTO Witness  VALUES (NULL,'#{address}','#{timebound}', strftime('%s','now'));"
+      get_db(query)
+    end
+    return rs1
+  end
+
+  def make_witness_unlock(witness_keypair,account,timebound,asset=nil,issuer=nil)
+    #create a timebound timestamped witness document for address in account, signed witnessed by witness_keypair
+    #include in the witnessed document what is seen in trustlines for assets of issuer
+    check = @Utils.create_unlock_transaction(account,witness_keypair,timebound)
+    if check["status"]=="fail"
+      return check
+    end
+    timestamp = timestamp_witness(account,timebound)
+    results ={}
+    puts "timestamp: #{timestamp}"
+    if timestamp.nil?
+      puts "timestamp is nil so timebound is unchanged at #{timebound}"      
+    else
+      timebound = timestamp["timebound"]
+    end
+    results = @Utils.make_witness_hash(witness_keypair,account,timebound,asset,issuer)
+    results["unlock"] = @Utils.create_unlock_transaction(account,witness_keypair,timebound)
+    puts "witness: #{results}"
+    return results
   end
 
 end #end class Multi_sign

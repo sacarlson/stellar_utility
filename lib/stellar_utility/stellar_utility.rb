@@ -137,13 +137,21 @@ def get_buy_offers(asset,issuer, limit = 5)
   return get_db(query) 
 end
 
-def get_lines_balance_local(account,issuer,currency)
-  # balance of trustlines on the Stellar account from localy running Stellar-core db
+def get_trustlines_local(account,issuer,currency)
+   # balance of trustlines on the Stellar account from localy running Stellar-core db
   # you must setup your local path to @stellar_db_file_path for this to work
   # also at this time this assumes you only have one gateway issuer for each currency
   account = convert_keypair_to_address(account)  
   query = "SELECT * FROM trustlines WHERE accountid='#{account}' AND assetcode='#{currency}' AND issuer='#{issuer}'"
   result = get_db(query)
+  return result
+end
+
+def get_lines_balance_local(account,issuer,currency)
+  # balance of trustlines on the Stellar account from localy running Stellar-core db
+  # you must setup your local path to @stellar_db_file_path for this to work
+  # also at this time this assumes you only have one gateway issuer for each currency
+  result = get_trustlines_local(account,issuer,currency)
   if result == nil
     return 0
   else
@@ -1268,20 +1276,22 @@ def compare_env_with_hash(envelope_b64,hash_template)
   return diff.length
 end
 
-def make_witness_hash(witness_keypair,account,asset="",issuer="")
+def make_witness_hash(witness_keypair,account,timebound,asset="",issuer="")
   account = convert_keypair_to_address(account)
   witness_account = convert_keypair_to_address(witness_keypair)
   acc_info = get_accounts_local(account)
   if asset != "" or !(asset.nil?)
-    bal = get_lines_balance(account,issuer,asset)
+    lines = get_trustlines_local(account,issuer,asset)
   end
   thresholds = get_thresholds_local(account)
   signer_info = get_signer_info(account,signer_address="")
   timestamp = Time.now.to_i.to_s
-  hash = {"acc_info"=>acc_info, "balance"=>bal, "thresholds"=>thresholds, "signer_info"=>signer_info,"timestamp"=>timestamp, "witness_account"=>witness_account}
+  hash = {"acc_info"=>acc_info, "thresholds"=>thresholds, "signer_info"=>signer_info,"timebound"=>timebound,"timestamp"=>timestamp, "witness_account"=>witness_account}
+  if !(lines.nil?) 
+    hash["trustlines"] = [lines]
+  end
   json_string = hash.to_json  
   sig = sign_msg(json_string, witness_keypair)
-  #hash["signed_json"] = json_string
   hash["signature"] = sig
   return hash
 end
@@ -1709,18 +1719,15 @@ def create_unlock_transaction(target_account,unlocker_keypair,timebound)
   #locking the target_account after this transaction has been delivered 
   #  timebound is an integer utc timestamp when this transaction begins to become active or valid on the stellar network
   target_account = convert_keypair_to_address(target_account) 
-  thresholds = get_thresholds_local(target_account)
-  if !({:master_weight=>1, :low=>0, :medium=>0, :high=>0} == thresholds)
-    puts "the target_account thresholds are not within spec of 1,0,0,0. nothing will be done"
-    puts "present settings: #{thresholds}"
-    return {"status"=>"fail", "target_account"=>target_account,"error"=>"target_account thresholds not set to 1,0,0,0"}
+  if (timebound.to_i < Time.now.to_i)
+    puts "timebound is less than Time.now, nothing will be done"
+    return {"status"=>"fail", "target_account"=>target_account,"error"=>"timebound is less than Time.now or nil"}
   end
-  puts "thresholds:  #{thresholds}"
   signer_info = get_signer_info(target_account)
   puts "signer_info: #{signer_info}"
   if signer_info["signers"].length != 2
-    puts "this account has the wrong number of signers, must have 2 with one being the unlocker_address, nothing will be done"
-    #return {"status"=>"fail", "target_account"=>target_account,"error"=>"signer count not eq 3"}
+    puts "this account has the wrong number of signers, must have 2 with one being the witness server address, nothing will be done"
+    return {"status"=>"fail", "target_account"=>target_account,"error"=>"signer count not eq 3"}
   end
   matchfound = false
   unlocker_address = unlocker_keypair.address
@@ -1731,14 +1738,22 @@ def create_unlock_transaction(target_account,unlocker_keypair,timebound)
   end
   if !matchfound
     puts "the target_account doesn't contain unlocker_address as a valid signer, nothing will be done"
-    #return {"status"=>"fail", "target_account"=>target_account, "error"=>"target_account doesn't contain unlocker_address as a valid signer"}
+    return {"status"=>"fail", "target_account"=>target_account, "error"=>"target_account doesn't contain unlocker_address as a valid signer"}
   end
   target_keypair = convert_address_to_keypair(target_account)
+  thresholds = get_thresholds_local(target_account) 
+  puts "thresholds:  #{thresholds}" 
+  if !({:master_weight=>1, :low=>0, :medium=>2, :high=>2} == thresholds)
+    puts "the target_account is already unlocked or not in lock spec 1,0,2,2 so you don't need unlock tx "
+    puts "present settings: #{thresholds}"
+    return {"status"=>"fail", "target_account"=>target_account, "error"=>"target_account not locked to spec 1,0,2,2"}
+  end 
   #envelope = set_thresholds(target_keypair, low: 0, medium: 0, high: 0)
   tx = set_options_tx(target_keypair, master_weight: 1, thresholds: {low: 0, medium: 0, high: 0})
   seq_num = tx.seq_num
   puts "seq_num: #{seq_num}"
-  tx.seq_num = tx.seq_num + 1
+  #tx.seq_num = tx.seq_num + 1
+  puts "timebound: #{timebound}"
   tx = add_timebounds(tx,timebound,0)
   envelope = tx.to_envelope(unlocker_keypair)
   env_b64 = envelope_to_b64(envelope)
