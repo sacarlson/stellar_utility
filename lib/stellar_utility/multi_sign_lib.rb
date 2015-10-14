@@ -1,5 +1,5 @@
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
-#this is the lib used by the multi-sign-server
+#this is the lib used by the multi-sign-server and multi-sign-websocket
 # should we merge this with stellar_utility?
 require 'json'
 require 'sqlite3'
@@ -151,6 +151,8 @@ class Multi_sign
   end
 
   def get_acc_signers(master_address,acc_num=0)
+    #this is deprecated
+    #Utils.get_signer_info(target_address,signer_address="")  should be used instead that gets it direct from stellar network db
     query = "SELECT * FROM Acc_signers WHERE master_address = '#{master_address}'"
     rs = get_db(query)
     result = rs.next
@@ -281,12 +283,17 @@ class Multi_sign
     return result
   end
 
-  def check_tx_status(tx_code,level="high")
+  def check_tx_status(tx_code,level=:high)
     #this will see if the multi-sign transaction with this tx_code has the needed signitures to be processed
     #at this time only checks one level at a time with default threshold high to have met needed signature count
     tx = get_Tx(tx_code)
     puts "tx: #{tx}"
-    levels = get_acc_threshold_levels(tx["master_address"])
+    #levels = get_acc_threshold_levels(tx["master_address"])
+    if level == "high"
+      level = :high
+    end
+    levels = @Utils.get_thresholds_local(tx["master_address"])
+    #{:master_weight=>1, :low=>0, :medium=>2, :high=>2}
     #puts "#{levels}"
     need = levels[level].to_i
     #puts "need: #{need}"

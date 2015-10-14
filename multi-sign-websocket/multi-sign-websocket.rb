@@ -50,10 +50,10 @@ EM.run {
       begin
        request_payload = JSON.parse(msg)
       rescue JSON::ParserError => e
-        result = '{"status":"bad_JSON.parse","error":"'+ e.to_s + '"}'
+        result = '{"status":"bad_JSON.parse","error":"'+ e.to_s + '", "raw_msg":"'+msg.to_s+'"}'
         puts "result: #{result}"
         ws.send(result)
-        return
+        request_payload = {"action"=>"noop"}
       end  
       puts "payload: #{request_payload}"
  
@@ -138,6 +138,8 @@ EM.run {
       when "make_witness_unlock"
         results = @mult_sig.make_witness_unlock(witness_keypair,request_payload["account"],request_payload["timebound"],request_payload["asset"],request_payload["issuer"])
         ws.send results.to_json
+      when "noop"
+        puts "noop nothing done"
       when "stop"
         ws.send '{"status":"stoping_event_loop"}'
         EM::stop_event_loop
