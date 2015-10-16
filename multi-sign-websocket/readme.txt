@@ -359,6 +359,21 @@ example return:
 
   Example return: {"acc_info":{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","balance":1219997700,"seqnum":2418066587666,"numsubentries":2,"inflationdest":null,"homedomain":"","thresholds":"AQACAg==","flags":0,"lastmodified":17037},"thresholds":{"master_weight":1,"low":0,"medium":2,"high":2},"signer_info":{"signers":[{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","publickey":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","weight":1},{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","publickey":"GA4GWCCN7YNN5NFUX6MQ3IYPT3LBOFNBRZE3J2JVBJC3P6PNYWWIRPCG","weight":1}]},"timebound":1444648666,"timestamp":"1444648566","witness_account":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","signature":"CsoU4TKWVeJHW8645P6/uHD45QZIaoSIX/Gb9WJqTQEjMjJuCz58j1HF6jmy\nfb/Vrt9P8SNIC0N8hBciLonrAw==\n","unlock":{"status":"success","target_account":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","witness_address":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","timebound":1444648666,"timenow":1444648566,"unlock_env_b64":"AAAAAHF++eHSNz1b3M59q378jS8MpjHhDfpxX5CUM9NjWzrXAAAAZAAAAjMAAAATAAAAAQAAAABWG5baHPaMEF1SfmQAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAQAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAEGjFFJAAAAQGbbtB58wWShTwCWu/1Fd4D9LrrRAgTDt+wsBmhCwAVWbq0hZNFFqlQqa2IkjeiJRfDPu2E9AMz3abwd6yRi0wc="}}
 
+#broadcast: send a custom json packet to all that are presently connected to this mss-server 
+  Values sent:
+    any custom json index:value set is acceptable and will be echoed accept indexes "action" and "tx_code" due to conflicts in listener apps.
+    this disallowed list index values may change in future releases, disallowed indexs are just striped from being sent.
+    this can be used to send and recieve authenticated messages or commands to other connected users using lib tools already available.
+
+  Values returned:
+    whatever you sent above will be echoed to the sender and everyone connected to the mss-server at the time
+  
+  Example send:
+    {"action":"broadcast", "text_message":"hello world"}
+
+  Example return:
+    {"text_message":"hello world"}
+
 TODO: I note in most of my example outputs above I have the output in ruby hash format.  On the wire the values are in JSON I just convert them to hash for most of
 my ruby usage and that's what I had as output on my terminal when I was originaly testing them.  sorry if this adds confusion to my docs if used to
 operate the API from other languages like java scripts. at some point all the example output in this document should show example output in JSON.

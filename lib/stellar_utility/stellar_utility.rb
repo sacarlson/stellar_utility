@@ -153,7 +153,8 @@ def get_lines_balance_local(account,issuer,currency)
   # also at this time this assumes you only have one gateway issuer for each currency
   result = get_trustlines_local(account,issuer,currency)
   if result == nil
-    return 0
+    puts "no record found"
+    return nil
   else
     bal = result["balance"].to_f
     return bal/10000000

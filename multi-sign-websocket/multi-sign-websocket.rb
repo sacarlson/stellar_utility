@@ -45,10 +45,12 @@ EM.run {
       puts "Connection closed" }
 
     ws.onmessage { |msg|      
-      puts "length: #{msg.length}"     
-      #request_payload = ActiveSupport::JSON.decode(msg)
+      puts "msg.length: #{msg.length}"
+      msg = msg.delete("'")     
+      puts "raw msg:  #{msg}"
       begin
-       request_payload = JSON.parse(msg)
+       request_payload = ActiveSupport::JSON.decode(msg)
+       #request_payload = JSON.parse(msg)
       rescue JSON::ParserError => e
         result = '{"status":"bad_JSON.parse","error":"'+ e.to_s + '", "raw_msg":"'+msg.to_s+'"}'
         puts "result: #{result}"
@@ -95,13 +97,29 @@ EM.run {
         results = @mult_sig.get_account_info(request_payload["account"])
         ws.send results.to_json
       when "get_lines_balance"
-        ws.send results = @mult_sig.Utils.get_lines_balance_local(request_payload["account"],request_payload["issuer"],request_payload["asset"])
+        value = @mult_sig.Utils.get_lines_balance_local(request_payload["account"],request_payload["issuer"],request_payload["asset"])
     '{"issuer":"'+request_payload["issuer"]+'", "asset":"'+request_payload["asset"]+'", "balance":'+results.to_s+'}'
+        puts "result.class: #{value.class}"
+        results = {"status"=>"success"}
+        if value.nil?
+          results["status"]="no record found"
+          results["balance"] = 0
+        else
+           results["balance"] = value
+        end
+        puts "result: #{result}"
+        ws.send results.to_json
       when "get_sell_offers"
         results = @mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"], limit = 5)
+        if results.nil?
+          results = {"status"=>"no record found"}
+        end
         ws.send results.to_json
       when "get_buy_offers"
         results = @mult_sig.Utils.get_buy_offers(request_payload["asset"],request_payload["issuer"], limit = 5)
+        if results.nil?
+          results = {"status"=>"no record found"}
+        end
         ws.send results.to_json
       when "send_b64"
         results = @mult_sig.Utils.send_tx(request_payload["envelope_b64"])

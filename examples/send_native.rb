@@ -21,9 +21,11 @@ from_pair = Stellar::KeyPair.random
 #to_pair = Stellar::KeyPair.from_address(to_account)
 #to_pair = Stellar::KeyPair.from_seed("SDWTC2MQLFH5J5GBXUI4H4KIPHOFAKY77G7RQH6RDXORIX25NZAJEET5")
 
-puts "master    #{master.address}"
+puts "master address:   #{master.address}"
+puts "master seed:      #{master.seed}"
 puts "from_pair #{from_pair.address}"
 puts "to_pair   #{to_pair.address}"
+
 puts "starting_balance: #{Utils.configs["start_balance"]}"
 
 before = Utils.get_native_balance(to_pair.address)
