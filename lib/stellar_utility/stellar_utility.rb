@@ -232,6 +232,34 @@ def get_account_info_horizon(account)
     return data
 end
 
+def get_stellar_core_status(detail=false)
+    #return true if stellar-core status is synced false if other than synced
+    #if detail is true then return a hash containing all that is seen in return from stellar-core responce
+    params = '/info'
+    url = @configs["url_stellar_core"]
+    #url = "localhost:8080"
+    puts "url_stellar_core:  #{url}"
+    send = url + params
+    #puts "sending:  #{send}"
+    begin
+    postdata = RestClient.get send
+    rescue => e
+      return  e.response
+    end
+    puts "postdata: #{postdata}"
+    data = JSON.parse(postdata)
+    puts "data: #{data}"
+    if detail == true
+      return data
+    end
+    if data["state"] == "Synced!"
+      return true
+    else 
+      return false
+    end
+end
+
+
 def get_sequence(account)
   if @configs["mode"] == "horizon"
     #puts "horizon mode get seq"

@@ -156,6 +156,9 @@ EM.run {
       when "make_witness_unlock"
         results = @mult_sig.make_witness_unlock(witness_keypair,request_payload["account"],request_payload["timebound"],request_payload["asset"],request_payload["issuer"])
         ws.send results.to_json
+      when "core_status"
+        results = @mult_sig.Utils.get_stellar_core_status(true)
+        ws.send results.to_json
       when "noop"
         puts "noop nothing done"
       when "stop"
