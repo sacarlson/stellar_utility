@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["sacarlson"]
   spec.email         = ["sacarlson_2000@yahoo.com"]
 
-  spec.summary       = %q{a small utility lib for the new stellar-core that I used to learn with added examples}
+  spec.summary       = %q{a small ruby utility lib for the new stellar-core that I used to learn with added examples}
   spec.description   = %q{cool stuf to play with}
   spec.homepage      = "https://github.com/sacarlson/stellar_utility"
   spec.license       = "MIT"
