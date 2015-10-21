@@ -13,9 +13,14 @@ GEM
     backports (3.6.6)
     base32 (0.3.2)
     builder (3.2.2)
+    daemons (1.2.3)
     digest-crc (0.4.1)
     domain_name (0.5.24)
       unf (>= 0.0.5, < 1.0.0)
+    em-websocket (0.5.0)
+      eventmachine (>= 0.12.9)
+      http_parser.rb (~> 0.5.3)
+    eventmachine (1.0.8)
     faraday (0.9.1)
       multipart-post (>= 1.2, < 3)
     faraday_middleware (0.10.0)
@@ -23,6 +28,7 @@ GEM
     ffi (1.9.10)
     http-cookie (1.0.2)
       domain_name (~> 0.5)
+    http_parser.rb (0.5.3)
     i18n (0.7.0)
     json (1.8.3)
     mime-types (2.6.2)
@@ -53,6 +59,10 @@ GEM
       rbnacl
       rbnacl-libsodium (~> 1.0.3)
       xdr (>= 0.0.4)
+    thin (1.6.4)
+      daemons (~> 1.0, >= 1.0.9)
+      eventmachine (~> 1.0, >= 1.0.4)
+      rack (~> 1.0)
     thread_safe (0.3.5)
     tilt (2.0.1)
     tzinfo (1.2.2)
@@ -70,6 +80,7 @@ PLATFORMS
 
 DEPENDENCIES
   base32
+  em-websocket
   faraday
   faraday_middleware
   pg
@@ -77,6 +88,7 @@ DEPENDENCIES
   sinatra
   sqlite3
   stellar-base
+  thin
 
 BUNDLED WITH
    1.10.6

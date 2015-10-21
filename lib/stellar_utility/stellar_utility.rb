@@ -161,9 +161,20 @@ def get_lines_balance_local(account,issuer,currency)
   end
 end
 
+def get_lines_balance_mss(account,issuer,currency)
+  send = { "action"=>"get_lines_balance", "account"=>account, "issuer"=>issuer, "asset"=>currency }
+  result = send_action_mss(send)
+  puts "result_g: #{result}"
+  bal = result["balance"].to_f
+  return bal
+end
+
 def get_lines_balance(account,issuer,currency)
+  account = convert_keypair_to_address(account) 
   if @configs["mode"] == "horizon"
     return get_lines_balance_horizon(account,issuer,currency)
+  elsif @configs["mode"] == "mss"
+    return get_lines_balance_mss(account,issuer,currency)
   else
     return get_lines_balance_local(account,issuer,currency)
   end
@@ -264,6 +275,8 @@ def get_sequence(account)
   if @configs["mode"] == "horizon"
     #puts "horizon mode get seq"
     return get_sequence_horizon(account)
+  elsif @configs["mode"] == "mss"
+    return get_sequence_mss(account)
   else
     return get_sequence_local(account)
   end
@@ -272,6 +285,13 @@ end
 def get_sequence_horizon(account)
   data = get_account_info_horizon(account)
   return data["sequence"]
+end
+
+def get_sequence_mss(account)
+  account = convert_keypair_to_address(account)
+  send = {"action"=>"get_sequence", "account"=>account}
+  result = send_action_mss(send)
+  return result["sequence"]
 end
 
 def next_sequence(account)
@@ -290,6 +310,8 @@ end
 def get_native_balance(account)
   if @configs["mode"] == "horizon"
     return get_native_balance_horizon(account)
+  elsif @configs["mode"] == "mss"
+    return get_native_balance_mss(account)
   else
     return get_native_balance_local(account)
   end
@@ -301,6 +323,15 @@ def get_native_balance_local(account)
   if result.nil?
     return 0
   end
+  bal = result["balance"].to_f
+  bal = bal/10000000
+  return bal
+end
+
+def get_native_balance_mss(account)
+  account = convert_keypair_to_address(account)
+  send = {"action"=>"get_account_info", "account"=>account}
+  result = send_action_mss(send)
   bal = result["balance"].to_f
   bal = bal/10000000
   return bal
@@ -423,7 +454,8 @@ def send_tx_horizon(b64)
   begin
     response = RestClient.post(@configs["url_horizon"]+"/transactions", {tx: b64}, headers)
   rescue => e
-    puts  JSON.parse(e.response)
+    puts "e.response: #{e.response}"
+    puts  "json: #{JSON.parse(e.response)}"
     response = JSON.parse(e.response)
     response["decoded_error"] = decode_error(response["extras"]["result_xdr"])
     puts "decoded_error:  #{response["decoded_error"]}"    
@@ -434,12 +466,43 @@ def send_tx_horizon(b64)
   return response
 end
 
+def send_tx_mss(b64)
+  send = {"action"=>"send_b64", "envelope_b64"=>b64}
+  return send_action_mss(send)
+end
+
+def send_action_mss(send)
+  puts "mss selected"
+  port = @configs["mss_port"].to_i + 1
+  port = port.to_s
+  puts "port: #{port}"
+  puts "send: #{send}"
+  begin
+    response = RestClient.post(@configs["url_mss_server"]+":"+port, send.to_json)
+  rescue => e
+    puts "e.response: #{e.response}"
+    puts  "json: #{JSON.parse(e.response)}"
+    response = JSON.parse(e.response)
+    response["decoded_error"] = decode_error(response["extras"]["result_xdr"])
+    puts "decoded_error:  #{response["decoded_error"]}"    
+    return response
+  end
+  puts response
+  if send["action"]== "send_b64"
+    sleep 9
+  end
+  return JSON.parse(response)
+end
+
 def send_tx(b64)
   if b64 == "no funds"
     return "no funds"
   end
   if @configs["mode"] == "horizon"
     result = send_tx_horizon(b64)
+    return result
+  elsif @configs["mode"] == "mss"
+    result = send_tx_mss(b64)
     return result
   else
     result = send_tx_local(b64)
