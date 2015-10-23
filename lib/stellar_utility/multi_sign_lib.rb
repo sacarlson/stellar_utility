@@ -57,18 +57,69 @@ class Multi_sign
   end
 
   def add_tx(hash)
-    #hash = {"action"=>"submit_tx","tx_title"=>"test tx", "signer_address"=>"RUTIWOPF", "signer_weight"=>"1", "master_address"=>"GAJYPMJ...","tx_envelope_b64"=>"AAAA...","signer_sig_b64"=>""}
-    #tx_code = "T_"+hash32(hash["tx_envelope_b64"])
-    tx_code = @Utils.envelope_to_txid(hash["tx_envelope_b64"])
-    query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,0,'#{tx_code}','#{hash["tx_title"]}','#{hash["signer_address"]}','#{hash["signer_weight"]}','#{hash["master_address"]}','#{hash["tx_envelope_b64"]}','#{hash["signer_sig_b64"]}');"
+    #hash = {"action"=>"submit_tx", "tx_title"=>"test tx", "tx_envelope_b64"=>"AAAA..."}
+    tx_code = @Utils.envelope_to_txid(hash["tx_envelope_b64"])    
+    env_hash = @Utils.envelope_to_hash(hash["tx_envelope_b64"])
+    #env_hash["source_address"]
+    #env_hash["time_bounds_max_time"]
+    #env_hash["time_bounds_min_time"]
+    thresholds = @Utils.get_thresholds_local(env_hash["source_address"])
+    #{:master_weight=>1, :low=>0, :medium=>3, :high=>3}
+    signer_info = @Utils.get_signer_info(env_hash["source_address"],signer_address="")
+    #accountid is the master_address  publickey is the signer address
+    #{"signers"=>[{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "publickey"=>"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM", "weight"=>1}]}
+
+   acc_hash = {"action"=>"create_acc"}
+   acc_hash["tx_title"] = hash["tx_title"]
+   acc_hash["master_address"]= env_hash["source_address"]
+   puts "signer_info: #{signer_info}"
+   puts "signer_info[:signers]:  #{signer_info["signers"]}"
+   if (signer_info["signers"].nil? or signer_info["signers"] == "nil" or signer_info["signers"] == [] )
+     puts "get_signer_info on source_address #{env_hash["source_address"]} returned nil in add_tx, nothing will be done"
+     send = {"status"=>"error", "account"=>env_hash["source_address"], "error"=>"no get_signer_info for account"}
+     return send
+   end
+   acc_hash["thresholds"] = thresholds
+   acc_hash["signers"] = signer_info["signers"]
+
+  #proposed new acc_hash
+  # #acc_hash = {"action"=>"create_acc", "tx_title"=>"TP5NV7WN53", "master_address"=>"GDKQJNX4DQRHVE76ZOIGQSYZR2PDX4XSDT3CAKM7F6NSZBOQ6D5QDLBD", "master_seed"=>"SDEH6BEVCMLFGAO5SAOQOWVDIFT5XS466OJQ3CZEU6OSYOXJPQQ66CYR", "start_balance"=>41, "signers_total"=>3, "thresholds"=>{:master_weight=>1, :low=>0, :medium=>3, :high=>3}, "signers"=>[{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "publickey"=>"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM", "weight"=>1}]}
+
+    add_acc(acc_hash)
+   #for reference
+   #db.execute "CREATE TABLE IF NOT EXISTS Multi_sign_tx(tx_num INTEGER PRIMARY KEY, signer INTEGER, tx_code TEXT, tx_title TEXT,signer_address TEXT,signer_weight TEXT, master_address TEXT, tx_envelope_b64 TEXT,signer_sig_b64 TEXT,time_bound_min INTEGER,timebound_max INTEGER);"
+
+    query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,0,'#{tx_code}','#{hash["tx_title"]}','','','#{env_hash["source_address"]}','#{hash["tx_envelope_b64"]}','','#{env_hash["time_bounds_min_time"]}','#{env_hash["time_bounds_max_time"]}');"
     get_db(query)
     return check_tx_status(tx_code,level="high")
   end
 
   def sign_tx(hash)
     #hash = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA...","signer_sig_b64"=>"JIDYR..."}
-    if @Utils.verify_signature(hash["tx_envelope_b64"], hash["signer_address"], hash["signer_sig_b64"])
-      query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,1,'#{hash["tx_code"]}','#{hash["tx_title"]}','#{hash["signer_address"]}', '#{hash["signer_weight"]}','#{hash["master_address"]}','#{hash["tx_envelope_b64"]}','#{hash["signer_sig_b64"]}');"
+
+    #proposed hash = {"action"=>"sign_tx","tx_title"=>"test tx", "tx_envelope_b64"=>"AAAA..."}
+
+    #tx_code = @Utils.envelope_to_txid(hash["tx_envelope_b64"])
+    tx_code = hash["tx_code"]    
+    env_hash = @Utils.envelope_to_hash(hash["tx_envelope_b64"])
+    signer_list = @Utils.env_signature_info(hash["tx_envelope_b64"])
+    hash["signer_address"] = signer_list[0]
+    #env_hash["source_address"]
+    #env_hash["time_bounds_max_time"]
+    #env_hash["time_bounds_min_time"]
+    thresholds = @Utils.get_thresholds_local(env_hash["source_address"])
+    #{:master_weight=>1, :low=>0, :medium=>3, :high=>3}
+    signer_info = @Utils.get_signer_info(env_hash["source_address"],hash["signer_address"])
+    puts "signer_info[:weight]: #{signer_info["weight"]}"
+  
+    #accountid is the master_address  publickey is the signer address
+    #{"signers"=>[{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "publickey"=>"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM", "weight"=>1}]}
+    hash["master_address"] = env_hash["source_address"]
+    hash["tx_code"] = tx_code
+    hash["signer_weight"] = signer_info["weight"]
+    if @Utils.verify_signature(hash["tx_envelope_b64"], hash["signer_address"])
+    #db.execute "CREATE TABLE IF NOT EXISTS Multi_sign_tx(tx_num INTEGER PRIMARY KEY, signer INTEGER, tx_code TEXT, tx_title TEXT,signer_address TEXT,signer_weight TEXT, master_address TEXT, tx_envelope_b64 TEXT,signer_sig_b64 TEXT,time_bound_min INTEGER,timebound_max INTEGER);"
+      query = "INSERT or IGNORE INTO Multi_sign_tx VALUES(NULL,1,'#{hash["tx_code"]}','#{hash["tx_title"]}','#{hash["signer_address"]}', '#{hash["signer_weight"]}','#{hash["master_address"]}','#{hash["tx_envelope_b64"]}','#{hash["signer_sig_b64"]}','#{env_hash["time_bounds_min_time"]}','#{env_hash["time_bounds_max_time"]}');"
       get_db(query)
       result = check_tx_status(hash["tx_code"],level="high")
       result["last_signer"] = hash["signer_address"]
@@ -83,43 +134,29 @@ class Multi_sign
   end
 
   def add_acc(acc_hash)
-    #acc_hash = {"action"=>"create_acc", "tx_title"=>"TP5NV7WN53", "master_address"=>"GDKQJNX4DQRHVE76ZOIGQSYZR2PDX4XSDT3CAKM7F6NSZBOQ6D5QDLBD", "master_seed"=>"SDEH6BEVCMLFGAO5SAOQOWVDIFT5XS466OJQ3CZEU6OSYOXJPQQ66CYR", "start_balance"=>41, "signers_total"=>3, "thresholds"=>{"master_weight"=>1, "low"=>"0", "med"=>3, "high"=>3}, "signer_weights"=>{"GA2F3NNTSJEX2L7QJHPS4GMSQKGUMKZESTUIRXUZLHZXSQGBNBIJCMET"=>1, "GBCGQWBATTLZW6PWX7H4TNRDDWDFCZAWCGTXWYPHRHRS534HMC5HXWUY"=>1}}
+   #  puts "acc_hash: #{acc_hash}"   
+   # new acc_hash
+  #acc_hash = {"action"=>"create_acc", "tx_title"=>"TP5NV7WN53", "master_address"=>"GDKQJNX4DQRHVE76ZOIGQSYZR2PDX4XSDT3CAKM7F6NSZBOQ6D5QDLBD", "master_seed"=>"SDEH6BEVCMLFGAO5SAOQOWVDIFT5XS466OJQ3CZEU6OSYOXJPQQ66CYR", "start_balance"=>41, "signers_total"=>3, "thresholds"=>{:master_weight=>1, :low=>0, :medium=>3, :high=>3}, "signers"=>[{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "publickey"=>"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM", "weight"=>1}]}
     #puts "acc_hash: #{acc_hash}"
-    query = "INSERT or REPLACE INTO Multi_sign_acc VALUES(NULL,'#{acc_hash["tx_title"]}','#{acc_hash["master_address"]}','#{acc_hash["master_seed"]}','#{acc_hash["signers_total"]}');"
-    #puts "query: #{query}"
-    #puts "class get_db: #{get_db.class}"
-    #query2 = "SELECT * FROM Acc_threshold_levels WHERE master_address = 'test'"
-    get_db(query)
-    query = "INSERT or REPLACE INTO Acc_threshold_levels VALUES(NULL,'#{acc_hash["master_address"]}','#{acc_hash["thresholds"]["master_weight"]}','#{acc_hash["thresholds"]["low"]}','#{acc_hash["thresholds"]["med"]}','#{acc_hash["thresholds"]["high"]}');"
-    get_db(query)
-    signers = acc_hash["signer_weights"].to_json
-    #query = "INSERT or IGNORE INTO Acc_signers VALUES(NULL,'#{acc_hash["master_address"]}','#{signers}');"
-    query = "INSERT or REPLACE INTO Acc_signers VALUES(NULL,'#{acc_hash["master_address"]}','#{signers}');"
-    #puts "query: #{query}"
-    get_db(query)
+    signers = acc_hash["signers"].to_json
+    query = "INSERT or REPLACE INTO Multi_sign_acc VALUES(NULL,'#{acc_hash["tx_title"]}','#{acc_hash["master_address"]}','#{acc_hash["master_seed"]}','#{acc_hash["signers_total"]}','#{signers}');"
+    get_db(query)      
     #if the funds are available we will make needed changes to thresholds
     @Utils.create_account_from_acc_hash(acc_hash)
     return get_acc_mss(acc_hash["master_address"])
   end
 
   def create_db(db_file_path=@configs["mss_db_file_path"])
-    #create_acc = {"action"=>"create_acc","tx_title"=>"first multi-sig tx","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...","signers_total"=>"2", "thresholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>["GDZ4AF..."=>"1","GDOJM..."=>"1"]}
+    #create_acc = {"action"=>"create_acc","tx_title"=>"first multi-sig tx","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...","signers_total"=>"2", "thresholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signers"=>["GDZ4AF..."=>"1","GDOJM..."=>"1"]}
     #submit_tx = {"action"=>"submit_tx","tx_title"=>"test multi sig tx","master_address"=>"GDZ4AF...", "tx_envelope_b64"=>"AAAA..."}
-    #sign_tx = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA..." "signer_sig_b64"=>"JIEYS..."}
+    #sign_tx = {"action"=>"sign_tx","tx_title"=>"test tx","tx_code"=>"JIEWFJYE", "signer_address"=>"GAJYGYI...", "signer_weight"=>"1", "tx_envelope_b64"=>"AAAA...", "signer_sig_b64"=>"JIEYS..."}
     db = SQLite3::Database.open db_file_path
     db.execute "CREATE TABLE IF NOT EXISTS Multi_sign_acc(acc_num INTEGER PRIMARY KEY, 
-        tx_title TEXT, master_address TEXT UNIQUE, master_seed TEXT, signers_total TEXT);"
-    db.execute "CREATE TABLE IF NOT EXISTS Acc_threshold_levels(acc_num INTEGER PRIMARY KEY, master_address TEXT UNIQUE, 
-        master_weight TEXT,low TEXT, med TEXT, high TEXT);"
-    db.execute "CREATE TABLE IF NOT EXISTS Acc_signers(acc_num INTEGER PRIMARY KEY, master_address TEXT UNIQUE, signers TEXT);"
+        tx_title TEXT, master_address TEXT UNIQUE, master_seed TEXT, signers_total TEXT, signers TEXT);"
     # signer = 1 for being a signer of a tx, signer = 0 for being the master writer of the tx
-    db.execute "CREATE TABLE IF NOT EXISTS Multi_sign_tx(tx_num INTEGER PRIMARY KEY, signer INTEGER, tx_code TEXT, tx_title TEXT,signer_address TEXT,signer_weight TEXT, master_address TEXT, tx_envelope_b64 TEXT,signer_sig_b64 TEXT);"
+    db.execute "CREATE TABLE IF NOT EXISTS Multi_sign_tx(tx_num INTEGER PRIMARY KEY, signer INTEGER, tx_code TEXT, tx_title TEXT,signer_address TEXT,signer_weight TEXT, master_address TEXT, tx_envelope_b64 TEXT,signer_sig_b64 TEXT,time_bound_min INTEGER,timebound_max INTEGER);"
     db.execute "CREATE TABLE IF NOT EXISTS Witness(id_num INTEGER PRIMARY KEY, address TEXT, timebound DATETIME, event_datetime DATETIME);"
-
   end
-
-
-
 
   def get_acc(search_hash)  
     #search_hash = {"table"=>"Multi_sign_acc", "where"=>"master_address", "value"=>"GDZ4AF...","select"=>"*"}
@@ -129,6 +166,60 @@ class Multi_sign
     #puts "rs.inspect:  #{rs.inspect}"
     #puts "rs.next:  #{rs.next}"
     return rs.next
+  end
+
+  def search_signable_account(address)
+    #this will search the mss-server database for any presently active accounts
+    # to find any that this address can sign.
+    #returns an array of master_addresses found that are signable by address.
+    query = "SELECT * FROM Multi_sign_acc "
+    rs = get_db(query)
+    signable = []
+    rs.each do |row|
+      #puts "row: #{row}"
+      puts ""
+      #Utils.get_signer_info(target_address,signer_address="")
+      signer_info = @Utils.get_signer_info(row["master_address"],address)
+      if !(signer_info.nil?)
+        signable.push(signer_info["accountid"])
+      end
+      puts "signer_info.class:  #{signer_info.class}"
+      puts "signer_info_: #{signer_info}"
+    end
+    puts "signable: #{signable}"
+    return signable
+  end
+
+  def search_signable_tx(address)
+     #this will search the mss-server database for any presently active accounts
+     # to find any that this address can sign.
+    #it will return the tx_code , the master_address of the originator and an envelope_b64 of the original tx to be signed in hash form.
+    #returns an array of the structure above in this format:
+    # {"status"=>"found", "address"=>"jdkfskj...", "signables"=>[{"tx_code"=>"jfjfjjd....", "master_address"=>"jfadakj...", "tx_envelope_b64"=>"jajdfa..."}]}
+    # {"status"=>"not_found", "address"=>"jdklafj...", "detail"=>"failed to find signable account in mss-server"}
+    signables =  search_signable_account(address)
+    signable_tx = []
+    if signables.length == 0
+      puts "no signable accounts found"
+      send = {"status"=>"not_found", "address"=>address, "detail"=>"failed to find signable account in mss-server"}
+      return send
+    else
+      puts "found signable acount"
+      signables.each do |master_address|
+        puts "master_address: #{master_address}"
+        query = "SELECT * FROM Multi_sign_tx WHERE master_address = '#{master_address}' AND signer = '0'"
+        rs = get_db(query)
+        rs.each do |row|
+          puts "row: #{row}"
+          hash = {"tx_code"=>row["tx_code"], "master_address"=>row["master_address"],"tx_title"=>row["tx_title"], "tx_envelope_b64"=>row["tx_envelope_b64"]}
+          puts "hash: #{hash}"
+          signable_tx.push(hash)
+        end
+      end
+    end
+    send = {"status"=>"found", "address"=>address, "signables"=>signable_tx}
+    puts "send: #{send}"
+    return send
   end
 
   def get_acc_mss(master_address,acc_num=0)
@@ -144,16 +235,12 @@ class Multi_sign
     end
   end
 
-  def get_acc_threshold_levels(master_address)
-    query = "SELECT * FROM Acc_threshold_levels WHERE master_address = '#{master_address}'"
-    rs = get_db(query)
-    rs.next
-  end
+  
 
   def get_acc_signers(master_address,acc_num=0)
     #this is deprecated
     #Utils.get_signer_info(target_address,signer_address="")  should be used instead that gets it direct from stellar network db
-    query = "SELECT * FROM Acc_signers WHERE master_address = '#{master_address}'"
+    query = "SELECT * FROM Multi_sign_acc WHERE master_address = '#{master_address}'"
     rs = get_db(query)
     result = rs.next
     if result== nil
@@ -194,17 +281,19 @@ class Multi_sign
   end
 
   def send_multi_sig_tx(tx_code)
-    send_multi_sig_tx_v2(tx_code)
+    send_multi_sig_tx_v1(tx_code)
   end
 
   def send_multi_sig_tx_v1(tx_code)
+    # this will merge all signed transaction for transaction tx_code and send it to stellar network for processing
     #old version probly delete later, it worked but just takes more data space to send
     # whole envelope instead of just signatures so  a bit more bandwidth needed and ??
+    # luky we didn't delete it as we will again use this method, as we now pull data from the envelope to 
+    # fill the database with the other data we were sending separately.
     if tx_code == "7ZZUMOSZ26"
       puts "test mode disable send_multi_sig_tx"
       return
-    end
-    # this will merge all signed transaction for transaction tx_code and send it to stellar network for processing
+    end    
     tx = get_Tx(tx_code)
     #{"tx_num"=>2, "signer"=>1, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test tx", "signer_address"=>"GAJYGYIa...", "signer_weight"=>"1", "master_address"=>"", "tx_envelope_b64"=>"AAAAzz...", "signer_sig_b64"=>""}
     signed = get_Tx_signed(tx_code)
@@ -236,12 +325,12 @@ class Multi_sign
   end
 
   def send_multi_sig_tx_v2(tx_code)
-    #this version uses just signatures instead of envelopes in tx_code return to merge
+    # this will merge all signed transaction for transaction tx_code and send it to stellar network for processing
+    #this version uses just signatures collected in the db instead of envelopes in tx_code return to merge
     if tx_code == "7ZZUMOSZ26"
       puts "test mode disable send_multi_sig_tx"
       return
-    end
-    # this will merge all signed transaction for transaction tx_code and send it to stellar network for processing
+    end    
     tx = get_Tx(tx_code)
     #{"tx_num"=>2, "signer"=>1, "tx_code"=>"7ZZUMOSZ26", "tx_title"=>"test tx", "signer_address"=>"GAJYGYIa...", "signer_weight"=>"1", "master_address"=>"", "tx_envelope_b64"=>"AAAAzz...", "signer_sig_b64"=>""}
     signed = get_Tx_signed(tx_code)
@@ -287,6 +376,7 @@ class Multi_sign
     #this will see if the multi-sign transaction with this tx_code has the needed signitures to be processed
     #at this time only checks one level at a time with default threshold high to have met needed signature count
     tx = get_Tx(tx_code)
+    puts "tx_code: #{tx_code}"
     puts "tx: #{tx}"
     #levels = get_acc_threshold_levels(tx["master_address"])
     if level == "high"

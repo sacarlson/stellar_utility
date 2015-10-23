@@ -53,7 +53,7 @@ end
 def get_db(query,full=0)
   #returns query hash from database that is dependent on mode
   if @configs["mode"] == "localcore"
-    #puts "db file #{@configs["db_file_path"]}"
+    puts "db file #{@configs["db_file_path"]}"
     db = SQLite3::Database.open @configs["db_file_path"]
     db.execute "PRAGMA journal_mode = WAL"
     db.results_as_hash=true
@@ -255,7 +255,12 @@ def get_stellar_core_status(detail=false)
     begin
     postdata = RestClient.get send
     rescue => e
-      return  e.response
+      puts "error in core status"
+      puts "e: #{e}"
+      puts "e.class: #{e.class}"
+      puts "e.to_s: #{e.to_s}"
+      return e.to_s
+      #return  e.response
     end
     puts "postdata: #{postdata}"
     data = JSON.parse(postdata)
@@ -751,7 +756,11 @@ def b64_to_envelope(b64)
     return nil
   end
   if b64.class == String
-    bytes = Stellar::Convert.from_base64 b64
+    begin
+      bytes = Stellar::Convert.from_base64 b64
+    rescue
+      return "bad_base64"
+    end
     envelope = Stellar::TransactionEnvelope.from_xdr bytes
     return envelope
   else
@@ -1061,18 +1070,18 @@ def setup_multi_sig_acc_hash(master_pair,*signers)
   # all master and signer weights will default to 1
   #tx_title will default to the hash32 (8 leters) starting with "A" of hash created 
   #it will return a hash that can be submited to send_to_multi_sign_server function
-  create_acc = {"action"=>"create_acc","tx_title"=>"none","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...", "start_balance"=>100, "signers_total"=>"2", "thresholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signer_weights"=>{"GDZ4AF..."=>"1","GDOJM..."=>"1","zzz"=>"1"}}
+  create_acc = {"action"=>"create_acc","tx_title"=>"none","master_address"=>"GDZ4AF...","master_seed"=>"SDRES6...", "start_balance"=>100, "signers_total"=>"2", "thresholds"=>{"master_weight"=>"1","low"=>"0","med"=>"2","high"=>"2"},"signers"=>{"GDZ4AF..."=>"1","GDOJM..."=>"1","zzz"=>"1"}}
   signer_count = signers.length
   #puts "sigs: #{signer_count}"
-  signer_weights = {}
+  signers = {}
   signers.each do |row|
     row = convert_keypair_to_address(row)
-    signer_weights[row] = 1
+    signers[row] = 1
   end
-  #puts "signer_weights: #{signer_weights}"  
+  #puts "signers: #{signers}"  
   create_acc["master_address"] = master_pair.address
   create_acc["master_seed"] = master_pair.seed
-  create_acc["signer_weights"] = signer_weights
+  create_acc["signers"] = signers
   create_acc["signers_total"] = signer_count + 1
   create_acc["thresholds"]["med"] = signer_count + 1
   create_acc["thresholds"]["high"] = signer_count + 1
@@ -1202,11 +1211,16 @@ def setup_multi_sig_sign_hash2(tx_code,keypair,sigmode=0)
 end 
 
 def create_account_from_acc_hash(acc_hash, funder = nil)
+  #note this is no longer fully tested to work with new added changes, I don't think it's needed
   #this will create a b64 formated transaction from the standard formated acc_hash 
   #see acc_hash = setup_multi_sig_acc_hash(master_pair,*signers) for more details
   # if funder keypair is provided we will fund the master_seed account in the acc_hash with it  
   if funder.nil?
     #no funder was provided so see if master_seed is valid seed length
+    if acc_hash["master_seed"].nil?
+      puts "no master_seed to do transaction from here"
+      return "no funds"
+    end
     if acc_hash["master_seed"].length == 56
       #it looks valid so we will assume here that the master_seed is a funded account
       # so we will use it to change the thresholds on the account
@@ -1236,10 +1250,10 @@ def create_account_from_acc_hash(acc_hash, funder = nil)
     puts "res create_account:  #{result}"  
   end
   tx = [] 
-  signers = acc_hash["signer_weights"]
+  signers = acc_hash["signers"]
   puts "to_pair:  #{to_pair.address}"
   pos = 0
-  signers.each do |acc, wt|
+  signers.each do |ad, acc, wt|
     puts "acc:#{acc}  wt:#{wt}"
     keypair = Stellar::KeyPair.from_address(acc)
     public_key = keypair.public_key
@@ -1249,7 +1263,7 @@ def create_account_from_acc_hash(acc_hash, funder = nil)
   end
   #puts "tx: #{tx[0].inspect}"  
   th = acc_hash["thresholds"]
-  env = set_thresholds(to_pair, master_weight: th["master_weight"].to_i, low: th["low"].to_i, medium: th["med"].to_i, high: th["high"].to_i)
+  env = set_thresholds(to_pair, master_weight: th[:master_weight].to_i, low: th[:low].to_i, medium: th[:medium].to_i, high: th[:high].to_i)
   tx[pos] = env.tx
   puts "tx.length:  #{tx.length}"
   tx_new = tx_merge(tx)
@@ -1416,7 +1430,11 @@ def envelope_to_hash(envelope_b64)
     env = envelope_b64
   end
   hash = {} 
-  tx = env.tx 
+  begin
+    tx = env.tx 
+  rescue
+    return "bad_envelope"
+  end
   pk = tx.source_account
   hash["source_address"] = public_key_to_address(pk)
   hash["fee"] = tx.fee
@@ -1644,9 +1662,17 @@ end
 def envelope_to_txid(env_base64)
   #this will convert a b64 envelope into a txid as seen in txhistory 
   #records in stellar database,  that can be used in database search
-  # to recover any txhistory records there contained. 
-  env_raw = Stellar::Convert.from_base64(env_base64)
-  env = Stellar::TransactionEnvelope.from_xdr(env_raw)
+  # to recover any txhistory records there contained.
+  begin 
+    env_raw = Stellar::Convert.from_base64(env_base64)
+  rescue 
+    return "bad_base64"
+  end
+  begin
+    env = Stellar::TransactionEnvelope.from_xdr(env_raw)
+  rescue
+    return "bad_env_raw"
+  end
   hash_raw = env.tx.hash
   hash_hex = Stellar::Convert.to_hex hash_raw
   hash_hex
@@ -1663,6 +1689,8 @@ def verify_signature(envelope, address, sig_b64="")
     envelope = Stellar::TransactionEnvelope.from_xdr bytes
   end
   keypair = convert_address_to_keypair(address)
+  puts "sig_b64: #{sig_b64}"
+  puts "sig_b64.class: #{sig_b64.class}"
   if sig_b64 == "" 
     sig = envelope.signatures.first.signature
   else 
