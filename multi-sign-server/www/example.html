@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Mulit-Sign-WebSocket Client</title>
+  <meta charset="UTF-8" />
+  <script>
+    "use strict";
+    // Initialize everything when the window finishes loading
+    window.addEventListener("load", function(event) {
+      var status = document.getElementById("status");
+      var url = document.getElementById("url");
+      var open = document.getElementById("open");
+      var close = document.getElementById("close");
+      var send = document.getElementById("send");
+      var get = document.getElementById("get");
+      var text = document.getElementById("text");
+      var json = document.getElementById("json");
+      var send_json = document.getElementById("send_json");
+      var message = document.getElementById("message");
+      var socket;
+
+      status.textContent = "Not Connected";
+      url.value = "ws://zipperhead.ddns.net:9494";
+      close.disabled = true;
+      send.disabled = true;
+      make_witness.disabled = true;
+      make_witness_unlock.disabled = true;
+      send_json.disabled = true;
+
+      // Create a new connection when the Connect button is clicked
+      open.addEventListener("click", function(event) {
+        open.disabled = true;
+        socket = new WebSocket(url.value, "echo-protocol");
+
+        socket.addEventListener("open", function(event) {
+          close.disabled = false;
+          send.disabled = false;
+          send_json.disabled = false;
+          make_witness.disabled = false;
+          make_witness_unlock.disabled = false;
+          status.textContent = "Connected";
+        });
+
+        // Display messages received from the server
+        socket.addEventListener("message", function(event) {
+          message.textContent = "Server Says: " + event.data;
+        });
+
+        // Display any errors that occur
+        socket.addEventListener("error", function(event) {
+          message.textContent = "Error: " + event;
+        });
+
+        socket.addEventListener("close", function(event) {
+          open.disabled = false;
+          status.textContent = "Not Connected";
+        });
+      });
+
+      // Close the connection when the Disconnect button is clicked
+      close.addEventListener("click", function(event) {
+        close.disabled = true;
+        send.disabled = true;
+        message.textContent = "";
+        socket.close();
+      });
+
+      // Send text to the server when the Send button is clicked
+      send.addEventListener("click", function(event) {
+        socket.send(text.value);
+        text.value = "";
+      });
+
+       // Send json box to the server when the Send button is clicked
+      send_json.addEventListener("click", function(event) {
+        socket.send(json.value);
+        text.value = "";
+      });
+
+      // Send text to the server when the Send button is clicked
+      make_witness.addEventListener("click", function(event) {
+        //str1.concat(str2); 
+         var action = '{"action":"make_witness","account":"';
+         var tail = '"}';
+        socket.send(action + account.value + tail);
+        account.value = "enter stellar address here";
+      });
+
+      make_witness_unlock.addEventListener("click", function(event) {
+         var action = '{"action":"make_witness_unlock","account":"';
+         var tail = '"}';
+        //socket.send(action.concat(account.value).concat('","timebound":"').concat(timebound.value).concat(tail));
+        socket.send(action + account.value + '","timebound":"' + timebound.value + tail);
+        account.value = "enter stellar address here";
+      });
+
+    });
+  </script>
+</head>
+<body>
+  Test page for Multi-sign-websocket <br />
+  For details on mss-server JSON format see <a href="https://github.com/sacarlson/stellar_utility/tree/master/multi-sign-websocket">github..multi-sign-websocket</a><br />
+  Status: <span id="status"></span><br />
+  URL: <input id="url" size="50" /><br />
+  <input id="open" type="button" value="Connect" />&nbsp;
+  <input id="close" type="button" value="Disconnect" /><br />
+____________________________________________________________<br />
+  <input id="send" type="button" value="Send" />&nbsp;
+  Raw JSON example input selection:<select name="text" id="text" value='{"action":"get_tx_history", "txid":"b9e4aa0d4c423abe1b366217ba6c67d86cd9369ff4772d695a8045d5c383a546"}'>
+  <option>'{"action":"version"}'</option>
+  <option>'{"action":"core_status"}'</option>
+  <option>'{"action":"get_buy_offers", "issuer":"any","asset":"any"}'</option>
+  <option>'{"action":"get_sell_offers", "issuer":"any","asset":"any"}'</option>
+  <option>'{"action":"get_sell_offers", "issuer":"GDGH5R4YPMN3HKQ6GEAEW2GPA5FJSS23LSAAD7CU22BHPZAMM7BHR634","asset":"any"}'</option>
+  <option>'{"action":"get_lines_balance", "account":"GDGH5R4YPMN3HKQ6GEAEW2GPA5FJSS23LSAAD7CU22BHPZAMM7BHR634", "issuer":"GC3IIU5Q2WLRC4B7T4GYBJ2UKOQ67RITKTVHCKC6UPECI6RT6JMDUPJO", "asset":"CHP"}'</option>
+  <option>'{"action":"send_b64", "envelope_b64":"AAAAAOo1QK/3upA74NLkdq4Io3DQAQZPi4TVhuDnvCYQTKIVAAAACgAAH8AAAAABAAAAAAAAAAAAAAABAAAAAQAAAADqNUCv97qQO+DS5HauCKNw0AEGT4uE1Ybg57wmEEyiFQAAAAEAAAAAZc2EuuEa2W1PAKmaqVquHuzUMHaEiRs//+ODOfgWiz8AAAAAAAAAAAAAA+gAAAAAAAAAARBMohUAAABAPnnZL8uPlS+c/AM02r4EbxnZuXmP6pQHvSGmxdOb0SzyfDB2jUKjDtL+NC7zcMIyw4NjTa9Ebp4lvONEf4yDBA=="}'</option>
+<option>'{"action":"submit_tx","tx_title":"test multi sig tx","acc_num":"123", "tx_envelope_b64":"AAAA..."}'</option>
+<option>'{"action":"create_acc", "tx_title":"A_M7U2T7Z", "master_address":"GDM6RBPBTDY3YE35I7LLU53LP4IZH26PIFE5IFPITGCEOZBX66IFZIDZ", "master_seed":"none_provided", "start_balance":100, "signers_total":3, "thresholds":{"master_weight":1, "low":"0", "med":3, "high":3}, "signer_weights":{"GCHOUZUXO2CKBJJICJ6R4EHRLSKCANGD3QTACE5QZJ27T7TSGMD4JP5U":1, "GCFZMOSTNINJB65VOSXY3RKATANT7DQJJVUMJGSXMCAOBUUENSQME4ZZ":1}}'</option>
+<option>'{"action":"sign_tx","tx_title":"T_RQHKC7XD","tx_code":"T_RQHKC7XD","signer_address":"GCHOUZUXO2CKBJJICJ6R4EHRLSKCANGD3QTACE5QZJ27T7TSGMD4JP5U","signer_weight":"1","tx_envelope_b64":"AAAAANnoheGY8bwTfUfWundrfxGT689BSdQV6JmER2Q395BcAAAACgABh04AAAACAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAACHRlc3Q3NDM2AAAAAAAAAAAAAAACcjMHxAAAAEApyJ3gfjYOZaAzY4ZLnt7uJCPrLlR1cPAos4fMRyrBrF2yrfz6U3dsAbv8tpmCMISiS9vZtKExaDZnsqdB1jcEN/eQXAAAAEB2xFD4v6goEazu9UeLY0naWENxGwDKktFquSF0MJN6MPYrucRuRFzYK/xRofZzl8EIljizva+XBEk/SRioh6QL","signer_sig_b64":"cjMHxAAAAEApyJ3gfjYOZaAzY4ZLnt7uJCPrLlR1cPAos4fMRyrBrF2yrfz6U3dsAbv8tpmCMISiS9vZtKExaDZnsqdB1jcE"}'</option>
+ <option>'{"action":"make_witness","account":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM"}'</option>
+</select><br />
+________________________________________________________________<br />
+  Raw JSON input: <input id="send_json" type="button" value="send_json" /> 
+  <input id="json" size=110 value ='{"action":"broadcast", "test_message":"hello world"}' /><br />
+________________________________________________________________<br />
+  <input id="make_witness" type="button" value="make_witness" />
+  <input id="make_witness_unlock" type="button" value="make_witness_unlock" /><br />
+  account:<input id="account" size="70" value="GCFKT6BN2FEASCEVDNHEC4LLFT2KLUUPEMKM4OJPEJ65H2AEZ7IH4RV6" /><br />
+  Timebound:<input id="timebound" size="20" /><br />
+_____________________________________________________<br />
+  <div style="width:800px;height:300px;line-height:3em;overflow:scroll;padding:10px;">
+ <span id="message"></span>
+</div>
+
+  
+</body>
+</html>

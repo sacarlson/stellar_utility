@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Mulit-Sign-WebSocket Client</title>
+  <meta charset="UTF-8" />
+  <script src="js/stellar-sdk.js"></script>  
+  <script src="js/submit_tx.js"></script>  
+</head>
+<body>
+  Submit  Multi sign TX to mss-server <br />
+  For details on mss-server see <a href="https://github.com/sacarlson/stellar_utility/tree/master/multi-sign-websocket">github..multi-sign-websocket</a><br />
+  Status: <span id="status"></span><br />
+  URL: <input id="url" size="50" /><br />
+  <input id="open" type="button" value="Connect" />&nbsp;
+  <input id="close" type="button" value="Disconnect" /><br />
+____________________________________________________________<br />
+  <input id="send" type="button" value="Send" />&nbsp;
+Server Status selection:<select name="text" id="text" value='{"action":"core_status"}'>
+  <option>'{"action":"version"}'</option>
+  <option>'{"action":"core_status"}'</option> 
+</select><br />
+________________________________________________________________<br />
+  Raw JSON input to server: <input id="send_json" type="button" value="send_json" /> 
+  <input id="json" size=110 value ='{"action":"broadcast", "test_message":"hello world"}' /><br />
+________________________________________________________________<br />
+  <input id="submit_tx" type="button" value="submit_tx" />
+  Transaction Title:<input id="tx_title" size="50" /><br />
+  base64 tx env:<input id="b64" size="130" value="" /><br /> 
+_____________________________________________________<br />
+ <input id="get_status_tx" type="button" value="get_status_tx" />
+  Transaction txid:<input id="txid" size="60" /><br />
+_____________________________________________________<br />
+<input id="search_signable_tx" type="button" value="search_signable_tx" />
+  Stellar address:<input id="address" size="61" /><br />
+_____________________________________________________<br />
+<input id="sign_tx" type="button" value="sign_tx" />
+  signing key seed: <input id="sign_seed" size= "60" /><br />
+  signing key address: <input id="sign_address" size= "60"/><br />
+  master address: <input id="master_address" size= "60"/><br />
+  Transaction title: <input id="sign_tx_title" size= "60" /><br />
+  Transaction txid signing:<input id="tx_code" size= "60" /><br />
+  base64 tx env:<input id="b64_s" size="130" value="" /><br /> 
+_____________________________________________________<br />
+  <div style="width:800px;height:300px;line-height:3em;overflow:scroll;padding:10px;">
+ <span id="message"></span>
+</div>
+
+  
+</body>
+</html>

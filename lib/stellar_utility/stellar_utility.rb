@@ -759,9 +759,13 @@ def b64_to_envelope(b64)
     begin
       bytes = Stellar::Convert.from_base64 b64
     rescue
-      return "bad_base64"
+      return "bad_from_base64"
     end
-    envelope = Stellar::TransactionEnvelope.from_xdr bytes
+    begin
+      envelope = Stellar::TransactionEnvelope.from_xdr bytes
+    rescue
+      return "bad_from_xdr"
+    end
     return envelope
   else
     return b64
@@ -1679,11 +1683,13 @@ def envelope_to_txid(env_base64)
 end
 
 def verify_signature(envelope, address, sig_b64="")
-  #verify this envelopes first signature is signed by this address
+  #if sig_b64 provided verify this sig matches as valid on this address on the tx found in this envelope 
+  #if no sig_b64 provided then see if this address matches any signature now found in the envelope
   #envelope can be in base64 xdr string or TransactionEnvelope structure format
   #address can be an address or keypair with no secreet seed needed
-  # sig is optional and can be a b64 encoded decorated signature that will be used instead of the 
-  # first signature found in the envelope
+  # sig_b64 is optional and can be a b64 encoded decorated signature that will be used instead of what
+  # signatures are presently found in the envelope.
+  # returns true if valid sig found or false if not
   if envelope.class == String
     bytes = Stellar::Convert.from_base64 envelope
     envelope = Stellar::TransactionEnvelope.from_xdr bytes
@@ -1691,17 +1697,27 @@ def verify_signature(envelope, address, sig_b64="")
   keypair = convert_address_to_keypair(address)
   puts "sig_b64: #{sig_b64}"
   puts "sig_b64.class: #{sig_b64.class}"
-  if sig_b64 == "" 
-    sig = envelope.signatures.first.signature
+  if sig_b64 == ""
+    puts "sig_b64: #{sig_b64}" 
+    #sig = envelope.signatures.first.signature
+    hash = Digest::SHA256.digest(envelope.tx.signature_base)
+    envelope.signatures.each do |dsig|    
+      sig = dsig.signature     
+      if keypair.verify(sig,hash)
+        return true
+      end
+    end
+    return false
   else 
     #sig_b64 = signature[0].to_xdr(:base64)
     bytes = Stellar::Convert.from_base64(sig_b64)
     dsig = Stellar::DecoratedSignature.from_xdr bytes
     sig = dsig.signature
-  end
-  hash = Digest::SHA256.digest(envelope.tx.signature_base)
-  result = keypair.verify(sig,hash)
-  return result
+    hash = Digest::SHA256.digest(envelope.tx.signature_base)
+    result = keypair.verify(sig,hash)
+    puts "result verify: #{result}"
+    return result
+  end  
 end
 
 def push_sig(envelope,keypair)

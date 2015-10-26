@@ -109,7 +109,7 @@ EM.run {
       "see https://github.com/sacarlson/stellar_utility/tree/master/multi-sign-websocket for more info"
     end
 
-    get '/client/?' do   
+    get '/example/?' do   
       erb :example
     end
 

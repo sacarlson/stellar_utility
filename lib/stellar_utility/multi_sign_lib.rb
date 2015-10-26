@@ -127,7 +127,9 @@ class Multi_sign
       result = {"status" => "bad_signature"}
       result["tx_code"] = hash["tx_code"]
       result["signer_address"] = hash["signer_address"]
-      result["signer_sig_b64"] = hash["signer_sig_b64"]
+      result["signer_weight"] = hash["signer_weight"]
+      #result["signer_sig_b64"] = hash["signer_sig_b64"]
+      result["master_address"] = hash["master_address"]
       result["tx_envelope_b64"] = hash["tx_envelope_b64"]
     end
     return result
@@ -378,6 +380,7 @@ class Multi_sign
     tx = get_Tx(tx_code)
     puts "tx_code: #{tx_code}"
     puts "tx: #{tx}"
+    puts "tx.class: #{tx.class}"
     #levels = get_acc_threshold_levels(tx["master_address"])
     if level == "high"
       level = :high
