@@ -18,9 +18,10 @@ post_reset_time = 420
 
 def log_event(notes)
   timetag = Time.now.strftime("%d/%m/%Y %H:%M __")
-  puts timetag+notes
+  ip = RestClient.get "ip.appspot.com"
+  puts timetag+" IP:"+ip+": "+notes  
   open('./stellar-core_status.log', 'a') { |f|
-    f.puts timetag+notes
+    f.puts timetag+" IP:"+ip+": "+notes
   }
 end
 
