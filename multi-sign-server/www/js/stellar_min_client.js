@@ -31,7 +31,7 @@
 
       update_key();
        
-      function get_native_balance(account,to) {   
+      function get_native_balance(account,to_id,detail) {   
         server.accounts()
         .address(account)
         .call()
@@ -39,7 +39,10 @@
           console.log(accountResult);          
           var result = accountResult.balances[0].balance;
           console.log("res4: "+ result);
-          window[to].value = result;                
+          window[to_id].value = result;
+          if (detail == true){
+            message.textContent = JSON.stringify(accountResult);
+          }                
         })
         .catch(function (err) {
           console.log("got error in get_native_bal");
@@ -55,8 +58,8 @@
       }
 
       function update_balances() {
-        get_native_balance(account.value,"balance");
-        get_native_balance(destination.value,"dest_balance");
+        get_native_balance(account.value,"balance",true);
+        get_native_balance(destination.value,"dest_balance",false);
       }
 
       
@@ -123,13 +126,47 @@
           }
 
       function createAccountOperation() {
-        return StellarSdk.Operation.createAccount({
-              destination: destination.value,
-              startingBalance: amount.value
-            });
-          }
-     
+                 return StellarSdk.Operation.createAccount({
+                   destination: destination.value,
+                   startingBalance: amount.value
+                 });
+               }
 
+      function addSignerOperation(secondAccountAddress,weight) {
+                 return StellarSdk.Operation.setOptions({
+                   signer: {
+                     address: secondAccountAddress,
+                     weight: weight
+                   }
+                 });
+               }
+
+      function addTrustlineOperation(asset_type, address) {
+                 //asset_type examples "USD", "CHP"
+                 asset = new StellarSdk.Asset(asset_type, address);
+                 return StellarSdk.Operation.changeTrust({asset: asset}); 
+               }
+
+      function setOptionsOperation() {
+            var opts = {};
+            opts.inflationDest = "GDGU5OAPHNPU5UCLE5RDJHG7PXZFQYWKCFOEXSXNMR6KRQRI5T6XXCD7";
+            opts.clearFlags = 1;
+            opts.setFlags = 1;
+            opts.masterWeight = 0;
+            opts.lowThreshold = 1;
+            opts.medThreshold = 2;
+            opts.highThreshold = 3;
+
+            opts.signer = {
+                address: "GDGU5OAPHNPU5UCLE5RDJHG7PXZFQYWKCFOEXSXNMR6KRQRI5T6XXCD7",
+                weight: 1
+            };
+            opts.homeDomain = "www.example.com";
+            return StellarSdk.Operation.setOptions(opts);
+         }
+
+    
+     
       change_network.addEventListener("click", function(event) { 
         console.log("mode: " + network.value);        
         if(network.value === "testnet" ) {
@@ -185,13 +222,17 @@
         issuer.value = "";
         asset.value = "native";
       });
-
             
-      send_payment.addEventListener("click", function(event) {         
-        
-          sendPaymentTransaction()
-          .then(update_balances());
+      send_payment.addEventListener("click", function(event) {                 
+        sendPaymentTransaction()
+        .then(update_balances());
+      });
 
-        });
+      add_trustline.addEventListener("click", function(event) {          
+        var operation = addTrustlineOperation(tasset.value, tissuer.value);
+        createTransaction(key,operation);
+      });
+
+
   });
 
