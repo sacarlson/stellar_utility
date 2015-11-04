@@ -9,13 +9,19 @@
       var destination = document.getElementById("destination");
       var dest_seed = document.getElementById("dest_seed");
       var seed = document.getElementById("seed");
+      var tissuer = document.getElementById("tissuer");
+      var tasset = document.getElementById("tasset");
       var amount = document.getElementById("amount");
       var balance = document.getElementById("balance");
+      var CHP_balance = document.getElementById("CHP_balance");
       var dest_balance = document.getElementById("dest_balance");
+      var dest_CHP_balance = document.getElementById("dest_CHP_balance");
       var asset_obj = new StellarSdk.Asset.native();
       amount.value = "1";      
      
       seed.value = 'SDHOAMBNLGCE2MV5ZKIVZAQD3VCLGP53P3OBSBI6UN5L5XZI5TKHFQL4'; 
+      tissuer.value = 'GAMB56CPYXJZUM2QSWXTUFSFIWMNHB6GZBUFJ2YJQJRGW6WH223NRLND'
+      tasset.value = 'CHP'
       destination.value = 'GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO';
       dest_seed.value = "";
 
@@ -29,37 +35,83 @@
       });
       current_mode.value = "Stellar TestNet";
 
-      update_key();
-       
-      function get_native_balance(account,to_id,detail) {   
+      var key = StellarSdk.Keypair.fromSeed(seed.value);
+      update_key();  
+      update_balances();
+
+      function get_account_info(account,params,callback) {
+        console.log("start get_account_info");
         server.accounts()
         .address(account)
         .call()
         .then(function (accountResult) {
-          console.log(accountResult);          
-          var result = accountResult.balances[0].balance;
-          console.log("res4: "+ result);
-          window[to_id].value = result;
-          if (detail == true){
-            message.textContent = JSON.stringify(accountResult);
-          }                
+          //console.log(accountResult);
+          callback(accountResult,params);                    
         })
         .catch(function (err) {
-          console.log("got error in get_native_bal");
+          console.log("got error in get_account_info");
           console.error(err);
-          window[to].value = 0;          
+          callback(err,params);          
         })
       }
 
+      function display_message(param) {
+        message.textContent = JSON.stringify(param);
+      }
+
+
+      function display_balance(account_obj,params) {          
+          var balance = 0;
+          account_obj.balances.forEach(function(entry) {
+            if (entry.asset_code == params.asset_code) {
+              balance = entry.balance;
+            }                          
+          });
+          window[params.to_id].value = balance;
+          if (params.detail == true) {
+            display_message(account_obj);
+          }
+          return account_obj;          
+        }
+
+      
+       function get_balance(account,to_id,asset) {         
+         get_account_info(account,{to_id:to_id,asset:asset},display_balance)
+       } 
+     
       function update_key() {
-        var key = StellarSdk.Keypair.fromSeed(seed.value);
+        key = StellarSdk.Keypair.fromSeed(seed.value);
         account.value = key.address();
-        update_balances();
+      }
+      
+      function update_balances_set(account_obj,params) {
+        display_balance(account_obj,{to_id:params.to_id1,
+          asset_code:params.asset_code1,
+          detail:false}
+        );
+
+        display_balance(account_obj,{
+          to_id:params.to_id2,
+          asset_code:params.asset_code2,
+          detail:params.detail}
+        );
       }
 
       function update_balances() {
-        get_native_balance(account.value,"balance",true);
-        get_native_balance(destination.value,"dest_balance",false);
+        get_account_info(account.value,{
+          to_id1:"balance",
+          asset_code1:null,
+          to_id2:"CHP_balance",
+          asset_code2:"CHP",
+          detail:true},update_balances_set);
+
+        get_account_info(destination.value,{
+          to_id1:"dest_balance",
+          asset_code1:null,
+          to_id2:"dest_CHP_balance",
+          asset_code2:"CHP",
+          detail:false
+        },update_balances_set);        
       }
 
       
@@ -104,13 +156,13 @@
             var transaction = new StellarSdk.TransactionBuilder(account,{fee:100})
             .addOperation(operation)          
             .addSigner(key)
-            .build();          
-           //console.log(transaction.toEnvelope().toXDR().toString("base64"));
-           //message.textContent = transaction.toEnvelope().toXDR().toString("base64");
+            .build();                     
            server.submitTransaction(transaction);           
           })
           .then(function (transactionResult) {
             console.log(transactionResult);
+            //console.log(transaction.toEnvelope().toXDR().toString("base64"));
+            //message.textContent = transaction.toEnvelope().toXDR().toString("base64");
           })
           .catch(function (err) {
             console.log(err);
@@ -118,12 +170,12 @@
         }
 
       function createPaymentOperation(asset_obj) {
-        return StellarSdk.Operation.payment({
-              destination: destination.value,
-              amount: amount.value,
-              asset: asset_obj
-            });
-          }
+                 return StellarSdk.Operation.payment({
+                   destination: destination.value,
+                   amount: amount.value,
+                   asset: asset_obj
+                 });
+               }
 
       function createAccountOperation() {
                  return StellarSdk.Operation.createAccount({
@@ -148,22 +200,22 @@
                }
 
       function setOptionsOperation() {
-            var opts = {};
-            opts.inflationDest = "GDGU5OAPHNPU5UCLE5RDJHG7PXZFQYWKCFOEXSXNMR6KRQRI5T6XXCD7";
-            opts.clearFlags = 1;
-            opts.setFlags = 1;
-            opts.masterWeight = 0;
-            opts.lowThreshold = 1;
-            opts.medThreshold = 2;
-            opts.highThreshold = 3;
+                 var opts = {};
+                 opts.inflationDest = "GDGU5OAPHNPU5UCLE5RDJHG7PXZFQYWKCFOEXSXNMR6KRQRI5T6XXCD7";
+                 opts.clearFlags = 1;
+                 opts.setFlags = 1;
+                 opts.masterWeight = 0;
+                 opts.lowThreshold = 1;
+                 opts.medThreshold = 2;
+                 opts.highThreshold = 3;
 
-            opts.signer = {
-                address: "GDGU5OAPHNPU5UCLE5RDJHG7PXZFQYWKCFOEXSXNMR6KRQRI5T6XXCD7",
-                weight: 1
-            };
-            opts.homeDomain = "www.example.com";
-            return StellarSdk.Operation.setOptions(opts);
-         }
+                 opts.signer = {
+                  address: "GDGU5OAPHNPU5UCLE5RDJHG7PXZFQYWKCFOEXSXNMR6KRQRI5T6XXCD7",
+                  weight: 1
+                 };
+                 opts.homeDomain = "www.example.com";
+                 return StellarSdk.Operation.setOptions(opts);
+               }
 
     
      
@@ -171,21 +223,21 @@
         console.log("mode: " + network.value);        
         if(network.value === "testnet" ) {
           StellarSdk.Network.useTestNet();
-          var hostname = "horizon-testnet.stellar.org";
+          hostname = "horizon-testnet.stellar.org";
           current_mode.value = "Stellar TestNet";
         }else {
           console.log("mode Live!!");  
           StellarSdk.Network.usePublicNetwork();
-          var hostname = "horizon-live.stellar.org";
+          hostname = "horizon-live.stellar.org";
           current_mode.value = "Stellar Live!!";
-        }
-      
-        var server = new StellarSdk.Server({     
+        }     
+        server = new StellarSdk.Server({     
           hostname: hostname,
           port: 443,
           secure: true
-        });
-        update_balances();
+        })
+        //update_key();
+        update_balances();          
       });
       
       save.addEventListener("click", function(event) {         
@@ -194,22 +246,23 @@
           // Store
           localStorage.setItem(seed_nick.value, encrypted);
           seed.value = "seed saved to local storage"        
-        } else {
+        }else {
           seed.value = "Sorry, your browser does not support Web Storage...";
         }
-
       });
 
       restore.addEventListener("click", function(event) {         
         if (typeof(Storage) !== "undefined") {
           // Retrieve
           var encrypted = localStorage.getItem(seed_nick.value);
-          seed.value = CryptoJS.AES.decrypt(encrypted, pass_phrase.value).toString(CryptoJS.enc.Utf8)
-          .then(update_balances());
-        } else {
+          seed.value = CryptoJS.AES.decrypt(encrypted, pass_phrase.value).toString(CryptoJS.enc.Utf8);
+          update_key();
+          update_balances();
+          tissuer.value = 'GAMB56CPYXJZUM2QSWXTUFSFIWMNHB6GZBUFJ2YJQJRGW6WH223NRLND'
+          tasset.value = 'CHP'
+        }else {
           seed.value = "Sorry, your browser does not support Web Storage...";
-        }
-        update_key();
+        }        
       });
 
       gen_random_dest.addEventListener("click", function(event) {
@@ -224,8 +277,7 @@
       });
             
       send_payment.addEventListener("click", function(event) {                 
-        sendPaymentTransaction()
-        .then(update_balances());
+        sendPaymentTransaction();       
       });
 
       add_trustline.addEventListener("click", function(event) {          
