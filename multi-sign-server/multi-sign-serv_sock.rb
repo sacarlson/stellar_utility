@@ -262,7 +262,10 @@ EM.run {
         results = mult_sig.Utils.get_thresholds_local(request_payload["account"])
         ws.send results.to_json 
       when "get_tx_history"
-        results = mult_sig.Utils.get_txhistory(request_payload["txid"])
+        results = mult_sig.Utils.get_txhistory(request_payload["txid"],1)
+        ws.send results.to_json
+      when "get_account_tx_history"
+        results = mult_sig.Utils.get_account_txhistory(request_payload["account"],request_payload["offset"])
         ws.send results.to_json
       when "make_witness"
         results = mult_sig.Utils.make_witness_hash(witness_keypair,request_payload["account"],request_payload["asset"],request_payload["issuer"])

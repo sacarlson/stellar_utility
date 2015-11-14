@@ -327,7 +327,35 @@ example return:
 
   example return:
    {"txid"=>"258fbbfb105a99d63665c31ef46cf721446835985103f37de934842fbd68cff6", "ledgerseq"=>4417, "txresult"=>"JY+7+xBamdY2ZcMe9Gz3IURoNZhRA/N96TSEL71oz/YAAAAAAAAAZAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAA=="} 
-  
+
+#get_account_tx_history: get the tx history from stellar-core db for this account max return 10 last transactions
+  results are sorted in last transaction performed is on top of search
+  Values sent:
+    account: address of the target account to search
+    offset: offset in search results to allow pageing through more than 10 resulting transactions in a search
+
+  Values return:
+    txhistory: and array of tx history events
+      source_address:
+      fee:
+      seq_num:
+      memo.type:
+      memo.text:
+      op_length:
+      txresults: operation tx_success or fail results
+      index: index count of the search result used in offset for page sync
+      operations: an array of operations in this transaction
+        operation: name of the operation being performed
+        destination_address: destination of were the transaction will be sending assets to
+        other:  depends on the transaction what info is provided
+
+  example input:
+    {"action":"get_account_tx_history", "account":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K"}
+
+  example output:
+{"txhistory":[{"source_address":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K","fee":100,"seq_num":55834576679,"memo.type":"memo_none","op_length":1,"operations":[{"operation":"create_account_op","destination_address":"GCURQA6KDN4WZ4L72WSSULRLBVIUXSZY6UII47KUO2FCTBEV6VGMKTHT","starting_balance":10000.0}],"txresults":{"name":"tx_success","value":0},"index":0},{"source_address":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K","fee":100,"seq_num":55834576678,"memo.type":"memo_none","op_length":1,"operations":[{"operation":"create_account_op","destination_address":"GCV7QHICOQC56AVQAZ2RAWOTFISTW2VGE5YBYR33RXOGZRJZ24SHEJYE","starting_balance":10000.0}],"txresults":{"name":"tx_success","value":0},"index":1},{"source_address":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K","fee":100,"seq_num":55834576677,"memo.type":"memo_none","op_length":1,"operations":[{"operation":"create_account_op","destination_address":"GANLZNTOEPQNGNN3LQQ6KSYBYPRZNGCGPTATDZPZSWZADBXIOZCMK5YE","starting_balance":10000.0}],"txresults":{"name":"tx_success","value":0},"index":2},{"source_address":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K","fee":100,"seq_num":55834576676,"memo.type":"memo_none","op_length":1,"operations":[{"operation":"create_account_op","destination_address":"GAE7UIEUGV34OQTO6ADF5GI6BYCMUXH7MLFQZXRFGZTSUR6EX2YG5OPL","starting_balance":10000.0}],"txresults":{"name":"tx_success","value":0},"index":3},{"source_address":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K","fee":100,"seq_num":55834576675,"memo.type":"memo_none","op_length":1,"operations":[{"operation":"create_account_op","destination_address":"GCIKTYFHX653TPU77WWUSYVCXIRQ555DTT3D35TAB7DRFFGOPBK7NT2J","starting_balance":10000.0}],"txresults":{"name":"tx_success","value":0},"index":4},{"source_address":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K","fee":100,"seq_num":55834576674,"memo.type":"memo_none","op_length":1,"operations":[{"operation":"create_account_op","destination_address":"GDUPMCWFBPNQ6RGMN5KRMT7XPQF6NATBAWXSXZ7REQEP7ULGPRF2B4DO","starting_balance":10000.0}],"txresults":{"name":"tx_success","value":0},"index":5},{"source_address":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K","fee":100,"seq_num":55834576673,"memo.type":"memo_none","op_length":1,"operations":[{"operation":"create_account_op","destination_address":"GBVWKA2I3UMJGCVSCH2CBYIRHTXDZAELAGD6W4C6GOQNNRKZ4CQIJAGD","starting_balance":10000.0}],"txresults":{"name":"tx_success","value":0},"index":6},{"source_address":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K","fee":100,"seq_num":55834576672,"memo.type":"memo_none","op_length":1,"operations":[{"operation":"create_account_op","destination_address":"GD6LPAPIARMYXBB4OBPAVRKSTFSEQYBBLKV7SPVNHBGAP6BS5Y7HFL5K","starting_balance":10000.0}],"txresults":{"name":"tx_success","value":0},"index":7},{"source_address":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K","fee":100,"seq_num":55834576671,"memo.type":"memo_none","op_length":1,"operations":[{"operation":"create_account_op","destination_address":"GCDJ34UURDZZVR7GN7DV7DT66WF46DLVCGHFX7RFQCADVS4F6LVZ6EZO","starting_balance":10000.0}],"txresults":{"name":"tx_success","value":0},"index":8},{"source_address":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K","fee":100,"seq_num":55834576480,"memo.type":"memo_none","op_length":1,"operations":[{"operation":"create_account_op","destination_address":"GBM7MDOGHTD2GRXR3WG3GHXKBWOHK7QULDLG7FRMGIY7RBAWWOR6L56G","starting_balance":10000.0}],"txresults":{"name":"tx_success","value":0},"index":9},{"source_address":"GBS43BF24ENNS3KPACUZVKK2VYPOZVBQO2CISGZ777RYGOPYC2FT6S3K","fee":100,"seq_num":55834576479,"memo.type":"memo_none","op_length":1,"operations":[{"operation":"create_account_op","destination_address":"GBLXXXA3S54K7Z2FGOXRMYSKXEOQVDSKZ6EWGGSMQT7HGFGO2TPBMAZ2","starting_balance":10000.0}],"txresults":{"name":"tx_success","value":0},"index":10}]}  
+
+
 #make_unlock_transaction: create a env_b64 time bound transaction that will be used to unlock a locked account after some window of time
   Values sent:
     account: the target_account that will later be locked to be unlocked with this transaction
