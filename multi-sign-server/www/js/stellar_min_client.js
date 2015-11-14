@@ -14,11 +14,12 @@
       var amount = document.getElementById("amount");
       var balance = document.getElementById("balance");
       var CHP_balance = document.getElementById("CHP_balance");
+      var asset_type = document.getElementById("asset_type");
       var dest_balance = document.getElementById("dest_balance");
       var dest_CHP_balance = document.getElementById("dest_CHP_balance");
       var asset_obj = new StellarSdk.Asset.native();
       amount.value = "1";      
-     
+      asset_type.value = "CHP";
       seed.value = 'SDHOAMBNLGCE2MV5ZKIVZAQD3VCLGP53P3OBSBI6UN5L5XZI5TKHFQL4'; 
       tissuer.value = 'GAMB56CPYXJZUM2QSWXTUFSFIWMNHB6GZBUFJ2YJQJRGW6WH223NRLND'
       tasset.value = 'CHP'
@@ -102,14 +103,14 @@
           to_id1:"balance",
           asset_code1:null,
           to_id2:"CHP_balance",
-          asset_code2:"CHP",
+          asset_code2:asset_type.value,
           detail:true},update_balances_set);
 
         get_account_info(destination.value,{
           to_id1:"dest_balance",
           asset_code1:null,
           to_id2:"dest_CHP_balance",
-          asset_code2:"CHP",
+          asset_code2:asset_type.value,
           detail:false
         },update_balances_set);        
       }
@@ -265,6 +266,15 @@
         }        
       });
 
+      list_seed_keys.addEventListener("click", function(event) {
+        var result = "";
+        for ( var i = 0, len = localStorage.length; i < len; ++i ) {
+          //console.log(  localStorage.key( i ) );
+          result = result + localStorage.key( i ) + ", ";
+        }
+        message.textContent = result;
+      });
+
       gen_random_dest.addEventListener("click", function(event) {
         console.log("gen_random");         
         var new_keypair = StellarSdk.Keypair.random();
@@ -280,7 +290,8 @@
         sendPaymentTransaction();       
       });
 
-      add_trustline.addEventListener("click", function(event) {          
+      add_trustline.addEventListener("click", function(event) { 
+        asset_type.value = tasset.value;         
         var operation = addTrustlineOperation(tasset.value, tissuer.value);
         createTransaction(key,operation);
       });

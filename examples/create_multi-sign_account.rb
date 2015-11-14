@@ -22,6 +22,7 @@ signerA_keypair = YAML.load(File.open("./signerA_keypair.yml"))
 signerB_keypair = YAML.load(File.open("./signerB_keypair.yml"))
 
 
+
 if 1==0
 puts "create_account multi_sig_account_keypair"
 result = Utils.create_account(multi_sig_account_keypair, master)
@@ -38,26 +39,38 @@ sleep 11
 #puts "#{result}"
 
 end
-
+puts ""
 puts "multi_sig_account #{multi_sig_account_keypair.address}"
 puts "keypairA:  #{signerA_keypair.address}"
+puts "seed keypairA:  #{signerA_keypair.seed}"
 puts "keypairB:  #{signerB_keypair.address}"
+puts "seed keypairB:  #{signerB_keypair.seed}"
+puts ""
 thresholds = Utils.get_thresholds_local(multi_sig_account_keypair)
 puts "thresholds: #{thresholds}"
+result = Utils.get_signer_info(multi_sig_account_keypair)
+puts "signer_info: #{result}  on MSA: #{multi_sig_account_keypair.address}"
+puts "signer count: #{result["signers"].length}"
+puts ""
+
+
+exit -1
 
 if 1==0
 #this works now if I have at least 30 native balance in multi_sig.. 10 additional for each signer
 # this only adds one of the two signers A
 #envelope = Utils.add_signer(multi_sig_account_keypair,signerA_keypair,1) 
-envelope = Utils.add_signer(multi_sig_account_keypair,signerA_keypair,0) 
+#envelope = Utils.add_signer(multi_sig_account_keypair,signerB_keypair,0) 
+envelope = Utils.add_signer(multi_sig_account_keypair,signerB_keypair,1) 
 b64 = Utils.envelope_to_b64(envelope)
-puts "send_tx"
+puts "send_tx: #{b64}"
+
 result = Utils.send_tx(b64)
 puts "result send_tx #{result}"
 end
 
 
-if 1==1
+if 1==0
 # affected account should be on mutli_sig... from multi_sig_account_keypair
 # this should add both signers A and B
 envelope = Utils.add_signer(multi_sig_account_keypair,signerA_keypair,1) 
@@ -91,9 +104,9 @@ puts "result send_tx:  #{result}"
 
 end
 
-if 1==1
+if 1==0
 #setup weight thresholds on multi_sig.. that requires 2 of the 3 signers to sign a tx before the stellar network will validate them
-envelope = Utils.set_thresholds(multi_sig_account_keypair, master_weight: 1, low: 0, medium: 3, high: 0)
+envelope = Utils.set_thresholds(multi_sig_account_keypair, master_weight: 1, low: 2, medium: 2, high: 2)
 #AQAAAg==  ; 1,0,0,2  I can still perform homedomain change with a single signer
 # but I can't change thresholds to 1,0,1,1 now with a single signer now with 1,0,0,2
 #AQABAQ==  ; 2,0,1,1
@@ -105,7 +118,7 @@ end
 thresholds = Utils.get_thresholds_local(multi_sig_account_keypair)
 puts "thresholds: #{thresholds}"
 
-if 1==1
+if 1==0
 # this works before we change thresholds
 #here we will create a simple transaction to change homedomain to a random value on the multi_sig account
 #we try to send it but with only with a single signer of the master mulit_sig account
@@ -118,13 +131,28 @@ puts "will change home_domain to: #{rndstring}"
 tx = Utils.set_options_tx(multi_sig_account_keypair,home_domain: rndstring)
 #b64 = tx.to_envelope(multi_sig_account_keypair).to_xdr(:base64)
 envelope = tx.to_envelope(multi_sig_account_keypair)
+#envelope = tx.to_envelope(signerA_keypair)
+#envelope = tx.to_envelope(signerB_keypair)
 b64 = Utils.envelope_to_b64(envelope)
+puts "b64: #{b64}"
+exit -1
 result = Utils.send_tx(b64)
 puts "result send_tx:  #{result}"
 end
+
+if 1==0
+
+b64 = 'AAAAAHxRo7Dngpq9tbJp3X2n57bdkLuXp3iDWJCye4G43hdwAAAAZAAEa2QAAAAJAAAAAAAAAAAAAAABAAAAAAAAAAUAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAACHRlc3Q2ODQ1AAAAAAAAAAAAAAABuN4XcAAAAEA2SoL2O0HEv2uESkb9KNMlhIwhTEWUsuDsIUsBn1bkFoK1+HnQz+xK4JUpDO899SYT3bmm4ctSFqYRQnUs1ssO'
+
+env = Utils.b64_to_envelope(b64)
+tx = env.tx
+b64 = tx.to_envelope(signerA_keypair).to_xdr(:base64)
+#b64 = tx.to_envelope(signerB_keypair).to_xdr(:base64)
+puts "b64: #{b64}"
+exit -1
 result = Utils.get_accounts_local(multi_sig_account_keypair)
 puts "home_domain: #{result["homedomain"]}"
-
+end
 __END__
 
 Low Security:

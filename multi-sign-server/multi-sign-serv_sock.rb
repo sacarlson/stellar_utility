@@ -78,10 +78,10 @@ EM.run {
         end
         results.to_json
       when "get_sell_offers"
-        results = mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"], limit = 5)
+        results = mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
         results.to_json
       when "get_buy_offers"
-        results = mult_sig.Utils.get_buy_offers(request_payload["asset"],request_payload["issuer"], limit = 5)
+        results = @mult_sig.Utils.get_buy_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
         results.to_json
       when "send_b64"
         results = mult_sig.Utils.send_tx(request_payload["envelope_b64"])
@@ -224,13 +224,13 @@ EM.run {
         puts "result: #{result}"
         ws.send results.to_json
       when "get_sell_offers"
-        results = mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"], limit = 5)
+        results = mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
         if results.nil?
           results = {"status"=>"no record found"}
         end
         ws.send results.to_json
       when "get_buy_offers"
-        results = mult_sig.Utils.get_buy_offers(request_payload["asset"],request_payload["issuer"], limit = 5)
+        results = mult_sig.Utils.get_buy_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
         if results.nil?
           results = {"status"=>"no record found"}
         end

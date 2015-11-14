@@ -17,6 +17,9 @@ require 'stellar-base'
 #Stellar::TransactionResultCode.tx_bad_auth_extra(-10)
 b64 = "AAAAAAAAAAr////2AAAAAA=="
 
+#Stellar::TransactionResultCode.tx_success(0)
+b64 = "AAAAAAAAA+gAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAA="
+
 # decode to the raw byte stream
 bytes = Stellar::Convert.from_base64 b64
 

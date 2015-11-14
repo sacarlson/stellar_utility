@@ -7,11 +7,21 @@
   <script src="js/seed_save_recover.js"></script>  
 </head>
 <body>
-  Test save restore Stellar secreet seed on localstorage <br />
-<input id="save" type="button" value="save" /> 
-<input id="restore" type="button" value="restore" /><br />
-pass phrase:<input id="pass_phrase" size="60" /><br />  
-seed:<input id="seed" size="60" /><br /> 
-
+  Test to save restore Stellar secret seed on localstorage using an aes encryption method<br />
+  Please note if you clear your browser you will loose these value <br />
+  So be sure to backup this info in more places than just here if anything important<br />
+<input id="save" type="button" value="save_encrypted" /> 
+<input id="save_raw" type="button" value="save_raw" />
+<input id="restore" type="button" value="restore" />
+<input id="delete_key" type="button" value="delete_key" />
+<input id="list_keys" type="button" value="list_keys" />
+<input id="save_to_file" type="button" value="Export_to_file" /><br />
+encryption pass phrase:<input id="pass_phrase" size="60" /><br /> 
+Key ID:<input id="key_id" size="60" /><br />   
+decrypted seed or data:<input id="seed" size="80" /><br />
+<div style="width:800px;height:300px;line-height:3em;overflow:scroll;padding:10px;">
+  <span id="message"></span>
+</div>
+Import backup from local system file to browser LocalStorage key sets: <input type="file" id="file-input" />
 </body>
 </html>

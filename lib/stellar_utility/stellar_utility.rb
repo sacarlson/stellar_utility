@@ -105,45 +105,81 @@ def get_txhistory(txid)
   return txhistory 
 end
 
-def get_sell_offers(asset,issuer, limit = 5)
-  limit = limit.to_i
-  if limit > 10
-    limit = 10
-  end
-  if issuer == "any"
-    query = "SELECT * FROM offers WHERE sellingassetcode='#{asset}' limit '#{limit}'"
-  else
-    query = "SELECT * FROM offers WHERE sellingassetcode='#{asset}' AND sellingissuer='#{issuer}' limit '#{limit}' "
-  end
-  if asset == "any"
-    query = "SELECT * FROM offers WHERE  sellingissuer='#{issuer}' limit '#{limit}'"
-  end
-  return get_db(query) 
+def get_sell_offers(asset, issuer, sort, limit = 10, offset = 0)
+  assetq = "sellingassetcode"
+  issuerq = "sellingissuer"
+  return get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
 end
 
-def get_buy_offers(asset,issuer, limit = 5)
+def get_buy_offers(asset, issuer, sort, limit = 10, offset = 0)
+  assetq = "buyingassetcode"
+  issuerq = "buyingissuer"
+  return get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
+end
+
+def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
+  #assetq = "buyingassetcode"
+  #issuerq = "buyingissuer"
+  #assetq = "sellingassetcode"
+  #issuerq = "sellingissuer"
+
+  #sort = "DESC||ASC"
+  if sort != "DESC" and sort != "ASC"
+    sort = "ASC"
+  end
+  if offset.nil?
+    offset = 0
+  end
+  puts "sort : #{sort}"
+  puts "offset: #{offset}"
+  puts "limit: #{limit}"
   limit = limit.to_i
   if limit > 10
     limit = 10
   end
   if issuer == "any"
-    query = "SELECT * FROM offers WHERE buyingassetcode='#{asset}' limit '#{limit}'"
+    query = "SELECT * FROM offers WHERE #{assetq}='#{asset}' ORDER BY price #{sort} LIMIT '#{limit}' OFFSET #{offset}"
+    query2 = "SELECT Count(*) FROM offers WHERE #{assetq}='#{asset}' ORDER BY price #{sort} LIMIT '#{limit}'"
   else
-    query = "SELECT * FROM offers WHERE buyingassetcode='#{asset}' AND buyingissuer='#{issuer}' limit '#{limit}'"
+    query = "SELECT * FROM offers WHERE #{assetq}='#{asset}' AND #{issuerq}='#{issuer}' limit '#{limit}' OFFSET #{offset}"
+    query2 = "SELECT Count(*) FROM offers WHERE #{assetq}='#{asset}' AND #{issuerq}='#{issuer}' limit '#{limit}'"
   end
   if asset == "any"
-    query = "SELECT * FROM offers WHERE  buyingissuer='#{issuer}' limit '#{limit}'"
+    query = "SELECT * FROM offers WHERE  #{issuerq}='#{issuer}' limit '#{limit}' OFFSET #{offset}"
+    query = "SELECT Count(*) FROM offers WHERE  #{issuerq}='#{issuer}' limit '#{limit}'"
   end
-  return get_db(query) 
+  if issuer == "any" and asset == "any"
+    puts "any any detected"
+    query = "SELECT * FROM offers limit '#{limit}' OFFSET #{offset}"
+    query = "SELECT Count(*) FROM offers limit '#{limit}'"
+  end
+  puts "query: #{query}"
+  #return get_db(query)
+  result = get_db(query,1)
+  hash = {"orders"=>[]}
+  index = offset
+  result.each do |row|
+    row["index"]=index
+    hash["orders"].push(row)
+    index = index + 1
+  end
+  result2 = get_db(query2)
+  puts "result2: #{result2}"
+  hash["count"]=result2["Count(*)"]
+  return hash 
 end
+
 
 def get_trustlines_local(account,issuer,currency)
    # balance of trustlines on the Stellar account from localy running Stellar-core db
   # you must setup your local path to @stellar_db_file_path for this to work
   # also at this time this assumes you only have one gateway issuer for each currency
-  account = convert_keypair_to_address(account)  
+  account = convert_keypair_to_address(account) 
+  issuer = convert_keypair_to_address(issuer) 
+  puts "account: #{account}  issuer: #{issuer}   currency:  #{currency}"
   query = "SELECT * FROM trustlines WHERE accountid='#{account}' AND assetcode='#{currency}' AND issuer='#{issuer}'"
   result = get_db(query)
+  puts "result: #{result}"
   return result
 end
 
@@ -170,6 +206,7 @@ def get_lines_balance_mss(account,issuer,currency)
 end
 
 def get_lines_balance(account,issuer,currency)
+  issuer = convert_keypair_to_address(issuer) 
   account = convert_keypair_to_address(account) 
   if @configs["mode"] == "horizon"
     return get_lines_balance_horizon(account,issuer,currency)
@@ -697,6 +734,8 @@ def offer(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,pri
 end
 
 def offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price)
+  sell_issuer = convert_address_to_keypair(sell_issuer)
+  buy_issuer = convert_address_to_keypair(buy_issuer)
   tx = Stellar::Transaction.manage_offer({
     account:    account,
     sequence:   next_sequence(account),
@@ -1797,6 +1836,44 @@ def sign_msg(string_msg, keypair)
   hash = Digest::SHA256.digest(string_msg)
   result = keypair.sign(hash)
   Base64.encode64(result)
+end
+
+def sha256_hash_file(filepath)
+  sha1 = Digest::SHA256.new
+  File.open(filepath) do|file|
+    buffer = ''
+    # Read the file 512 bytes at a time
+    while not file.eof
+      file.read(512, buffer)
+      sha1.update(buffer)
+    end
+  end
+  return sha1.to_s
+end
+
+
+def sign_file(filepath,keypair)
+  #return a base64 encoded stellar signature of a file with
+  # this keypair.  keypair in this case must include a secreet seed
+  hash = sha256_hash_file(filepath)
+  result = keypair.sign(hash)
+  return Base64.encode64(result)
+end
+
+def verify_signed_file(filepath, address, sig_b64)
+  #verify this files contents are signed by this stellar address
+  #with this signature sig_b64 that is in base64 xdr of a stellar decorated signature structure
+  #address can be a public address or keypair with no secreet seed needed
+  # see function sign_file(filepath,keypair) that creates this sig_b64 signature from files
+  # returns true if file matches signature for address, false if not or if sig_b64 is nil
+  if sig_b64.nil? or sig_b64.length == 0
+    return false
+  end
+  keypair = convert_address_to_keypair(address)
+  sig = Base64.decode64(sig_b64)  
+  hash = sha256_hash_file(filepath)
+  result = keypair.verify(sig,hash)
+  return result
 end
 
 def check_timestamp(message,timestamp)

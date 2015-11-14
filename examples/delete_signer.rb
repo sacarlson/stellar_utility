@@ -35,9 +35,17 @@ puts "signerB: #{signerB_keypair.address}"
 puts "signerC: #{signerC_keypair.address}"
 puts ""
 
-result = Utils.get_signer_info(multi_sig_account_keypair,signerA_keypair)
-puts "signer_info:  #{result}"
-b64 = Utils.add_signer_weight_adjusted(multi_sig_account_keypair,signerA_keypair,weight = 0)
+#result = Utils.get_signer_info(multi_sig_account_keypair,signerA_keypair)
+result = Utils.get_signer_info(multi_sig_account_keypair)
+puts "res: #{result}"
+#puts "signer_info:  #{result.inspect}"
+
+exit -1
+b64 = Utils.add_signer_and_weight_manual(multi_sig_account_keypair,signerA_keypair,1,0)
+result = Utils.send_tx(b64)
+puts "result send_tx #{result}"
+exit 1
+#b64 = Utils.add_signer_weight_adjusted(multi_sig_account_keypair,signerA_keypair,weight = 0)
 env = Utils.b64_to_envelope(b64)
 #this signed_correctly didn't work always says fail even when it works
 #puts "sig_good: #{env.signed_correctly?}"
