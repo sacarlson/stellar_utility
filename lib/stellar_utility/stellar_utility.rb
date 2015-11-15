@@ -93,8 +93,59 @@ def get_accounts_local(account)
     return get_db(query) 
 end
 
+def get_tx_hist(params)
+  if !(params["txid"].nil?)
+    puts "txid2: #{params["txid"]}"
+    return get_txhistory(params["txid"],params["detail"])
+  end
+  offset = params["offset"]
+  if offset.nil?
+    offset = 0
+  end  
+  query = "SELECT * FROM txhistory ORDER BY ledgerseq DESC LIMIT 300 OFFSET #{offset}"
+  #txhistory = get_db(query)
+  result = get_db(query,1)
+  hash = {"txhistory"=>[]}
+  index = offset
+  add_to_list = false
+  result.each do |row|
+    puts "index: #{index}"
+    puts "row[txbody]: #{row["txbody"]}"
+    txbody = envelope_to_hash(row["txbody"])    
+    if txbody["operations"][0]["destination_address"] == params["destination_address"] and !(txbody["operations"][0]["destination_address"].nil?)
+      if txbody["memo.text"] == params["memo_text"] or params["memo_text"].nil?
+        add_to_list = true
+      end
+    end
+    if txbody["source_address"] == params["source_address"] and !(txbody["source_address"].nil?)
+      if txbody["memo.text"] == params["memo_text"] or params["memo_text"].nil?
+        add_to_list = true
+      end
+    end
+    if add_to_list
+      txbody["txresults"] = txresult_resultcode(row["txresult"])
+      txbody["index"] = index
+      txbody.delete("txmeta")
+      txbody.delete("txindex")
+      hash["txhistory"].push(txbody)
+      puts "hash: #{hash}"
+      index = index + 1
+    end
+    if (index - offset) > 10
+      return hash
+    end
+    add_to_list = false
+  end
+  return hash
+end
+
+
 def get_txhistory(txid,detail = 0)
   #return line of txhistory table with this txid
+  puts "txid: #{txid}  detail.class: #{detail.class}"
+  if detail.nil?
+    detail = 1
+  end
   query = "SELECT * FROM txhistory WHERE txid='#{txid}'"
   txhistory = get_db(query)
   if !txhistory.nil?
