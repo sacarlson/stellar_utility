@@ -330,14 +330,15 @@ The present action codes and values required for each of them can be seen bellow
   * example return:
     {"master_weight"=>1, "low"=>0, "medium"=>0, "high"=>0}
 
-##get_tx_hist: get the tx history from stellar-core db for this account max return 10 last transactions
-  results are sorted in last transaction performed is on top of search, this is the new improved version of get_tx_hist...
+##get_tx_hist: get the tx history from stellar-core db for search params given max return 10 last transactions.
+ results are sorted in last transaction performed is on top of search, this is the new improved version of get_tx_hist...
 
   * Values sent:
+    * txid: if txid input is present it will override all other input values and just get this txid as the return
     * source_address: source_address of the transaction target account to search
     * destination_address: destination_address of the transaction target account search
-    * memo_text: only list if memo_text matches text memo in transaction or if memo_text is nil
-    * offset: offset in search results to allow pageing through more than 10 resulting transactions in a search
+    * memo_text: only list if memo_text matches text memo in transaction or if memo_text is nil then memo will just be ingnored
+    * offset: offset in search results to allow paging through more than 10 resulting transactions in a searchs
 
   * Values return:
     * txhistory: and array of tx history events
@@ -354,7 +355,14 @@ The present action codes and values required for each of them can be seen bellow
       * destination_address: destination of were the transaction will be sending assets to
       * other:  depends on the transaction what info is provided
 
-##get_tx_history: get the transaction history for this txid direct from the stellar database 
+  * example input:
+    {"action":"get_tx_hist", "destination_address":"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO","memo_text":"sacarlson"}
+
+  * example outpt:
+  {"txhistory":[{"source_address":"GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H","fee":100,"seq_num":7300,"memo.type":"memo_text","memo.text":"sacarlson","op_length":1,"operations":[{"operation":"payment_op","destination_address":"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO","asset":"native","amount":1.0}],"txresults":{"name":"tx_success","value":0},"index":0}]}
+
+##get_tx_history: get the transaction history for this txid direct from the stellar database
+* note this is depricated and will later be removed see get_tx_hist above that replaces this 
 
   * Values sent:
     * txid: the transaction number for the target transaction as seen in the stellar database
