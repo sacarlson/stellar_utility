@@ -93,6 +93,28 @@ def get_accounts_local(account)
     return get_db(query) 
 end
 
+def issuer_debt_total(params)
+  #input {"issuer":"GXSTT..."}
+  if params["issuer"].nil?
+    return {"status"=>"fail no issuer in request"}
+  end
+  issuer = params["issuer"]
+  query = "SELECT * FROM trustlines WHERE issuer='#{issuer}'"
+  result = get_db(query,1)
+  debt = {"status"=>"success","issuer"=>issuer,"debt"=>{}}
+  result.each do |row|
+    puts "issuer: #{row["issuer"]}  asset: #{row["assetcode"]}  bal: #{row["balance"]}"
+    issuer = row["issuer"]
+    asset = row["assetcode"]   
+    if debt["debt"][asset].nil?
+      debt["debt"][asset] = (row["balance"].to_f/10000000).to_f
+    else
+      debt["debt"][asset] = debt["debt"][asset] + (row["balance"].to_f/10000000).to_f
+    end    
+  end  
+  return debt
+end
+
 def get_tx_hist(params)
   if !(params["txid"].nil?)
     puts "txid2: #{params["txid"]}"

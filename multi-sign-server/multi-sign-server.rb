@@ -81,7 +81,10 @@ EM.run {
         results = mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
         results.to_json
       when "get_buy_offers"
-        results = @mult_sig.Utils.get_buy_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
+        results = mult_sig.Utils.get_buy_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
+        results.to_json
+      when "get_issuer_debt"
+        results = mult_sig.Utils.issuer_debt_total(request_payload)
         results.to_json
       when "send_b64"
         results = mult_sig.Utils.send_tx(request_payload["envelope_b64"])
@@ -260,6 +263,9 @@ EM.run {
         ws.send results.to_json
       when "get_thresholds_info"
         results = mult_sig.Utils.get_thresholds_local(request_payload["account"])
+        ws.send results.to_json
+      when "get_issuer_debt"
+        results = mult_sig.Utils.issuer_debt_total(request_payload)
         ws.send results.to_json
       when "get_tx_hist"
         results = mult_sig.Utils.get_tx_hist(request_payload)

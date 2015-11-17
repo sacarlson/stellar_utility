@@ -1,7 +1,7 @@
 
-#Multi Sign Server  also know as mss-server or for short
+#Multi Sign Server  also know as mss-server for short
 
-The mss-server now also has a websocket that performs the same actions using the same JSON formated strings as the original mss-server did plus now more
+The mss-server now also has a websocket feature that performs the same actions using the same JSON formated strings as the original mss-server did plus now more
 only using a websocket instead of an http connected server.
 The websocket advantage is that the websocket client can now continue to be connected and get feedback of the current status of the transaction
 in realtime that in ruby can be driven with the EM eventmanager to triger function on transaction events as shown in the client_signer examples also contained here.
@@ -25,10 +25,11 @@ example signer B picks up the transaction and also signs it and publishes the fi
 after the last of these example programs is run the mss-server will combine the signatures of all the signers and submits the transaction to the stellar.org network
 for validation.
 
-## We have also created a test web client for people to experment with 
- To send raw JSON and see the results. It also has some examples of some of the common usage functions
- This can be seen sometimes (not stable site just adsl connected) at http://zipperhead.ddns.net/example_mss_server_actions.html . The code for this 
- is also in this github distribution.  The present server is also run on the unstable site so don't always expect a responce.
+### We have also created a test web client that utilises the websocket of mss-server for people to experment with and to server as an example. 
+ The client provide a box to send raw JSON with a send button.  The text JSON results are then seen at the bottom.
+ It also contains a list of some examples of some of the common usage functions with param values already contained to try.
+ This can be seen sometimes (not stable site just adsl connected home computer) at http://zipperhead.ddns.net/example_mss_server_actions.html. The code for this 
+ is also in this github distribution for you to see and try.  The present server is also run on the unstable site so don't always expect a responce.
 
 #More details of the operations and transaction format of the mss-server is described bellow.  note bellow was originaly writen for the  multi-sign-server 
 so some filenames may not match, but the format basicly the same, only the lower level communication protocol has changed.
@@ -329,6 +330,21 @@ The present action codes and values required for each of them can be seen bellow
 
   * example return:
     {"master_weight"=>1, "low"=>0, "medium"=>0, "high"=>0}
+
+##get_issuer_debt: return totals of all asset debts for this issuer account for each asset issued 
+  *Values sent:
+   * issuer: the target issuer account for totaled debts
+
+  *Values returned
+   * status: returns success or fail if problems in search detected
+   * debt: return a hash with a group of key value sets of asset name and debt in each
+   * issuer: the issuer account address that the search was run with
+
+  * example input:
+  {"action":"get_issuer_debt", "issuer":"GAMB56CPYXJZUM2QSWXTUFSFIWMNHB6GZBUFJ2YJQJRGW6WH223NRLND"}
+
+  * example return:
+  {"status":"success", "debt":{"CHP":200110.12,"USD":300}, "issuer","GAMB56CPYXJZUM2QSWXTUFSFIWMNHB6GZBUFJ2YJQJRGW6WH223NRLND"} 
 
 ##get_tx_hist: get the tx history from stellar-core db for search params given max return 10 last transactions.
  results are sorted in last transaction performed is on top of search, this is the new improved version of get_tx_hist...
