@@ -26,11 +26,13 @@
       make_witness.disabled = true;
       make_witness_unlock.disabled = true;
       send_json.disabled = true;
+      create_socket();
 
-      // Create a new connection when the Connect button is clicked
-      open.addEventListener("click", function(event) {
+      function create_socket() {
         open.disabled = true;
+        close.disabled = false;
         socket = new WebSocket(url.value, "echo-protocol");
+      
 
         socket.addEventListener("open", function(event) {
           close.disabled = false;
@@ -55,6 +57,11 @@
           open.disabled = false;
           status.textContent = "Not Connected";
         });
+      }
+
+      // Create a new connection when the Connect button is clicked
+      open.addEventListener("click", function(event) {
+        create_socket();
       });
 
       // Close the connection when the Disconnect button is clicked
@@ -99,16 +106,20 @@
 </head>
 <body>
   Test page for Multi-sign-websocket <br />
-  For details on mss-server JSON format see <a href="https://github.com/sacarlson/stellar_utility/tree/master/multi-sign-websocket">github..multi-sign-websocket</a><br />
+  For details on mss-server JSON format see <a href="https://github.com/sacarlson/stellar_utility/tree/master/multi-sign-server">github..multi-sign-server</a><br />
   Status: <span id="status"></span><br />
   URL: <input id="url" size="50" /><br />
   <input id="open" type="button" value="Connect" />&nbsp;
   <input id="close" type="button" value="Disconnect" /><br />
 ____________________________________________________________<br />
   <input id="send" type="button" value="Send" />&nbsp;
-  Raw JSON example input selection:<select name="text" id="text" value='{"action":"get_tx_history", "txid":"b9e4aa0d4c423abe1b366217ba6c67d86cd9369ff4772d695a8045d5c383a546"}'>
+  Raw JSON example input selection:<select name="text" id="text" >
   <option>'{"action":"version"}'</option>
   <option>'{"action":"core_status"}'</option>
+  <option>'{"action":"get_issuer_debt", "issuer":"GAMB56CPYXJZUM2QSWXTUFSFIWMNHB6GZBUFJ2YJQJRGW6WH223NRLND"}'</option>
+  <option>'{"action":"get_tx_hist", "destination_address":"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO","memo_text":"sacarlson"}'</option>
+ <option>'{"action":"get_tx_hist", "txid":"6114f9034a5e2c143f80f61e816e4342bf0181a53a79ddfec6656cb413827af1"}'</option>
+  <option>'{"action":"version"}'</option>
   <option>'{"action":"get_buy_offers", "issuer":"any","asset":"any"}'</option>
   <option>'{"action":"get_sell_offers", "issuer":"any","asset":"any"}'</option>
   <option>'{"action":"get_sell_offers", "issuer":"GDGH5R4YPMN3HKQ6GEAEW2GPA5FJSS23LSAAD7CU22BHPZAMM7BHR634","asset":"any"}'</option>

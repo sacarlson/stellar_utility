@@ -70,6 +70,19 @@ The present action codes and values required for each of them can be seen bellow
  * example JSON sent:  showing examples of what is sent of this action in JSON format 
  * example JSON returned:  examples of JSON string returned from mss-server for this action
 
+##get_sequence: return the present sequence number for this account
+  * Values sent:
+    * account: stellar address of the target account
+
+  * Values returned:
+    * status: returns success or error if fails
+    * action: return "get_sequence" indicating what action is returning values
+    * account: save value used in search above
+    * sequence: the sequence number seen in stellar-core database for the account at this time 
+
+ * example output:
+ {"status":"success", "action":"get_sequence", "account":"GXST...", "sequence"=>"23455.."}
+
 ##create_acc: create a multi sign account with the settings of the values given
   * Values sent:
     * master_address: the stellar address of the master creator of the account
@@ -193,8 +206,9 @@ The present action codes and values required for each of them can be seen bellow
     * account: stellar address base 32 example GC3IIU5Q...
 
   * Values returned:
-    * accountid: same as account address base 32 
-    * balance:  native balance seen in stellar network in lumens or STR or ??, it is in integer format so value is divided by 1e7 I think to be correct
+    * accountid: same as account address base 32
+    * action: returns "get_account_info" same as action sent
+    * balance:  native balance seen in stellar network in lumens, it returns in floating point decimal format 
     * seqnum: sequence number of this account as seen on the stellar network
     * numsubentries: the number of added signers that are attached to this account
     * inflationdest: account number that this account has voted to be donated the inflation funds
@@ -204,7 +218,7 @@ The present action codes and values required for each of them can be seen bellow
     * lastmodified:  stellar sequence code of last changes made on this account
 
   * example return:
-{"accountid":"GDM6RBPBTDY3YE35I7LLU53LP4IZH26PIFE5IFPITGCEOZBX66IFZIDH","balance":999999960,"seqnum":430244053909506,"numsubentries":2,"inflationdest":null,"homedomain":"test7436","thresholds":"AQADAw==","flags":0,"lastmodified":120119}
+{"accountid":"GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","balance":10001.99964,"seqnum":2757845745401892,"numsubentries":35,"inflationdest":null,"homedomain":"","thresholds":"AQAAAA==","flags":0,"lastmodified":811510,"action":"get_account_info"}
 
 ##get_lines_balance:
   * Values sent:
@@ -214,11 +228,12 @@ The present action codes and values required for each of them can be seen bellow
 
   * Values returned: 
     * balance: float number of asset balance
+    * action: returns "get_lines_balance" same as sent
     * issuer:
     * asset: 
 
   * example return:
-{"issuer":"GC3IIU5Q2WLRC4B7T4GYBJ2UKOQ67RITKTVHCKC6UPECI6RT6JMDUPJO", "asset":"CHP", "balance":105.12}
+{"issuer":"GC3IIU5Q2WLRC4B7T4GYBJ2UKOQ67RITKTVHCKC6UPECI6RT6JMDUPJO", "action":"get_lines_balance", "asset":"CHP", "balance":105.12}
 
 ##get_sell_offers: look up all sell offers made with this issuer and with this asset name
   * Values sent:
@@ -303,7 +318,17 @@ The present action codes and values required for each of them can be seen bellow
     * envelope_b64: the envelope blob to be sent that is in xdr base 64 format, this can be any transaction that the signer of the envelope has authority to do
 
   * Value returned:
-    TBD
+    * action: returns "send_b64"
+    * status: returns success or error
+    * error: return depends on results from stellar-core normaly decoded to names, or timeout error from coms to stellar-core
+
+  * example input:
+ {"action":"send_b64", "envelope_b64":"AAAAABgjmdwgqRJl6q0FDO2xDlivEkSFTvjnfkrplpD99NioAAAAZAAJzDsAAAArAAAAAAAAAAEAAAAOc2NvdHR5X2lzX2Nvb2wAAAAAAAEAAAAAAAAAAQAAAADrg150TRtZJM0l/9VQcwNPbfawyTIxoLNEJ+G155X2jgAAAAFBQUEAAAAAAC/BUSR1Aa+wZ5rlARYmg8lxC8ZjtP1PIjfQQOUEM9w/AAAAAACYloAAAAAAAAAAAf302KgAAABA4lpggncXmx6VhSCgfmzstgK6+UvpaNkdiUVfRaQH8hMJXdNI8spNB/qL8VMn10HFkp0YFl+8cCPGPUjUUYOEAA=="}
+
+  * example output:
+   {"status":"error","action":"send_b64","error":{"name":"tx_bad_seq","value":-5}}
+   {"status":"success","action":"send_b64"}
+
 
 ##get_signer_info: get a list of all the signers on this target account direct from the stellar network database
   * Values sent:
@@ -332,10 +357,10 @@ The present action codes and values required for each of them can be seen bellow
     {"master_weight"=>1, "low"=>0, "medium"=>0, "high"=>0}
 
 ##get_issuer_debt: return totals of all asset debts for this issuer account for each asset issued 
-  *Values sent:
+  * Values sent:
    * issuer: the target issuer account for totaled debts
 
-  *Values returned
+  * Values returned
    * status: returns success or fail if problems in search detected
    * debt: return a hash with a group of key value sets of asset name and debt in each
    * issuer: the issuer account address that the search was run with

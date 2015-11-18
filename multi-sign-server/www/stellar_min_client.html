@@ -1,20 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Stellar mini transaction client</title>
+  <title>Stellar mini transaction client </title>
   <meta charset="UTF-8" />
   <script src="js/aes.js"></script>
   <script src="js/stellar-sdk.min.js"></script>
   <script src="js/stellar_min_client.js"></script>  
 </head>
 <body>
-  Stellar mini transaction client <br />
+  <h3>Stellar mini transaction client with mss-server support </h3><br />
 
 also refresh bal:<input id="change_network" type="button" value="change_network" />
 <select name="network" id="network" value='testnet'>
   <option>testnet</option>
   <option>live</option>
+  <option>mss_server</option>
 <input id="current_mode"  value="current_mode?" /><br />
+MSS-server socket Status: <span id="status"></span><br />
+MSS-server URL: <input id="url" size="50" /><br />
+<input id="open" type="button" value="Connect" />&nbsp;
+  <input id="close" type="button" value="Disconnect" /><br />
 <input id="save" type="button" value="save_seed" /> 
 <input id="restore" type="button" value="restore_seed" />
 <input id="list_seed_keys" type="button" value="list_seed_keys" /><br />
@@ -27,6 +32,7 @@ account:<input id="account" size="60" /><br />
 trust issuer: <input id="tissuer" size="61" value = "" /><br />
 account native balance: <input id="balance" size="40" /><br />
 Asset type <input id="asset_type" size="5" /> balance: <input id="CHP_balance" size="40" /><br />
+memo: <input id="memo" size="25" /><br />
 ______________________________________________________<br />
 Send Transaction Info: <br />
 <input id="gen_random_dest" type="button" value="gen_random_dest" /> 

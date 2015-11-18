@@ -90,7 +90,10 @@ def get_accounts_local(account)
     account = convert_keypair_to_address(account)
     #puts "account #{account}"
     query = "SELECT * FROM accounts WHERE accountid='#{account}'"
-    return get_db(query) 
+    result = get_db(query)
+    result["balance"] = (result["balance"].to_f/10000000)
+    result["action"] = "get_account_info"
+    return result
 end
 
 def issuer_debt_total(params)
@@ -561,8 +564,10 @@ def send_tx_local(b64)
     tr = Stellar::TransactionResult.from_xdr bytes
     # the actual code is embedded in the "result" field of the 
     # TransactionResult.
-    puts "#{tr.result.code}"
-    return tr.result.code
+    status = {"status"=>"error","action"=>"send_b64"}
+    status["error"] = tr.result.code      
+    puts "#{status}"
+    return status
   end
   puts "#result.body: #{result.body}" 
   txhistory = get_txhistory(txid) 
@@ -574,11 +579,13 @@ def send_tx_local(b64)
     count = count + 1 
   end
   if count >= 15
-    txhistory = {"body"=>result.body,"error"=>"timeout from localcore get_tx_history, check sync"}
+    txhistory = {"status"=>"error","action"=>"send_b64","body"=>result.body,"error"=>"timeout from localcore get_tx_history, check sync"}
   else
     txhistory["body"] = result.body
     txhistory["resultcode"] = txresult_resultcode(txhistory["txresult"])
   end
+  txhistory["action"] = "send_b64"
+  txhistory["status"] = "success"
   return txhistory
 end
 

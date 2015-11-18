@@ -64,7 +64,8 @@ EM.run {
         results = mult_sig.send_multi_sig_tx(request_payload["tx_code"])
         results.to_json
       when "get_account_info"
-        results = mult_sig.get_account_info(request_payload["account"])
+        #results = mult_sig.get_account_info(request_payload["account"])
+        results = mult_sig.Utils.get_accounts_local(request_payload["account"])
         results.to_json
       when "get_lines_balance"
         value = mult_sig.Utils.get_lines_balance_local(request_payload["account"],request_payload["issuer"],request_payload["asset"])
@@ -211,7 +212,9 @@ EM.run {
         results = mult_sig.send_multi_sig_tx(request_payload["tx_code"])
         ws.send results.to_json
       when "get_account_info"
-        results = mult_sig.get_account_info(request_payload["account"])
+        #results = mult_sig.get_account_info(request_payload["account"])
+        results = mult_sig.Utils.get_accounts_local(request_payload["account"])
+        #results["action"]= "get_account_info"
         ws.send results.to_json
       when "get_lines_balance"
         value = mult_sig.Utils.get_lines_balance_local(request_payload["account"],request_payload["issuer"],request_payload["asset"])
@@ -219,10 +222,19 @@ EM.run {
         puts "result.class: #{value.class}"
         results = {"status"=>"success"}
         if value.nil?
+          results["action"]= "get_lines_balance"
           results["status"]="no record found"
           results["balance"] = 0
+          results["account"] = request_payload["account"]
+          results["issuer"] = request_payload["issuer"]
+          results["asset"] = request_payload["asset"]
         else
-           results["balance"] = value
+          results["action"]= "get_lines_balance"
+          results["status"]="success"
+          results["balance"] = value
+          results["account"] = request_payload["account"]
+          results["issuer"] = request_payload["issuer"]
+          results["asset"] = request_payload["asset"]
         end
         puts "result: #{result}"
         ws.send results.to_json
@@ -287,7 +299,7 @@ EM.run {
         ws.send results.to_json
       when "get_sequence"
         sequence = mult_sig.Utils.get_sequence(request_payload["account"])
-        results = {"status"=>"success", "account"=>request_payload["account"], "sequence"=>sequence}
+        results = {"status"=>"success", "action"=>"get_sequence", "account"=>request_payload["account"], "sequence"=>sequence}
         if sequence == 0
           results["status"] = "not_found"
         end   
