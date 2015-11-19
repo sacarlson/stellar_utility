@@ -18,20 +18,26 @@
       var asset_type = document.getElementById("asset_type");
       var memo = document.getElementById("memo");
       var dest_balance = document.getElementById("dest_balance");
-      var dest_CHP_balance = document.getElementById("dest_CHP_balance");
-      var asset_obj = new StellarSdk.Asset.native();
+      var dest_CHP_balance = document.getElementById("dest_CHP_balance");      
       var url = document.getElementById("url");
       var open = document.getElementById("open");
       var close = document.getElementById("close");
       var status = document.getElementById("status");
+      var network = document.getElementById("network");
+
+      var asset_obj = new StellarSdk.Asset.native();
       var socket;
       var socket_open_flag = false;
       var operation_globle;
+      var paymentsEventSource;
+      var server;
 
+      network.value ="testnet";
+      console.log("just after var");
       status.textContent = "Not Connected";
       url.value = "ws://zipperhead.ddns.net:9494";
-      create_socket();
-      close.disabled = false;
+      //create_socket();
+      close.disabled = true;
       open.disabled = true;
       memo.value = "scotty_is_cool"
       amount.value = "1";      
@@ -47,22 +53,99 @@
       //StellarSdk.Memo.text("sacarlson");
       var hostname = "horizon-testnet.stellar.org"
             
-      var server = new StellarSdk.Server({     
-        hostname: hostname,
-        port: 443,
-        secure: true
-      });
+      reset_horizon_server();
+
       current_mode.value = "Stellar TestNet";
 
       var key = StellarSdk.Keypair.fromSeed(seed.value);
       update_key();
     
       update_balances();
+      start_effects_stream();
 
+          function attachToPaymentsStream(opt_startFrom) {
+            console.log("start attacheToPaymentsStream");
+            var futurePayments = server.effects().forAccount(account.value);
+            if (opt_startFrom) {
+                console.log("opt_startFrom detected");
+                futurePayments = futurePayments.cursor(opt_startFrom);
+            }
+            if (paymentsEventSource) {
+                console.log('close open effects stream');
+                paymentsEventSource.close();
+            }
+            console.log('open effects stream with cursor: ' + opt_startFrom);
+            paymentsEventSource = futurePayments.stream({
+                onmessage: function (effect) { effectHandler(effect, true); }
+            });
+          };
+
+          function start_effects_stream() {
+            console.log("we do get here?");
+	        server.effects()
+            .forAccount(account.value)
+            .limit(30)
+            .order('desc')
+            .call()
+            .then(function (effectResults) {
+                console.log("then effectResults");
+                var length = effectResults.records ? effectResults.records.length : 0;
+                for (index = length-1; index >= 0; index--) {
+                    console.log("index" + index);
+                    var currentEffect = effectResults.records[index];
+                    effectHandler(currentEffect, false);
+                }
+                var startListeningFrom;
+                if (length > 0) {
+                    latestPayment = effectResults.records[0];
+                    startListeningFrom = latestPayment.paging_token;
+                }
+                attachToPaymentsStream(startListeningFrom);
+            })
+            .catch(function (err) {
+                console.log("error detected in attachToPaymentsStream");
+                attachToPaymentsStream('now');
+                console.log(err)
+            });
+          }
+
+          function effectHandler(effect,tf) {
+            console.log("got effectHandler event");
+            console.log(tf);
+            console.log(effect);
+            if (effect.type === 'account_debited') {
+               if (effect.asset_type === "native") {
+                  balance.value = balance.value - effect.amount;
+               }else {
+                  CHP_balance.value = CHP_balance.value - effect.amount;
+               }
+            }
+            if (effect.type === 'account_credited') {
+               if (effect.asset_type === "native") {
+                  balance.value = balance.value + effect.amount;
+               }else {
+                  CHP_balance.value = CHP_balance.value + effect.amount;
+               }
+            }
+            if (effect.type === 'account_created') {
+           
+            }
+          };
+
+      function reset_horizon_server() {
+        console.log("reset_horizon_server");        
+        server = new StellarSdk.Server({     
+          hostname: hostname,
+          port: 443,
+          secure: true
+        });
+      }
+       
       function get_account_info(account,params,callback) {
         if (network.value === "mss_server") {
           socket_open_flag = true;
         }else {
+          console.log("get_account_info horizon mode");
           server.accounts()
           .address(account)
           .call()
@@ -85,11 +168,16 @@
 
       function display_balance(account_obj,params) {          
           var balance = 0;
-          account_obj.balances.forEach(function(entry) {
-            if (entry.asset_code == params.asset_code) {
-              balance = entry.balance;
-            }                          
-          });
+          console.log("display_balance account_obj");
+          console.log(account_obj);
+          console.log(account_obj.name);
+          if (account_obj.name !== "NotFoundError"){
+            account_obj.balances.forEach(function(entry) {
+              if (entry.asset_code == params.asset_code) {
+                balance = entry.balance;
+              }                          
+            });
+          }
           window[params.to_id].value = balance;
           if (params.detail == true) {
             display_message(account_obj);
@@ -122,9 +210,12 @@
 
       function update_balances() {
         if (network.value === "mss_server"){
+          console.log("update_balances mss mode");
           get_balance_updates_mss();
           return
         }
+        // disable horizon balance here to try streaming instead
+        if (true){
         get_account_info(account.value,{
           to_id1:"balance",
           asset_code1:null,
@@ -138,7 +229,8 @@
           to_id2:"dest_CHP_balance",
           asset_code2:asset_type.value,
           detail:false
-        },update_balances_set);        
+        },update_balances_set); 
+        }       
       }
 
       
@@ -382,6 +474,13 @@
           StellarSdk.Network.useTestNet();
           hostname = "horizon-testnet.stellar.org";
           current_mode.value = "Stellar TestNet";
+          console.log(socket);
+          if (typeof(socket) !== "undefined") {
+            socket.close();
+          }
+          reset_horizon_server();
+          update_balances();
+          start_effects_stream();
         }else if (network.value === "live" ){
           console.log("mode Live!!");  
           close.disabled = true;
@@ -389,20 +488,23 @@
           StellarSdk.Network.usePublicNetwork();
           hostname = "horizon-live.stellar.org";
           current_mode.value = "Stellar Live!!";
+          console.log(socket);
+          if (typeof(socket) !== "undefined") {
+            socket.close();
+          }
+          reset_horizon_server();
+          update_balances();
+          start_effects_stream();
         }else {
           //mss-server mode
+          console.log("start mss-server mode");
+          paymentsEventSource.close();
+          server = false;
           close.disabled = false;
           StellarSdk.Network.useTestNet();
-          hostname = "horizon-testnet.stellar.org";
           create_socket();
           current_mode.value = "TestNet MSS-server";
         }     
-        server = new StellarSdk.Server({     
-          hostname: hostname,
-          port: 443,
-          secure: true
-        })
-        //update_key();
         update_balances();          
       });
       
