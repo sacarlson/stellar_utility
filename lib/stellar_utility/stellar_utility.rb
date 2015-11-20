@@ -91,7 +91,14 @@ def get_accounts_local(account)
     #puts "account #{account}"
     query = "SELECT * FROM accounts WHERE accountid='#{account}'"
     result = get_db(query)
-    result["balance"] = (result["balance"].to_f/10000000)
+    if result.nil?
+      result = {}
+      result["balance"] = 0
+      result["status"] = "account not found"
+      result["accountid"] = account
+    else
+      result["balance"] = (result["balance"].to_f/10000000)
+    end
     result["action"] = "get_account_info"
     return result
 end
@@ -185,6 +192,50 @@ def get_txhistory(txid,detail = 0)
   end
   return txhistory 
 end
+
+def get_sorted_holdings(params)  
+  #this will return a sorted DESC list of accounts sorted on the balance of the asset issuer holdings
+  # if asset = native then issuer will be ignored, offset allows paging down deeper into the list as default is only 
+  # 30 max account will be returns
+  # params is hash example {"asset"=>"USD","issuer"=>"GEWG...","offset"=>0}
+  asset = params["asset"]
+  issuer = params["issuer"]
+  offset = params["offset"]
+  hash = {"accounts"=>[]}
+  if asset.nil?
+    hash["status"] = "error"
+    hash["error"] = "no asset param provided"
+    return hash
+  end
+  if offset.nil?
+    offset = 0
+  end
+  if asset == "native"
+    query = "SELECT * FROM accounts ORDER BY balance DESC LIMIT 30 OFFSET #{offset}"
+  elsif !(issuer.nil?)
+    query = "SELECT * FROM trustlines WHERE assetcode = '#{asset}' AND issuer = #{issuer} ORDER BY balance DESC LIMIT 30 OFFSET #{offset}"
+  else
+    query = "SELECT * FROM trustlines WHERE assetcode = '#{asset}' ORDER BY balance DESC LIMIT 30 OFFSET #{offset}"
+  end
+  #txhistory = get_db(query)
+  result = get_db(query,1)  
+  index = offset
+  result.each do |row|
+    puts "index: #{index}"
+    row["index"] = index
+    if asset == "native"
+      row["balance"] = row["balance"].to_f/10000000
+    else
+      row["balance"] = row["balance"].to_f/10000000
+    end
+    hash["accounts"].push(row)
+    index = index + 1
+  end
+  hash["action"] = "get_sorted_holdings"
+  hash["status"] = "success"
+  return hash
+end
+
 
 def get_account_txhistory(account,offset=0)
   if offset.nil?
@@ -292,6 +343,16 @@ def get_trustlines_local(account,issuer,currency)
   puts "account: #{account}  issuer: #{issuer}   currency:  #{currency}"
   query = "SELECT * FROM trustlines WHERE accountid='#{account}' AND assetcode='#{currency}' AND issuer='#{issuer}'"
   result = get_db(query)
+  if result.nil?
+    result = {}
+    result["balance"] = 0
+    result["status"] = "account not found"
+    result["account"] = account
+    result["issuer"] = issuer
+    result["asset"] = currency
+  else
+    result["balance"] = result["balance"]/10000000
+  end
   puts "result: #{result}"
   return result
 end
@@ -306,7 +367,7 @@ def get_lines_balance_local(account,issuer,currency)
     return nil
   else
     bal = result["balance"].to_f
-    return bal/10000000
+    return 
   end
 end
 

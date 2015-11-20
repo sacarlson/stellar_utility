@@ -128,7 +128,7 @@
                }
             }
             if (effect.type === 'account_created') {
-           
+               balance.value = effect.starting_balance;
             }
           };
 

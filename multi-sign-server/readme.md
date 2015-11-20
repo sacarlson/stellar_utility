@@ -201,6 +201,26 @@ The present action codes and values required for each of them can be seen bellow
   * example JSON returned:
 {"status":"ready","tx_code":"T_RQHKC7XD"}
 
+##get_sorted_holdings: this will search holding in all accounts and return a sorted list of accounts in DESC order of the balance of the target asset
+  * Values sent:
+    * asset:  the asset symbol of the target search example "native"  or "USD" ...
+    * issuer: if the asset is not native then issuer is an option to search with no issuer we will search the asset with any issuer 
+    * offset: we will max return the 30 top holdings, offset allows paging down farther in the list
+
+  * Values return:
+    * accounts: an array of accounts format depending on weather native or non native asset
+      * if the asset is native then the entire accounts table of each found will be added to the accounts array list
+      * if the asset is non native then the entire trustlines table for the found asset will be added to the accounts array list
+      * index: index is added to the each array to reference offset position in search if any added in offset param
+    * status: return success or error
+    * error: returns reason for error status if present
+ 
+  * example JSON sent: 
+ {"action":"get_sorted_holdings","asset":"AAA"}
+
+ * example return:
+ {"accounts":[{"accountid":"GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","assettype":1,"issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","assetcode":"AAA","tlimit":9000000000000000000,"balance":10000102300000,"flags":1,"lastmodified":835305,"index":0},{"accountid":"GAMCHGO4ECUREZPKVUCQZ3NRBZMK6ESEQVHPRZ36JLUZNEH56TMKQXEB","assettype":1,"issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","assetcode":"AAA","tlimit":9223372036854775807,"balance":9999897700000,"flags":1,"lastmodified":837690,"index":1}],"action":"get_sorted_holdings","status":"success"}
+
 ##get_account_info: dump all data found in stellar-core db in account table. this will not work if mss-server is running in horizon mode
   * Values sent:
     * account: stellar address base 32 example GC3IIU5Q...
