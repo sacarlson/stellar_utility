@@ -70,6 +70,21 @@ The present action codes and values required for each of them can be seen bellow
  * example JSON sent:  showing examples of what is sent of this action in JSON format 
  * example JSON returned:  examples of JSON string returned from mss-server for this action
 
+##core_status: dump the stellar-core info data that is presently hooked to the mss-server
+  * Values sent: none
+
+  * Values returned:
+    * state: if it's working is should be "Synced!",  if not could be "Catching up", "joining" or other
+    * network: this should show if the core is running in "Test SDF Network ; September 2015" for testnet mode,  or somthing Public for Live network
+    * build: git version tag or hash of stellar-core now running, normaly tag changes if this version not compatible with last one.
+    * other: other values you see you will have to look up in stellar-core docs
+ 
+ * example json output:
+ {"info":{"UNSAFE_QUORUM":"ALERT!!! QUORUM UNSAFE","build":"v0.3.0","extra":"Catchup mode 'minimal' awaiting checkpoint (ETA: 204 seconds)","ledger":{"age":7846,"closeTime":1448112595,"hash":"29555b0c689b478d34c16a7116e9e4ec42bd28576ca170eaf476ed6a8a2e24c1","num":876137},"network":"Test SDF Network ; September 2015","numPeers":3,"protocol_version":1,"quorum":{"877928":{"agree":4,"disagree":0,"fail_at":1,"hash":"9548bf","missing":0,"phase":"EXTERNALIZE"}},"state":"Catching up"}}
+
+or if working: 
+ {"info":{"UNSAFE_QUORUM":"ALERT!!! QUORUM UNSAFE","build":"v0.3.0","ledger":{"age":3,"closeTime":1448120942,"hash":"84ee9c25dcf271e00e787ce8d86c5012a2f4763bb0a7a022d4267b86d26002a7","num":878056},"network":"Test SDF Network ; September 2015","numPeers":3,"protocol_version":1,"quorum":{"878055":{"agree":4,"disagree":0,"fail_at":1,"hash":"9548bf","missing":0,"phase":"EXTERNALIZE"}},"state":"Synced!"}}
+
 ##get_sequence: return the present sequence number for this account
   * Values sent:
     * account: stellar address of the target account
