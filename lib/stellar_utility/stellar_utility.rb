@@ -38,6 +38,8 @@ def initialize(load="default")
     #horizon mode, if nothing entered for load this is default
     @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "url_mss_server"=>"localhost:9494", "mode"=>"horizon", "fee"=>100, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
     Stellar.default_network = eval(@configs["default_network"])
+  elsif load == "mss"
+    @configs = { "url_mss_server"=>"localhost", "mss_port"=>"9494","mode"=>"mss", "fee"=>100, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
   else
     #load custom config file
     @configs = YAML.load(File.open(load)) 
@@ -347,13 +349,14 @@ def get_trustlines_local(account,issuer,currency)
     result = {}
     result["balance"] = 0
     result["status"] = "account not found"
-    result["account"] = account
+    result["accountid"] = account
     result["issuer"] = issuer
     result["asset"] = currency
   else
-    result["balance"] = result["balance"]/10000000
+    result["balance"] = result["balance"].to_f/10000000
   end
-  puts "result: #{result}"
+  result["action"] = "get_lines_balance"
+  #puts "result: #{result}"
   return result
 end
 
@@ -374,7 +377,7 @@ end
 def get_lines_balance_mss(account,issuer,currency)
   send = { "action"=>"get_lines_balance", "account"=>account, "issuer"=>issuer, "asset"=>currency }
   result = send_action_mss(send)
-  puts "result_g: #{result}"
+  #puts "result_g: #{result}"
   bal = result["balance"].to_f
   return bal
 end
@@ -520,7 +523,7 @@ def next_sequence(account)
 end
 
 def bal_STR(account)
-  get_native_balance(account).to_i
+  get_native_balance(account)
 end
 
 def get_native_balance(account)
@@ -540,7 +543,6 @@ def get_native_balance_local(account)
     return 0
   end
   bal = result["balance"].to_f
-  bal = bal/10000000
   return bal
 end
 
@@ -549,7 +551,6 @@ def get_native_balance_mss(account)
   send = {"action"=>"get_account_info", "account"=>account}
   result = send_action_mss(send)
   bal = result["balance"].to_f
-  bal = bal/10000000
   return bal
 end
 
@@ -647,6 +648,7 @@ def send_tx_local(b64)
   end
   txhistory["action"] = "send_b64"
   txhistory["status"] = "success"
+  puts "send_b64 status: #{txhistory}"
   return txhistory
 end
 
@@ -692,11 +694,11 @@ def send_tx_mss(b64)
 end
 
 def send_action_mss(send)
-  puts "mss selected"
+  #puts "mss selected"
   port = @configs["mss_port"].to_i + 1
   port = port.to_s
-  puts "port: #{port}"
-  puts "send: #{send}"
+  #puts "port: #{port}"
+  #puts "send: #{send}"
   begin
     response = RestClient.post(@configs["url_mss_server"]+":"+port, send.to_json)
   rescue => e
@@ -707,7 +709,7 @@ def send_action_mss(send)
     puts "decoded_error:  #{response["decoded_error"]}"    
     return response
   end
-  puts response
+  #puts response
   if send["action"]== "send_b64"
     sleep 9
   end

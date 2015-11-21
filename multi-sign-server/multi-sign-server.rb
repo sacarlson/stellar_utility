@@ -64,19 +64,12 @@ EM.run {
         results = mult_sig.send_multi_sig_tx(request_payload["tx_code"])
         results.to_json
       when "get_account_info"
-        #results = mult_sig.get_account_info(request_payload["account"])
         results = mult_sig.Utils.get_accounts_local(request_payload["account"])
         results.to_json
       when "get_lines_balance"
-        value = mult_sig.Utils.get_lines_balance_local(request_payload["account"],request_payload["issuer"],request_payload["asset"])
-        puts "result.class: #{value.class}"
-        results = {"status"=>"success"}
-        if value.nil?
-          results["status"]="no record found"
-          results["balance"] = 0
-        else
-          results["balance"] = value
-        end
+        results = mult_sig.Utils.get_trustlines_local(request_payload["account"],request_payload["issuer"],request_payload["asset"])
+        #'{"issuer":"'+request_payload["issuer"]+'", "asset":"'+request_payload["asset"]+'", "balance":'+results.to_s+'}'
+        puts "results: #{results}"
         results.to_json
       when "get_sell_offers"
         results = mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])

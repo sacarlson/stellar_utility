@@ -246,15 +246,19 @@ The present action codes and values required for each of them can be seen bellow
     * issuer: stellar address of the issuer of the asset in this balance 
     * asset:  asset name in this balance example USD, YEN, BEER...
 
-  * Values returned: 
+  * Values returned:
+    * accountid: same as account address base 32 
     * balance: float number of asset balance
     * action: returns "get_lines_balance" same as sent
-    * issuer:
-    * asset: 
+    * issuer: issuer address of asset
+    * assettype: 0 for native, 1 for 4 letter assetcodes like "USD" I think (notsure)
+    * assetcode: if assettype 1 or 2 then it will normaly be 3 leter symbol for currency or asset like "USD" "JYN" "BTC" 
+    * tlimit: max trust limit on this assetcode issuer pair
+    * flags: not sure maybe account lock enable?
+    * lastmodified:  last ledger sequence that this trustlines asset entry was modified
 
   * example return:
-{"issuer":"GC3IIU5Q2WLRC4B7T4GYBJ2UKOQ67RITKTVHCKC6UPECI6RT6JMDUPJO", "action":"get_lines_balance", "asset":"CHP", "balance":105.12}
-
+{"accountid":"GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","assettype":1,"issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","assetcode":"AAA","tlimit":9000000000000000000,"balance":1000010,"flags":1,"lastmodified":835305}
 ##get_sell_offers: look up all sell offers made with this issuer and with this asset name
   * Values sent:
     * issuer: stellar address of the issuer of the asset in this search, if set to "any" will search through all issures on this asset
