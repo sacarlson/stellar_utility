@@ -22,6 +22,7 @@
       var url = document.getElementById("url");
       var open = document.getElementById("open");
       var close = document.getElementById("close");
+      var merge_accounts = document.getElementById("merge_accounts");
       var status = document.getElementById("status");
       var network = document.getElementById("network");
 
@@ -32,13 +33,14 @@
       var paymentsEventSource;
       var server;
 
+      //merge_accounts.disabled = true;
       network.value ="testnet";
       console.log("just after var");
       status.textContent = "Not Connected";
       url.value = "ws://zipperhead.ddns.net:9494";
       //create_socket();
       close.disabled = true;
-      open.disabled = true;
+      open.disabled = true;      
       memo.value = "scotty_is_cool"
       amount.value = "1";      
       asset_type.value = "AAA";
@@ -81,8 +83,7 @@
           };
 
           function start_effects_stream() {
-            console.log("we do get here?");
-	        server.effects()
+	    server.effects()
             .forAccount(account.value)
             .limit(30)
             .order('desc')
@@ -150,7 +151,6 @@
           .address(account)
           .call()
           .then(function (accountResult) {
-            //console.log(accountResult);
             callback(accountResult,params);                    
           })
           .catch(function (err) {
@@ -270,6 +270,16 @@
           createTransaction(key,operation);
         }
 
+     function accountMergeTransaction() {
+          // this will send all native of key from seed.value account to destination.value account
+          console.log("accountMerge");        
+          key = StellarSdk.Keypair.fromSeed(seed.value);
+          console.log(key.address());
+          var operation = accountMergeOperation();
+          console.log("operation created ok");
+          createTransaction(key,operation);
+        }
+
      function submitTransaction_mss(transaction) {
        console.log("start submitTransaction_mss");
        var b64 = transaction.toEnvelope().toXDR().toString("base64");
@@ -358,6 +368,13 @@
                  });
                }
 
+      function accountMergeOperation() {
+                 console.log(destination.value);
+                 return StellarSdk.Operation.accountMerge({
+                   destination: destination.value
+                 });                                     
+               }
+
       function addSignerOperation(secondAccountAddress,weight) {
                  return StellarSdk.Operation.setOptions({
                    signer: {
@@ -411,17 +428,21 @@
           var event_obj = JSON.parse(event.data);
           console.log("event_obj.action");
           console.log(event_obj.action);
-          if (event_obj.accountid == account.value) {
-            balance.value = event_obj.balance;
+          if (event_obj.action == "get_account_info") {          
+            if (event_obj.accountid == account.value) {
+              balance.value = event_obj.balance;
+            }
+            if (event_obj.accountid == destination.value) {
+              dest_balance.value = event_obj.balance;
+            }
           }
-          if (event_obj.accountid == destination.value) {
-            dest_balance.value = event_obj.balance;
-          }
-          if (event_obj.account == destination.value) {
-            dest_CHP_balance.value = event_obj.balance;
-          }
-          if (event_obj.account == account.value) {
-            CHP_balance.value = event_obj.balance;
+          if (event_obj.action == "get_lines_balance") {
+            if (event_obj.accountid == account.value) {
+              CHP_balance.value = event_obj.balance;
+            }
+            if (event_obj.accountid == destination.value) {
+              dest_CHP_balance.value = event_obj.balance;
+            }            
           }
           if (event_obj.action == "get_sequence") {
             var seq_num = (event_obj.sequence).toString();
@@ -456,6 +477,11 @@
       open.addEventListener("click", function(event) {
         create_socket();
       });
+
+      merge_accounts.addEventListener("click", function(event) {
+        accountMergeTransaction();
+      });
+
 
       // Close the connection when the Disconnect button is clicked
       close.addEventListener("click", function(event) {
