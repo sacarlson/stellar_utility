@@ -413,7 +413,10 @@ def get_thresholds_local(account)
     return "nil"
   end
   thresholds_b64 = result["thresholds"]
-  decode_thresholds_b64(thresholds_b64)
+  send = decode_thresholds_b64(thresholds_b64)
+  puts "send:  #{send}"
+  send["action"]= "get_thresholds_info"
+  return send
 end
 
 def get_signer_info(target_address,signer_address="")
@@ -434,10 +437,11 @@ def get_signer_info(target_address,signer_address="")
     result.each do |row|
       hash["signers"].push(row)
     end
-    return hash
   else
-    return get_db(query)
-  end    
+    hash = get_db(query)    
+  end
+  hash["action"] = "get_signer_info"
+  return hash  
 end 
 
 
@@ -1531,7 +1535,11 @@ end
 def decode_thresholds_b64(b64)
   #convert threshold values found in stellar-core db accounts threshold example "AQADAw=="
   #to a more human readable format of: {:master_weight=>1, :low=>0, :medium=>3, :high=>3}
-  bytes = Stellar::Convert.from_base64 b64
+  begin
+    bytes = Stellar::Convert.from_base64 b64
+  rescue
+    return {"error"=>"bad  decode_threshold_b64"}
+  end
   result = Stellar::Thresholds.parse bytes
   #puts "res.inpsect:  #{result.inspect}"
 end

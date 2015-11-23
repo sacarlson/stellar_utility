@@ -382,7 +382,7 @@ or if working:
   * example return:
   {"signers"=>[{"accountid"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "publickey"=>"GBT6G2KZI4ON3LTVRWEPT3GH66TTBTN77SIHRGNQ4KAU7N3GTFLYXYOM", "weight"=>1}]}
 
-##get_threshold_info: get the threshold values for this account direct from the stellar database
+##get_thresholds_info: get the threshold values for this account direct from the stellar database
   * Values sent:
     * account: the target account for the information wanted
 
@@ -488,14 +488,19 @@ or if working:
 ##make_unlock_transaction: create a env_b64 time bound transaction that will be used to unlock a locked account after some window of time
   * Values sent:
     * account: the target_account that will later be locked to be unlocked with this transaction
+    * timebound: UTC timestamp integer at witch time this transaction will become valid
+    * asset: the asset symbol whose holdings snapshot will be added to the witness section of the output json witness document
+    * issuer: issuer address of the asset above
+
   * Values return:
-    * status: returns success or fail depending on if account settings were within specs
+    * status: returns success or fail depending on if account and input settings above were within specs
     * target_account: the account that the unlock transaction will unlock
-    * timebound:  this is the UTC time stamp of when this transaction begins to be valid on the stellar network
+    * timebound:  this is the UTC time stamp of when unlock_env_b64 transaction begins to be valid on the stellar network
     * timenow:  this is the UTC time stamp of what time it is now just used as a reference to the above to compare
     * unlock_env_b64: a transaction envelope in base64 format that will be sent after the timebound time to unlock the target_account
 
-  * Example return: {"status"=>"success", "target_account"=>"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO", "witness_address"=>"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX", "timebound"=>1444562222, "timenow"=>1444475822, "unlock_env_b64"=>"AAAAAD1O39Zz2qUNUKLDH6BnGEEFOs8+CC/aVz5CUmCj3euQAAAAZAAACtMAAAAEAAAAAQAAAABWGkUuHPTGJ4CTykQAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAQAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAEGjFFJAAAAQI1BcZWFOZzovdQC1SzT4BDJJ7AQsBHu1JXC89zCnUPrTjx7p0xHn/QoIoofT6zmhttXpVsyqdXF3JDdxKc1UQY="}
+  * Example return:
+    * TBD
 
 ##make_witness: will create a signed timestamped document of the present state and ballances of a target account
   * Values sent:

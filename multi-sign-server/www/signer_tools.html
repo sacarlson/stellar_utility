@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Stellar signer tools</title>
+  <meta charset="UTF-8" />
+  <script src="js/aes.js"></script>
+  <script src="js/stellar-sdk.min.js"></script>
+  <script src="js/signer_tools.js"></script>  
+</head>
+<body>
+  <h3>Stellar Simple Signers Tool Set</h3><br />
+
+also refresh bal:<input id="change_network" type="button" value="change_network" />
+<select name="network" id="network" value='testnet'>
+  <option>testnet</option>
+  <option>live</option>
+  <option>mss_server</option>
+<input id="current_mode"  value="current_mode?" /><br />
+MSS-server socket Status: <span id="status"></span><br />
+MSS-server URL: <input id="url" size="50" /><br />
+<input id="open" type="button" value="Connect" />&nbsp;
+  <input id="close" type="button" value="Disconnect" /><br />
+<input id="save" type="button" value="save_seed" /> 
+<input id="restore" type="button" value="restore_seed" />
+<input id="list_seed_keys" type="button" value="list_seed_keys" /><br />
+pass phrase:<input id="pass_phrase" size="60" /><br /> 
+seed nick name or public ID:<input id="seed_nick" size="60" value = "seed" /><br />    
+seed:<input id="seed" size="60" /><br /> 
+account:<input id="account" size="60" /><br />
+account native balance: <input id="balance" size="40" /><br />
+account thesholds settings: <input id="thresh_set" size="40" /><br />
+
+______________________________________________________<br />
+change account settings  <br />
+<input id="add_signer" type="button" value="add_signer" /> 
+<input id="signer" size="60" />
+ weight<input id="weight" size="3" /><br />
+<input id="change_threshold" type="button" value="change_threshold" />
+master_weight <input id="master_weight" size="3" value = 1 /> 
+threshold <input id="threshold" size="3" value = 0 /><br />
+
+<div style="width:800px;height:300px;line-height:3em;overflow:scroll;padding:10px;">
+  <span id="message"></span>
+</div>
+
+</body>
+</html>
