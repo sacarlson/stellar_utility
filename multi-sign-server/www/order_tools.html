@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Stellar order tools</title>
+  <meta charset="UTF-8" />
+  <script src="js/aes.js"></script>
+  <script src="js/stellar-sdk.min.js"></script>
+  <script src="js/order_tools.js"></script>  
+</head>
+<body>
+  <h3>Stellar Simple Signers Tool Set</h3><br />
+
+also refresh bal:<input id="change_network" type="button" value="change_network" />
+<select name="network" id="network" value='mss_server'>
+  <option>mss_server</option>
+  <option>testnet</option>
+  <option>live</option>
+</select>
+<input id="current_mode"  value="current_mode?" /><br />
+MSS-server socket Status: <span id="status"></span><br />
+MSS-server URL: <input id="url" size="50" /><br />
+<input id="open" type="button" value="Connect" />&nbsp;
+  <input id="close" type="button" value="Disconnect" /><br />
+<input id="save" type="button" value="save_seed" /> 
+<input id="restore" type="button" value="restore_seed" />
+<input id="list_seed_keys" type="button" value="list_seed_keys" /><br />
+pass phrase:<input id="pass_phrase" size="60" /><br /> 
+seed nick name or public ID:<input id="seed_nick" size="60" value = "seed" /><br />    
+seed:<input id="seed" size="60" /><br /> 
+account:<input id="account" size="60" /><br />
+account native balance: <input id="balance" size="40" /><br />
+
+______________________________________________________<br />
+Order Book Search  <br />
+sort order <select name="sort" id="sort" >
+  <option>ASC</option> 
+  <option>DESC</option> 
+</select>
+
+<select name="byesell" id="buysell" >
+  <option>buy</option> 
+  <option>sell</option>
+</select>
+
+
+<input id="start_search" type="button" value="start_search" /><br />
+asset <input id="asset" size="12" />
+issuer <input id="issuer" size="60" /><br />
+
+<div style="width:800px;height:300px;line-height:3em;overflow:scroll;padding:10px;">
+  <span id="message"></span>
+</div>
+
+</body>
+</html>
