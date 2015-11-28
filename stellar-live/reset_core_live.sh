@@ -1,4 +1,5 @@
-COREPATH='/home/sacarlson/github/stellar/stellar-core/src'
+COREPATH='.'
+#COREPATH='/home/sacarlson/github/stellar/stellar-core/src'
 
 CONFIGFILE='./stellar-core_live.cfg'
 rm ./stellar.db 

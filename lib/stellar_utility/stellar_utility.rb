@@ -28,12 +28,21 @@ def initialize(load="default")
 
   if load == "default"
     #load default config file    
-    @configs = YAML.load(File.open("./stellar_utilities.cfg")) 
-    Stellar.default_network = eval(@configs["default_network"])
+    @configs = YAML.load(File.open("./stellar_utilities.cfg"))
+    if @configs["default_network"] == "auto"
+      get_set_stellar_core_network()
+    else
+      Stellar.default_network = eval(@configs["default_network"])
+    end
+    
   elsif load == "db2"
     #localcore mode
     @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "url_mss_server"=>"localhost:9494", "mode"=>"localcore", "fee"=>100, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
-    Stellar.default_network = eval(@configs["default_network"])
+    if @configs["default_network"] == "auto"
+      get_set_stellar_core_network()
+    else
+      Stellar.default_network = eval(@configs["default_network"])
+    end
   elsif load == "horizon"
     #horizon mode, if nothing entered for load this is default
     @configs = {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db2/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "url_mss_server"=>"localhost:9494", "mode"=>"horizon", "fee"=>100, "start_balance"=>100, "default_network"=>"Stellar::Networks::TESTNET", "master_keypair"=>"Stellar::KeyPair.master"}
@@ -43,7 +52,11 @@ def initialize(load="default")
   else
     #load custom config file
     @configs = YAML.load(File.open(load)) 
-    Stellar.default_network = eval(@configs["default_network"])
+    if @configs["default_network"] == "auto"
+      get_set_stellar_core_network()
+    else
+      Stellar.default_network = eval(@configs["default_network"])
+    end
   end
 end #end initalize
 
@@ -55,8 +68,20 @@ end
 def get_db(query,full=0)
   #returns query hash from database that is dependent on mode
   if @configs["mode"] == "localcore"
-    puts "db file #{@configs["db_file_path"]}"
-    db = SQLite3::Database.open @configs["db_file_path"]
+    
+    if @configs["default_network"] == "auto"
+      if (Stellar.current_network == "Public Global Stellar Network ; September 2015")
+        puts "db file #{@configs["db_file_path_live"]}"
+        db_file_path = @configs["db_file_path_live"]
+      else 
+        puts "db file #{@configs["db_file_path"]}"
+        db_file_path = @configs["db_file_path"]
+      end
+    else
+      db_file_path = @configs["db_file_path"]
+    end
+    puts "db_file_path: #{db_file_path}"
+    db = SQLite3::Database.open db_file_path
     db.execute "PRAGMA journal_mode = WAL"
     db.results_as_hash=true
     stm = db.prepare query 
@@ -303,18 +328,18 @@ def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
   if limit > 10
     limit = 10
   end
-  if issuer == "any"
+  if (issuer == "any") or (issuer.length == 0)
     query = "SELECT * FROM offers WHERE #{assetq}='#{asset}' ORDER BY price #{sort} LIMIT '#{limit}' OFFSET #{offset}"
     query2 = "SELECT Count(*) FROM offers WHERE #{assetq}='#{asset}' ORDER BY price #{sort} LIMIT '#{limit}'"
   else
     query = "SELECT * FROM offers WHERE #{assetq}='#{asset}' AND #{issuerq}='#{issuer}' limit '#{limit}' OFFSET #{offset}"
     query2 = "SELECT Count(*) FROM offers WHERE #{assetq}='#{asset}' AND #{issuerq}='#{issuer}' limit '#{limit}'"
   end
-  if asset == "any"
+  if (asset == "any") or (asset.length == 0)
     query = "SELECT * FROM offers WHERE  #{issuerq}='#{issuer}' limit '#{limit}' OFFSET #{offset}"
     query = "SELECT Count(*) FROM offers WHERE  #{issuerq}='#{issuer}' limit '#{limit}'"
   end
-  if issuer == "any" and asset == "any"
+  if ((issuer == "any") and (asset == "any")) or ((issuer.length == 0) and (asset.length == 0))
     puts "any any detected"
     query = "SELECT * FROM offers limit '#{limit}' OFFSET #{offset}"
     query = "SELECT Count(*) FROM offers limit '#{limit}'"
@@ -399,7 +424,6 @@ def bal_CHP(account)
 end
 
 def get_sequence_local(account)
-  result = get_accounts_local(account)
   if result.nil?
     puts "account #{account} not found, so will return sequence 0"
     return 0
@@ -491,6 +515,25 @@ def get_stellar_core_status(detail=false)
     else 
       return false
     end
+end
+
+def get_set_stellar_core_network()
+  #auto mode only works with a local stellar-core 
+  #this will get the present value of the network running and update current_network
+  # with what is found
+  #@configs["mode"] = "horizon"
+  #@configs["default_network"] = "auto"
+  if (@configs["default_network"] == "auto") and (@configs["mode"] != "horizon")
+    puts "auto network mode active"
+    info = get_stellar_core_status(true)
+    network = info["info"]["network"]
+    #puts "network now running: #{network}"
+    Stellar.default_network = network
+    puts "present network setting: #{Stellar.current_network}"
+  else
+    puts "default_network not set to auto or in horizon mode, so unchanged"
+    puts "present set to: #{@configs["default_network"]}"
+  end
 end
 
 
@@ -737,6 +780,7 @@ def send_tx(b64)
 end
 
 def create_account_tx(account, funder, starting_balance)
+  #get_set_stellar_core_network()
   #puts "starting_balance #{starting_balance}"
   starting_balance = starting_balance.to_f
   account = convert_address_to_keypair(account)
@@ -805,6 +849,7 @@ def account_address_to_keypair(account_address)
 end
 
 def send_native_tx(from_pair, to_account, amount, seqadd=0)
+  #get_set_stellar_core_network()
   #destination = Stellar::KeyPair.from_address(to_account)
   to_pair = convert_address_to_keypair(to_account)  
   tx = Stellar::Transaction.payment({
@@ -828,6 +873,7 @@ def send_native(from_pair, to_account, amount)
 end
 
 def add_trust_tx(issuer_account,to_pair,currency,limit)
+  #get_set_stellar_core_network()
   #issuer_pair = Stellar::KeyPair.from_address(issuer_account)
   issuer_pair = convert_address_to_keypair(issuer_account)
   tx = Stellar::Transaction.change_trust({
@@ -848,6 +894,7 @@ def add_trust(issuer_account,to_pair,currency,limit=900000000000)
 end
 
 def allow_trust_tx(account, trustor, code, authorize=true)
+  #get_set_stellar_core_network()
   # I guess code would be asset code in format of :native or like "USD, issuer"..  ? not sure not tested yet
   # also not sure what a trustor is ??
   asset = make_asset([code, account])      
@@ -877,6 +924,7 @@ def make_asset(input)
 end
 
 def send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, currency)
+  #get_set_stellar_core_network()
   # to_account_pair and issuer_pair can be ether a pair or just account address
   # from_account_pair must have full pair with secreet key
   to_account_pair = convert_address_to_keypair(to_account_pair)
@@ -918,6 +966,7 @@ def offer(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,pri
 end
 
 def offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price)
+  #get_set_stellar_core_network()
   sell_issuer = convert_address_to_keypair(sell_issuer)
   buy_issuer = convert_address_to_keypair(buy_issuer)
   tx = Stellar::Transaction.manage_offer({
@@ -933,6 +982,7 @@ def offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,
 end
 
 def tx_merge(*tx)
+  #get_set_stellar_core_network()
   # this will merge an array of tx transactions and take care of seq_num and fee adjustments
   # I'm not totaly sure you need a fee = count * 10, not sure what the exact number is yet but it works so go with it
   puts ""
@@ -1029,6 +1079,7 @@ end
 
 #Contract Symbol, SetOptionsArgs => Any
 def set_options_tx(account, args)
+  #get_set_stellar_core_network()
   #account = get_account account
   #puts "#{account}  #{args}"
   params = {
@@ -1244,6 +1295,7 @@ def env_merge(*envs)
 end
 
 def merge_signatures_tx(tx,*sigs)
+  #get_set_stellar_core_network()
   #merge an array of signing signatures onto a transaction
   #output is a signed envelope
   #envelope = merge_signatures(tx,sig1,sig2,sig3)

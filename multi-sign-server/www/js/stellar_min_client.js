@@ -23,7 +23,7 @@
       var open = document.getElementById("open");
       var close = document.getElementById("close");
       var merge_accounts = document.getElementById("merge_accounts");
-      var status = document.getElementById("status");
+      //var status = document.getElementById("status");
       var network = document.getElementById("network");
 
       var asset_obj = new StellarSdk.Asset.native();
@@ -40,20 +40,21 @@
       url.value = "ws://zipperhead.ddns.net:9494";
       //create_socket();
       close.disabled = true;
-      open.disabled = true;      
-      memo.value = "scotty_is_cool"
+      open.disabled = true;
+      
+      memo.value = "scotty_is_cool";
       amount.value = "1";      
       asset_type.value = "AAA";
       seed.value = 'SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ'; 
-      tissuer.value = 'GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF'
-      issuer.value = tissuer.value
-      tasset.value = 'AAA'
+      tissuer.value = 'GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF';
+      issuer.value = tissuer.value;
+      tasset.value = 'AAA';
       destination.value = 'GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY';
       dest_seed.value = "SBV5OHE3LGOHC6CBRMSV3ZQNTT4CM7I7L37KAAU357YDDPER2GNP2WWL";      
 
       StellarSdk.Network.useTestNet();
       //StellarSdk.Memo.text("sacarlson");
-      var hostname = "horizon-testnet.stellar.org"
+      var hostname = "horizon-testnet.stellar.org";
             
       reset_horizon_server();
 

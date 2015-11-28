@@ -1,4 +1,6 @@
-COREPATH='/home/sacarlson/github/stellar/stellar-core/src'
+COREPATH='.'
+#COREPATH='/home/sacarlson/github/stellar/stellar-core/src'
+#COREPATH='/home/sacarlson/github/stellar/stellar_utility/stellar-db-testnet'
 CONFIGFILE='./stellar-core_live.cfg'
 MY_PATH="`dirname \"$0\"`"              # relative
 MY_PATH="`( cd \"$MY_PATH\" && pwd )`"  # absolutized and normalized

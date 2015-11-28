@@ -391,9 +391,9 @@ or if working:
     * low: the threshold of low
     * medium: the threshold for medium security, needed to sign transactions to send payments and other
     * high:  the threshold for high security,  needed when you want to sign transactions to change thresholds 
-
+    * action: returns "get_thresholds_info"
   * example return:
-    {"master_weight"=>1, "low"=>0, "medium"=>0, "high"=>0}
+    {"action":"get_thresholds_info","master_weight":1, "low":0, "medium":0, "high":0}
 
 ##get_issuer_debt: return totals of all asset debts for this issuer account for each asset issued 
   * Values sent:
