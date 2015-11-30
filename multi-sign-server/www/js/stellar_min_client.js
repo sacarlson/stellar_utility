@@ -107,7 +107,7 @@
             .catch(function (err) {
                 console.log("error detected in attachToPaymentsStream");
                 attachToPaymentsStream('now');
-                console.log(err)
+                console.log(err);
             });
           }
 
@@ -267,6 +267,7 @@
   
 
       function createPaymentTransaction(key,asset_obj) {
+          console.log("createPaymentTransaction");
           var operation = createPaymentOperation(asset_obj);
           createTransaction(key,operation);
         }
@@ -354,10 +355,17 @@
        
       }
 
+      function fix7dec(string) {
+        var num = Number(string).toFixed(7);
+        string = num.toString();
+        return string;
+      }
+
       function createPaymentOperation(asset_obj) {
+                 console.log("creatPaymentOperation");                 
                  return StellarSdk.Operation.payment({
                    destination: destination.value,
-                   amount: amount.value,
+                   amount: fix7dec(amount.value),
                    asset: asset_obj
                  });
                }
@@ -365,7 +373,7 @@
       function createAccountOperation() {
                  return StellarSdk.Operation.createAccount({
                    destination: destination.value,
-                   startingBalance: amount.value
+                   startingBalance: fix7dec(amount.value)
                  });
                }
 
@@ -578,7 +586,8 @@
         asset.value = "native";
       });
             
-      send_payment.addEventListener("click", function(event) {                 
+      send_payment.addEventListener("click", function(event) {
+        console.log("send_payment clicked");                 
         sendPaymentTransaction();       
       });
 

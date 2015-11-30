@@ -321,6 +321,12 @@ def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
   if offset.nil?
     offset = 0
   end
+  if issuer.nil?
+    issuer = ""
+  end
+  if asset.nil?
+    asset = ""
+  end
   puts "sort : #{sort}"
   puts "offset: #{offset}"
   puts "limit: #{limit}"
@@ -328,23 +334,38 @@ def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
   if limit > 10
     limit = 10
   end
-  if (issuer == "any") or (issuer.length == 0)
+  
+  if (asset == "native")or (asset == "XLM")
+    puts "asset native detected"
+    if assetq == "buyingassetcode"
+      type = "buyingassettype"
+    else
+      type = "sellingassettype"
+    end
+    native_type = 0 
+    query = "SELECT * FROM offers WHERE #{type}='#{native_type}' ORDER BY price #{sort} LIMIT '#{limit}' OFFSET #{offset}"
+    query2 = "SELECT Count(*) FROM offers WHERE #{type}='#{native_type}' ORDER BY price #{sort} LIMIT '#{limit}'"   
+  elsif (issuer == "any") or (issuer.length == 0)
+    puts "issuer any detected"
     query = "SELECT * FROM offers WHERE #{assetq}='#{asset}' ORDER BY price #{sort} LIMIT '#{limit}' OFFSET #{offset}"
     query2 = "SELECT Count(*) FROM offers WHERE #{assetq}='#{asset}' ORDER BY price #{sort} LIMIT '#{limit}'"
   else
+    puts " all other"
     query = "SELECT * FROM offers WHERE #{assetq}='#{asset}' AND #{issuerq}='#{issuer}' limit '#{limit}' OFFSET #{offset}"
     query2 = "SELECT Count(*) FROM offers WHERE #{assetq}='#{asset}' AND #{issuerq}='#{issuer}' limit '#{limit}'"
   end
   if (asset == "any") or (asset.length == 0)
+    puts "asset any detected"
     query = "SELECT * FROM offers WHERE  #{issuerq}='#{issuer}' limit '#{limit}' OFFSET #{offset}"
-    query = "SELECT Count(*) FROM offers WHERE  #{issuerq}='#{issuer}' limit '#{limit}'"
+    query2 = "SELECT Count(*) FROM offers WHERE  #{issuerq}='#{issuer}' limit '#{limit}'"
   end
   if ((issuer == "any") and (asset == "any")) or ((issuer.length == 0) and (asset.length == 0))
     puts "any any detected"
     query = "SELECT * FROM offers limit '#{limit}' OFFSET #{offset}"
-    query = "SELECT Count(*) FROM offers limit '#{limit}'"
+    query2 = "SELECT Count(*) FROM offers limit '#{limit}'"
   end
   puts "query: #{query}"
+  puts "query2: #{query2}"
   #return get_db(query)
   result = get_db(query,1)
   hash = {"orders"=>[]}
@@ -424,7 +445,8 @@ def bal_CHP(account)
 end
 
 def get_sequence_local(account)
-  if result.nil?
+  result = get_accounts_local(account)
+  if result["status"] == "account not found"
     puts "account #{account} not found, so will return sequence 0"
     return 0
   end
@@ -433,7 +455,8 @@ end
 
 def get_thresholds_local(account)
   result = get_accounts_local(account)
-  if result.nil?
+  if result["status"] == "account not found"
+    puts "account not found"
     return "nil"
   end
   thresholds_b64 = result["thresholds"]
@@ -586,7 +609,8 @@ end
 def get_native_balance_local(account)
   #puts "account #{account}"
   result = get_accounts_local(account)
-  if result.nil?
+  if result["status"] == "account not found"
+    puts "account not found"
     return 0
   end
   bal = result["balance"].to_f
