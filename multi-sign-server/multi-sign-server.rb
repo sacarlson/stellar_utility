@@ -217,6 +217,12 @@ EM.run {
         #'{"issuer":"'+request_payload["issuer"]+'", "asset":"'+request_payload["asset"]+'", "balance":'+results.to_s+'}'
         puts "results: #{results}"
         ws.send results.to_json
+      when "get_offerid"      
+        results = mult_sig.Utils.get_offers(nil, nil, nil, nil, nil, nil, nil, request_payload["offerid"])
+        if results.nil?
+          results = {"status"=>"no record found"}
+        end
+        ws.send results.to_json
       when "get_sell_offers"
         results = mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
         if results.nil?

@@ -6,7 +6,17 @@
       var network_testnet = document.getElementById("network_testnet");
       var message = document.getElementById("message");
       var account = document.getElementById("account");
-      
+
+      var offerid = document.getElementById("offerid");
+      var buy_asset = document.getElementById("buy_asset"); 
+      var buy_issuer = document.getElementById("buy_issuer"); 
+      var sell_asset = document.getElementById("sell_asset");      
+      var sell_issuer = document.getElementById("sell_issuer");
+      var amount = document.getElementById("amount");
+      var price = document.getElementById("price");
+      var submit_offer = document.getElementById("submit_offer");
+      var cancel_offer = document.getElementById("cancel_offer");
+ 
       var seed = document.getElementById("seed");          
       var balance = document.getElementById("balance");
       var thresh_set = document.getElementById("thresh_set"); 
@@ -23,6 +33,7 @@
       var operation_globle;
       var paymentsEventSource;
       var server;
+      var cancel_offer_flag;
 
       //merge_accounts.disabled = true;
       network.value ="mss_server";
@@ -191,7 +202,6 @@
           get_balance_updates_mss();
           return
         }
-        // disable horizon balance here to try streaming instead
         get_account_info(account.value,{
           to_id1:"balance",
           asset_code1:null,
@@ -265,6 +275,14 @@
           createTransaction(key,operation);
         }
 
+     function manageOfferTransaction() {
+          console.log("cancelOfferTransaction");        
+          key = StellarSdk.Keypair.fromSeed(seed.value);
+          console.log(key.address());
+          var operation = manageOfferOperation();
+          console.log("operation created ok");
+          createTransaction(key,operation);
+        }
 
 
      function submitTransaction_mss(transaction) {
@@ -276,6 +294,11 @@
 
      function get_seq(address) {
        var action = '{"action":"get_sequence", "account":"' + address + '"}'
+       socket.send(action);
+     }
+
+     function get_offerid() {
+       var action = '{"action":"get_offerid", "offerid":"' + offerid.value + '"}'
        socket.send(action);
      }
 
@@ -396,6 +419,23 @@
                  asset = new StellarSdk.Asset(asset_type, address);
                  return StellarSdk.Operation.changeTrust({asset: asset}); 
                }
+      
+      function manageOfferOperation() {
+            var opts = {};
+            opts.selling = new StellarSdk.Asset(sell_asset.value, sell_issuer.value);
+            opts.buying = new StellarSdk.Asset(buy_asset.value, buy_issuer.value);
+            opts.amount = amount.value;
+            opts.price = price.value;
+            if (cancel_offer_flag) {
+              opts.offerId = offerid.value;
+              opts.amount = '0.0';
+              amount.value = '0.0';
+            } else {
+              //opts.offerId = '';
+              opts.amount = amount.value;
+            }
+            return StellarSdk.Operation.manageOffer(opts);
+          }
 
       function setOptionsOperation() {
                  console.log(Number(master_weight.value));
@@ -455,7 +495,19 @@
           }
           
           if (event_obj.action == "get_signer_info") {
+            
+          }
 
+          if (event_obj.action == "get_offerid") {
+            var offer = event_obj.orders[0];
+            buy_asset.value = offer.buyingassetcode; 
+            buy_issuer.value = offer.buyingissuer;
+            sell_asset.value = offer.sellingassetcode;
+            sell_issuer.value = offer.sellingissuer;
+            //amount.value = (offer.amount/10000000).toString();
+            amount.value = "0.0";
+            price.value = offer.price;
+            manageOfferTransaction();         
           }
 
 
@@ -572,7 +624,19 @@
       start_search.addEventListener("click", function(event) {
         get_offers_mss();
       });
+
+      cancel_offer.addEventListener("click", function(event) {
+        cancel_offer_flag = true;
+        get_offerid();
+        //cancelOfferTransaction();
+      });
+
+      submit_offer.addEventListener("click", function(event) {
+        cancel_offer_flag = false;
+        manageOfferTransaction();
+      });
    
-    
+      
+
   });
 

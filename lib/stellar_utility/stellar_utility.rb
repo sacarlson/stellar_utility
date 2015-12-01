@@ -308,13 +308,14 @@ def get_buy_offers(asset, issuer, sort, limit = 10, offset = 0)
   return get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
 end
 
-def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
+def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq, offerid="")
   #assetq = "buyingassetcode"
   #issuerq = "buyingissuer"
   #assetq = "sellingassetcode"
   #issuerq = "sellingissuer"
 
   #sort = "DESC||ASC"
+  hash = {"orders"=>[]}
   if sort != "DESC" and sort != "ASC"
     sort = "ASC"
   end
@@ -327,6 +328,9 @@ def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
   if asset.nil?
     asset = ""
   end
+  if limit.nil?
+    limit = 10
+  end
   puts "sort : #{sort}"
   puts "offset: #{offset}"
   puts "limit: #{limit}"
@@ -338,8 +342,10 @@ def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
   if (asset == "native")or (asset == "XLM")
     puts "asset native detected"
     if assetq == "buyingassetcode"
+      hash["action"] = "get_buy_offers"
       type = "buyingassettype"
     else
+      hash["action"] = "get_sell_offers"
       type = "sellingassettype"
     end
     native_type = 0 
@@ -364,14 +370,22 @@ def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
     query = "SELECT * FROM offers limit '#{limit}' OFFSET #{offset}"
     query2 = "SELECT Count(*) FROM offers limit '#{limit}'"
   end
+  
+  if offerid != ""
+    hash["action"] = "get_offerid"
+    puts "offerid detected"
+    query = "SELECT * FROM offers WHERE offerid='#{offerid}' "
+    query2 = "SELECT Count(*) FROM offers WHERE offerid='#{offerid}'"
+  end
   puts "query: #{query}"
   puts "query2: #{query2}"
   #return get_db(query)
   result = get_db(query,1)
-  hash = {"orders"=>[]}
+  #hash = {"orders"=>[]}
   index = offset
   result.each do |row|
     row["index"]=index
+    row["inv_price"] = 1/row["price"]
     hash["orders"].push(row)
     index = index + 1
   end

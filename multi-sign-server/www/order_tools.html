@@ -8,7 +8,7 @@
   <script src="js/order_tools.js"></script>  
 </head>
 <body>
-  <h3>Stellar Simple Signers Tool Set</h3><br />
+  <h3>Stellar Orders Tool Set</h3><br />
 
 also refresh bal:<input id="change_network" type="button" value="change_network" />
 <select name="network" id="network" value='mss_server'>
@@ -29,9 +29,19 @@ seed nick name or public ID:<input id="seed_nick" size="60" value = "seed" /><br
 seed:<input id="seed" size="60" /><br /> 
 account:<input id="account" size="60" /><br />
 account native balance: <input id="balance" size="40" /><br />
-
 ______________________________________________________<br />
-Order Book Search  <br />
+Offer Entry: <br />
+Buy asset: <input id="buy_asset" size="6" />  issuer: <input id="buy_issuer" size="60" /><br />
+Sell asset: <input id="sell_asset" size="6" />  issuer: <input id="sell_issuer" size="60" /><br />
+amount: <input id="amount" size="6" /><br />
+price:  <input id="price" size="6" /> <br />
+<input id="submit_offer" type="button" value="submit_offer" /><br />
+______________________________________________________<br />
+Cancel Offer: <br />
+offerId:  <input id="offerid" size="6" /> <br />
+<input id="cancel_offer" type="button" value="cancel_offer" /><br />
+______________________________________________________<br />
+Order Book Search:  <br />
 sort order <select name="sort" id="sort" >
   <option>ASC</option> 
   <option>DESC</option> 

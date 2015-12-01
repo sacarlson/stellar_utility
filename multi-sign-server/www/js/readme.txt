@@ -10,6 +10,9 @@ md5sum
 993357d0cf332aa6d13b8a9c60531fc9  stellar-sdk.js 
 this version of sdk has a bug were amount is 10X if you have 8 dec places in ammount
 example 1.12345678 = 11.23456.  we added fix7dec to prevent this from hapening in this version of mini client that uses it
-
+now upgraded to v 0.2.21 commit 2165be724949e5fa09b4407ca45f4646632cca09
+md5sum
+cc0b157ae686c0540c6d8482172e098d  stellar-sdk.min.js
+687ab3c785e04822e879e54416e388d4  stellar-sdk.js
 
 The other *.js files here are mostly just examples of using these libs.
