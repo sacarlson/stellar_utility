@@ -385,6 +385,7 @@ def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq, offerid="")
   index = offset
   result.each do |row|
     row["index"]=index
+    row["amount"] = row["amount"]/10000000
     row["inv_price"] = 1/row["price"]
     hash["orders"].push(row)
     index = index + 1

@@ -421,17 +421,27 @@
                }
       
       function manageOfferOperation() {
+           console.log("manageOfferOperation");
             var opts = {};
-            opts.selling = new StellarSdk.Asset(sell_asset.value, sell_issuer.value);
-            opts.buying = new StellarSdk.Asset(buy_asset.value, buy_issuer.value);
+            if (sell_asset.value == "XLM") {
+              opts.selling = new StellarSdk.Asset.native();
+            } else {
+              opts.selling = new StellarSdk.Asset(sell_asset.value, sell_issuer.value);
+            }
+            if (buy_asset.value == "XLM") {
+              opts.buying = new StellarSdk.Asset.native();
+            } else {
+              opts.buying = new StellarSdk.Asset(buy_asset.value, buy_issuer.value);
+            }
             opts.amount = amount.value;
             opts.price = price.value;
             if (cancel_offer_flag) {
+              console.log("cancel_offer_flag true");
               opts.offerId = offerid.value;
               opts.amount = '0.0';
               amount.value = '0.0';
             } else {
-              //opts.offerId = '';
+              //opts.offerId = 0;
               opts.amount = amount.value;
             }
             return StellarSdk.Operation.manageOffer(opts);
@@ -499,12 +509,22 @@
           }
 
           if (event_obj.action == "get_offerid") {
-            var offer = event_obj.orders[0];
-            buy_asset.value = offer.buyingassetcode; 
-            buy_issuer.value = offer.buyingissuer;
-            sell_asset.value = offer.sellingassetcode;
-            sell_issuer.value = offer.sellingissuer;
-            //amount.value = (offer.amount/10000000).toString();
+//{[{"sellerid":"GAMCHGO4ECUREZPKVUCQZ3NRBZMK6ESEQVHPRZ36JLUZNEH56TMKQXEB","offerid":70,"sellingassettype":0,"sellingassetcode":null,"sellingissuer":null,"buyingassettype":1,"buyingassetcode":"CCC","buyingissuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","amount":10000000,"pricen":1,"priced":1,"price":1.0,"flags":0,"lastmodified":1018137,"index":0,"inv_price":1.0}],"action":"get_offerid","count":1}
+            var offer = event_obj.orders[0];            
+            if (offer.buyingassettype == 0) {
+              buy_asset.value = "XLM"; 
+              buy_issuer.value = "";
+            } else {  
+              buy_asset.value = offer.buyingassetcode; 
+              buy_issuer.value = offer.buyingissuer;
+            }
+            if (offer.sellingassettype == 0) {
+              sell_asset.value = "XLM";
+              sell_issuer.value = "";
+            } else {
+              sell_asset.value = offer.sellingassetcode;
+              sell_issuer.value = offer.sellingissuer;
+            }
             amount.value = "0.0";
             price.value = offer.price;
             manageOfferTransaction();         
