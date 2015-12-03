@@ -368,6 +368,33 @@ or if working:
    {"status":"error","action":"send_b64","error":{"name":"tx_bad_seq","value":-5}}
    {"status":"success","action":"send_b64"}
 
+##send_native: send a native XLM transaction from one account to another using key seed 
+  * Values sent:
+    * from_seed: the secreet seed of the account sending the funds
+    * to_account: the stellar public address of the account we are sending the funds to
+    * amount: the amount of XLM or native currency being sent to the to_account
+
+  * example output:
+  {"action":"send_native", "from_seed":"SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ", "to_account": "GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY", "amount":"1.25"}
+
+  * example return:
+  {"txid":"bbbaa3ce05bf99c66cd5221b5e7c2fb05f53e1edff86a55907336c9d7dcc3296","ledgerseq":1102980,"txresult":"u7qjzgW/mcZs1SIbXnwvsF9T4e3/hqVZBzNsnX3MMpYAAAAAAAAAZAAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAA==","body":{"status":"PENDING"},"resultcode":{"name":"tx_success","value":0},"action":"send_b64","status":"success"}
+
+  Note: this method may be ok for a server to be sending fund to a client but not a very secure method to be used from the client side.  On the client side I recomend using the stellar libs like stellar-sdk.js to prevent the server side from every haveing access to the secreet key seed of the clients.
+
+##send_asset: send a non native asset transaction from one account to another using key seed 
+  * Values sent:
+    * from_seed: the secreet seed of the account sending the funds
+    * to_account: the stellar public address of the account we are sending the funds to
+    * amount: the amount of the asset or currency being sent to the to_account
+    * issuer: the stellar public address of the issuer of the asset to be sent
+    * assetcode: the asset code of the asset being sent example USD, EUR ...
+
+  * example output:
+  {"action":"send_asset", "from_seed":"SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ", "to_account": "GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF", "assetcode":"AAA", "amount":"1.25"}
+
+  * example return:
+  {"txid":"bbbaa3ce05bf99c66cd5221b5e7c2fb05f53e1edff86a55907336c9d7dcc3296","ledgerseq":1102980,"txresult":"u7qjzgW/mcZs1SIbXnwvsF9T4e3/hqVZBzNsnX3MMpYAAAAAAAAAZAAAAAAAAAABAAAAAAAAAAEAAAAAAAAAAA==","body":{"status":"PENDING"},"resultcode":{"name":"tx_success","value":0},"action":"send_b64","status":"success"}
 
 ##get_signer_info: get a list of all the signers on this target account direct from the stellar network database
   * Values sent:

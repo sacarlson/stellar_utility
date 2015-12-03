@@ -63,6 +63,20 @@ EM.run {
       when "send_tx"
         results = mult_sig.send_multi_sig_tx(request_payload["tx_code"])
         results.to_json
+      when "send_native"
+        begin
+          results =  mult_sig.Utils.send_native(Stellar::KeyPair.from_seed(request_payload["from_seed"]), request_payload["to_account"], request_payload["amount"])
+        rescue
+          results = {"action"=>"send_native","status"=>"error" ,"error"=>"bad input"}
+        end
+        results.to_json
+      when "send_asset"
+        begin
+          results =  mult_sig.Utils.send_currency(Stellar::KeyPair.from_seed(request_payload["from_seed"]), request_payload["to_account"],request_payload["issuer"], request_payload["amount"],request_payload["assetcode"])
+        rescue
+          results = {"action"=>"send_native","status"=>"error" ,"error"=>"bad input"}
+        end
+        results.to_json
       when "get_account_info"
         results = mult_sig.Utils.get_accounts_local(request_payload["account"])
         results.to_json
@@ -203,6 +217,20 @@ EM.run {
         ws.send results.to_json
       when "send_tx"
         results = mult_sig.send_multi_sig_tx(request_payload["tx_code"])
+        ws.send results.to_json
+      when "send_native"
+        begin
+          results =  mult_sig.Utils.send_native(Stellar::KeyPair.from_seed(request_payload["from_seed"]), request_payload["to_account"], request_payload["amount"])
+        rescue
+          results = {"action"=>"send_native","status"=>"error" ,"error"=>"bad input"}
+        end
+        ws.send results.to_json
+      when "send_asset"
+        begin
+          results =  mult_sig.Utils.send_currency(Stellar::KeyPair.from_seed(request_payload["from_seed"]), request_payload["to_account"],request_payload["issuer"], request_payload["amount"],request_payload["assetcode"])
+        rescue
+          results = {"action"=>"send_native","status"=>"error" ,"error"=>"bad input"}
+        end
         ws.send results.to_json
       when "get_sorted_holdings"
         results = mult_sig.Utils.get_sorted_holdings(request_payload)

@@ -362,12 +362,12 @@ def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq, offerid="")
   end
   if (asset == "any") or (asset.length == 0)
     puts "asset any detected"
-    query = "SELECT * FROM offers WHERE  #{issuerq}='#{issuer}' limit '#{limit}' OFFSET #{offset}"
+    query = "SELECT * FROM offers WHERE  #{issuerq}='#{issuer}' ORDER BY price #{sort} limit '#{limit}' OFFSET #{offset}"
     query2 = "SELECT Count(*) FROM offers WHERE  #{issuerq}='#{issuer}' limit '#{limit}'"
   end
   if ((issuer == "any") and (asset == "any")) or ((issuer.length == 0) and (asset.length == 0))
     puts "any any detected"
-    query = "SELECT * FROM offers limit '#{limit}' OFFSET #{offset}"
+    query = "SELECT * FROM offers ORDER BY price #{sort} limit '#{limit}' OFFSET #{offset}"
     query2 = "SELECT Count(*) FROM offers limit '#{limit}'"
   end
   
@@ -386,7 +386,8 @@ def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq, offerid="")
   result.each do |row|
     row["index"]=index
     row["amount"] = row["amount"]/10000000
-    row["inv_price"] = 1/row["price"]
+    row["inv_base_amount"] = 1.0/row["amount"]
+    row["inv_base_price"] = 1.0/row["price"]
     hash["orders"].push(row)
     index = index + 1
   end
