@@ -49,10 +49,16 @@ to do most anything you can do with a localcore on site over the mss-server API 
 #The mss-server json action commands and format
 
 An example of a basic JSON formated string that is sent to the mss-server looks like this
-{"action":"send_tx","tx_code":"T_RQHKC7XD"}
+{"action":"create_keys"}
 
-In this case the "action" code is send_tx that needs one verible tx_code to perform the action of sending this tx_code transaction to the
-stellar network to get a responce returned that will also be in JSON format.
+In this case the "action" code is create_keys that needs no added veribles to perform the action of sending this transaction to the
+mss-server to get a responce returned that will also be in JSON format.
+
+example if used with curl when used in post mode:
+curl -X POST http://zipperhead.ddns.net:9495 -d '{"action":"create_keys"}'
+
+curl responce:
+ {"action":"create_keys","secret_seed":"SA3NB4J3SMQWVYBQNPB6CIT6OVQTXIT34EWPTRZF33XNLU44XLOGJIPW","public_address":"GAAXP3IV7HP7QFR5V73236O6WA55XJWWRUM6GC6WPOCZGY3RQVJUS2CK"}
 
 The present action codes and values required for each of them can be seen bellow in the format:
 
@@ -97,6 +103,17 @@ or if working:
 
  * example output:
  {"status":"success", "action":"get_sequence", "account":"GXST...", "sequence"=>"23455.."}
+
+## create_keys: create a stellar keypair secret_seed and public_address
+  * Values sent:
+    * none
+
+  * Values returned:
+    * action: "create_keys"
+    * secret_seed:  the stellar secret seed base32 56 letter number part of the key pair, used to create transactions and send funds
+    * public_address:  the public address of the stellar account used to receive payment transactions
+
+  * example return:  {"action":"create_keys","secret_seed":"SA3NB4J3SMQWVYBQNPB6CIT6OVQTXIT34EWPTRZF33XNLU44XLOGJIPW","public_address":"GAAXP3IV7HP7QFR5V73236O6WA55XJWWRUM6GC6WPOCZGY3RQVJUS2CK"}
 
 ##create_acc: create a multi sign account with the settings of the values given
   * Values sent:

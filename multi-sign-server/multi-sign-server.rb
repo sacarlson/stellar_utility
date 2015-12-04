@@ -45,6 +45,10 @@ EM.run {
         sendback = eval(stat)
         #puts "sendback: #{sendback}"
         sendback.to_json
+      when "create_keys"
+        keypair = Stellar::KeyPair.random
+        results = {"action"=>"create_keys","secret_seed"=>keypair.seed, "public_address"=>keypair.address}
+        results.to_json
       when "submit_tx"
         results = mult_sig.add_tx(request_payload)
         results.to_json
@@ -192,6 +196,10 @@ EM.run {
         sendback = eval(stat)
         #puts "sendback: #{sendback}"
         ws.send sendback.to_json
+      when "create_keys"
+        keypair = Stellar::KeyPair.random
+        results = {"action"=>"create_keys","secret_seed"=>keypair.seed, "public_address"=>keypair.address}
+        ws.send results.to_json
       when "submit_tx"
         results = mult_sig.add_tx(request_payload)
         ws.send results.to_json

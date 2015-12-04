@@ -1826,8 +1826,12 @@ def envelope_to_hash(envelope_b64)
       if op.body.value.buying.to_s == "native"
         hash["operations"][opnum]["buying.asset"] = "native"
       else
-        hash["operations"][opnum]["buying.asset"] = op.body.value.selling.code
-        hash["operations"][opnum]["buying.issuer"] = public_key_to_address(op.body.value.selling.issuer)
+        begin
+          hash["operations"][opnum]["buying.asset"] = op.body.value.selling.code
+          hash["operations"][opnum]["buying.issuer"] = public_key_to_address(op.body.value.selling.issuer)
+        rescue
+          hash["operations"][opnum]["buying.asset"] = "error"
+        end
       end
       hash["operations"][opnum]["amount"] = (op.body.value.amount)/1e7
       hash["operations"][opnum]["price"] = op.body.value.price
