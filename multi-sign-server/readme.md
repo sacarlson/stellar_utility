@@ -1,57 +1,20 @@
 
 #Multi Sign Server  also know as mss-server for short
 
-The mss-server now also has a websocket feature that performs the same actions using the same JSON formated strings as the original mss-server did plus now more
-only using a websocket instead of an http connected server.
-The websocket advantage is that the websocket client can now continue to be connected and get feedback of the current status of the transaction
-in realtime that in ruby can be driven with the EM eventmanager to triger function on transaction events as shown in the client_signer examples also contained here.
-to do a full run of the example multi sign sesion you can run each of the samples in a different terminal window to allow seeing the events unfold.
-in this sequence:
-start the server:
-  multi-sign-server.rb
+## What is it?
+multi-sign-server.rb is a JSON formated curl based API server for the stellar.org networks new stellar-core.
+some look at the mss-server as a mini-horizon to allow performing transactions on a remote stellar-core. With all the function it has you might think it's big but it is really only 127kb of my code not counting the added 3rd party and Stellar.org lib support used in it.
 
-create and account and submit it to the mss server:
-  create_account_for_mss.rb
-
-sumit a new transaction on the account created above and submits or publish it to the mss server:
-  submit_transaction_to_mss.rb
-
-example signer A picks up the transaction from the mss-server and signs it  and publishes it's signature with the mss-server
-  client_signerA_test.rb
-
-example signer B picks up the transaction and also signs it and publishes the final needed signature to the mss server
-  client_signerB_test.rb
-
-after the last of these example programs is run the mss-server will combine the signatures of all the signers and submits the transaction to the stellar.org network
-for validation.
-
-### We have also created a test web client that utilises the websocket of mss-server for people to experment with and to server as an example. 
- The client provide a box to send raw JSON with a send button.  The text JSON results are then seen at the bottom.
- It also contains a list of some examples of some of the common usage functions with param values already contained to try.
- This can be seen sometimes (not stable site just adsl connected home computer) at http://zipperhead.ddns.net/example_mss_server_actions.html. The code for this 
- is also in this github distribution for you to see and try.  The present server is also run on the unstable site so don't always expect a responce.
-
-#More details of the operations and transaction format of the mss-server is described bellow.  note bellow was originaly writen for the  multi-sign-server 
-so some filenames may not match, but the format basicly the same, only the lower level communication protocol has changed.
-at the end of this readme contains the details for install setup and running of the server
-
-multi-sign-server.rb is a JSON formated API server for the stellar.org networks new stellar-core.
-it was originaly created to allow the publishing of multi sign transaction and provide a point of collection for the 
-signers to pickup the original unsigned transaction, sign it and send a validation signature back to the mss-server
-that would collect all the signatures and when weighted threshold is met will send the multi signed transaction to the stellar-core network
-
-The mss-server can now also do most stellar network database lookup function of getting account balance, buy sell offers, tx result history and now most
-any data in the stellar database can now be obtained from the mss-server api interface. also the basic function of sending tx blobs and other functions
-that are normaly done through the horizon server API can also be performed on the mss-server.  as the secondary goal of mss-server is to make it posible
-to do most anything you can do with a localcore on site over the mss-server API instead of running one localy by making almost all the steller-core database values accesable over the API.  
+## What can it do?
+The mss-server can do most any stellar lib function or network transaction including , create key sets, create accounts, send assets from one account to another, change account option settings and signers. It also provides an interface to all the contents of a local stellar-core database to access account asset balances, transaction history and status searches for accounts and memo contents, present buy sell orderbook sorted price searches and much more.  Any data in a local stellar database can now be obtained from the mss-server API interface. The basic function of sending tx base64 blobs and other functions that are normaly done through the horizon server API can also be performed on the mss-server to also provide secure transaction interface.  The secondary goal of mss-server outside of multi sign support is to make it posible to do most anything you can do with a local stellar-core on site over the mss-server API from a remote location instead of running one locally by making all the steller-core database values accesable over the API.  The mss-server also runs in a horizon mode without need for a local stellar-core but in this mode not all functions of database search are active.  
 
 
-#The mss-server json action commands and format
+#The mss-server json action command set and format
 
-An example of a basic JSON formated string that is sent to the mss-server looks like this
+An example of a basic JSON formated string that is posted to the mss-server looks like this
 {"action":"create_keys"}
 
-In this case the "action" code is create_keys that needs no added veribles to perform the action of sending this transaction to the
+In this case the "action" code is "create_keys" that needs no added veribles to perform the action of sending this transaction to the
 mss-server to get a responce returned that will also be in JSON format.
 
 example if used with curl when used in post mode:
@@ -98,7 +61,7 @@ or if working:
   * Values returned:
     * status: returns success or error if fails
     * action: return "get_sequence" indicating what action is returning values
-    * account: save value used in search above
+    * account: same value used in search above
     * sequence: the sequence number seen in stellar-core database for the account at this time 
 
  * example output:
@@ -172,7 +135,7 @@ or if working:
  {"status":"pending","tx_code":"T_RQHKC7XD"} // tx hasn't got all it signatures needed yet
  {"status":"ready","tx_code":"T_RQHKC7XD"}  // this will return if the tx has already been sent to stellar-core network for validation
  
-##submit_tx:  adds a new transaction to the mss-server database with the added values of the veribles attached
+##submit_tx:  adds a new multi sign transaction to the mss-server database with the added values of the veribles attached
   * Values sent:
     * tx_title: an added modifiable title used to help users discribe the transaction, defaults to tx_code 
     * master_address: the stellar multi sign account number
@@ -326,8 +289,8 @@ or if working:
 
 ##get_buy_offers: look up all buy offers made with this issuer and with this asset name
   * Values sent:
-    * issuer: stellar address of the issuer of the asset in this search, if set to "any" will search through all issures on this asset
-    * asset: example USD, if set to "any" will search through all assets on this issuer
+    * issuer: stellar address of the issuer of the asset in this search, if set to "any" or empty string will search through all issures on this asset
+    * asset: example USD, if set to "any" or empty string will search through all assets on this issuer
     * limit: limit of the number of offers listed in the stellar-core database max is 10
     * sort:  sort output assending "ASC" or sort desending "DESC"
     * offset: start output from index X, this is used to page through output that has more than 10 elements that is max output
@@ -461,7 +424,7 @@ or if working:
     * txid: if txid input is present it will override all other input values and just get this txid as the return
     * source_address: source_address of the transaction target account to search
     * destination_address: destination_address of the transaction target account search
-    * memo_text: only list if memo_text matches text memo in transaction or if memo_text is nil then memo will just be ingnored
+    * memo_text: only list if memo_text matches text memo in transaction or if memo_text is nil then memo will just be ignored
     * offset: offset in search results to allow paging through more than 10 resulting transactions in a searchs
 
   * Values return:
@@ -643,7 +606,7 @@ url_horizon: https://horizon-testnet.stellar.org
 url_stellar_core: http://localhost:8080
 url_mss_server: "localhost:9494"
 mode: localcore
-fee: 10
+fee: 100
 start_balance: 100
 default_network: Stellar::Networks::TESTNET
 master_keypair: Stellar::KeyPair.master
@@ -699,6 +662,16 @@ values explained
 * core_version: this is the stellar-core git hash first 8 letters that this system is controling if running in localcore mode
 
 
+## Test website for mss-server
+ We have created a test web client that utilises the websocket of mss-server for people to experment with and to server as an example. 
+ The client provides a box to send raw JSON with a send button.  The text JSON results are then seen at the bottom.
+ It also contains a list of some examples of some of the common usage functions with param values already contained to try.
+ This can be seen sometimes (not stable site just adsl connected home computer due to limited resources and funding) at http://zipperhead.ddns.net/example_mss_server_actions.html. The code for this 
+ is also in this github distribution for you to see and try.  The present server is also run on the unstable site so don't always expect a responce.
+
+## Why was it create?
+Mss-server was originaly created to allow the publishing of multi sign transaction and provide a point of collection for the signers to pickup the original unsigned transaction, sign it and send a validation signature back to the mss-server that would collect all the needed signatures and when weighted threshold is met will send the multi signed transaction to the stellar-core network.  We later added features to make it more like a mini horizon API interface as well.
+
 ##install and setup
 clone the git:
 $git clone git@github.com:sacarlson/stellar_utility.git
@@ -711,4 +684,9 @@ $bundle exec multi-sign-server.rb
 ##dependancies
 most if not all of the dependancies should be contained in the Gemfile in this directory
 other than that you do need bundler and I also run rbenv with ruby 1.9.3-p484 as default but newer ruby should also work just never tried
+
+## System platforms supported
+Only ever tried on Linux Mint 17 but should run on most any Ubuntu,debian derivitive or later version of Linux. In theory I guess it could be ported to windows or most any system that supports ruby.
+
+
  
