@@ -89,11 +89,17 @@ EM.run {
         #'{"issuer":"'+request_payload["issuer"]+'", "asset":"'+request_payload["asset"]+'", "balance":'+results.to_s+'}'
         puts "results: #{results}"
         results.to_json
-      when "get_sell_offers"
-        results = mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
+      when "get_offers"
+        results = mult_sig.Utils.get_offers(request_payload)
+        if results.nil?
+          results = {"status"=>"no record found"}
+        end
         results.to_json
-      when "get_buy_offers"
-        results = mult_sig.Utils.get_buy_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
+      when "get_market_price"
+        results = mult_sig.Utils.get_market_price(request_payload)
+        if results.nil?
+          results = {"status"=>"no record found"}
+        end
         results.to_json
       when "get_issuer_debt"
         results = mult_sig.Utils.issuer_debt_total(request_payload)
@@ -121,7 +127,11 @@ EM.run {
     end #end post
 
     get '/help/?' do   
-      "see https://github.com/sacarlson/stellar_utility/tree/master/multi-sign-websocket for more info"
+      'see <a href="https://github.com/sacarlson/stellar_utility/tree/master/multi-sign-server">github multi-sign-server</a> for more details' 
+    end
+
+    get '/' do   
+      'see <a href="https://github.com/sacarlson/stellar_utility/tree/master/multi-sign-server">github multi-sign-server</a> for more details' 
     end
 
     get '/example/?' do   
@@ -253,20 +263,14 @@ EM.run {
         #'{"issuer":"'+request_payload["issuer"]+'", "asset":"'+request_payload["asset"]+'", "balance":'+results.to_s+'}'
         puts "results: #{results}"
         ws.send results.to_json
-      when "get_offerid"      
-        results = mult_sig.Utils.get_offers(nil, nil, nil, nil, nil, nil, nil, request_payload["offerid"])
+      when "get_offers"
+        results = mult_sig.Utils.get_offers(request_payload)
         if results.nil?
           results = {"status"=>"no record found"}
         end
         ws.send results.to_json
-      when "get_sell_offers"
-        results = mult_sig.Utils.get_sell_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
-        if results.nil?
-          results = {"status"=>"no record found"}
-        end
-        ws.send results.to_json
-      when "get_buy_offers"
-        results = mult_sig.Utils.get_buy_offers(request_payload["asset"],request_payload["issuer"],request_payload["sort"], 10, request_payload["offset"])
+      when "get_market_price"
+        results = mult_sig.Utils.get_market_price(request_payload)
         if results.nil?
           results = {"status"=>"no record found"}
         end

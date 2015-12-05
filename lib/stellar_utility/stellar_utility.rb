@@ -296,24 +296,76 @@ def get_account_txhistory(account,offset=0)
   return hash
 end
 
-def get_sell_offers(asset, issuer, sort, limit = 10, offset = 0)
-  assetq = "sellingassetcode"
-  issuerq = "sellingissuer"
-  return get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
+def get_market_price(params)
+  #this will return the present market price seen on stellar order book for buy_asset when selling sell_amount
+  #of sell_asset when trading it for buy_asset. the return price will be the quantity of buy_asset per sell_asset offered for this amount
+  puts "start get_market_price"
+  sell_asset = params["sell_asset"]
+  sell_issuer = params["sell_issuer"]
+  sell_amount = params["sell_amount"]
+  buy_asset = params["buy_asset"]
+  buy_issuer = params["buy_issuer"]
+  if sell_asset.nil?
+    sell_asset = "XLM"
+    params["sell_asset"] = "XLM"
+  end
+  if sell_amount.nil?
+    sell_amount = 1
+    params["sell_amount"] = 1
+  end
+  begin
+  results = get_offers(params)
+  puts "results: #{results}" 
+  orders = results["orders"]
+  total_amount = 0
+  total_cost = 0
+  averge_price = 0
+  max_bid = 0
+  orders.each do |row|
+      puts "row: #{row}"   
+      amount = row["amount"]
+      price = row["price"]        
+      puts "total_amount: #{total_amount}  sell_amount: #{sell_amount}"
+      if max_bid < price
+        max_bid = price
+      end
+      total_amount = total_amount + amount
+      if total_amount >= sell_amount
+        puts "here?"
+        averge_cost = averge_price * (total_amount - amount)
+        puts "averge_cost: #{averge_cost}"
+        last_cost = price * (amount - (total_amount - sell_amount))
+        puts "last_cost: #{last_cost}"
+        final_price = (averge_cost + last_cost) / sell_amount
+        puts "final_price: #{final_price}"
+        return {"action"=>"get_market_price", "buy_asset"=>buy_asset, "sell_asset"=>sell_asset, "averge_price"=>final_price, "max_bid"=>max_bid, "amount"=>sell_amount, "status"=>"success"}
+      end      
+      total_cost = total_cost + (price * amount)
+      puts "total_cost: #{total_cost}"
+      if total_amount > 0
+        averge_price = total_cost / total_amount
+      else
+        averge_price = 0
+      end
+      puts "averge_price: #{averge_price}"
+  end
+  return {"action"=>"get_market_price", "buy_asset"=>buy_asset, "sell_asset"=>sell_asset, "averge_price"=>averge_price, "max_bid"=>max_bid, "amount"=>sell_amount, "amount_available"=>total_amount, "status"=>"not_liquid"}
+  rescue
+    return {"action"=>"get_market_price", "status"=>"error", "error"=>"bad input or missing params"}
+  end
 end
-
-def get_buy_offers(asset, issuer, sort, limit = 10, offset = 0)
-  assetq = "buyingassetcode"
-  issuerq = "buyingissuer"
-  return get_offers(asset, issuer, sort, limit, offset, assetq, issuerq)
-end
-
-def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq, offerid="")
-  #assetq = "buyingassetcode"
-  #issuerq = "buyingissuer"
-  #assetq = "sellingassetcode"
-  #issuerq = "sellingissuer"
-
+    
+def get_offers(params)
+  buy_asset_type = params["buy_asset_type"]
+  buy_asset = params["buy_asset"]
+  buy_issuer = params["buy_issuer"]
+  sell_asset_type = params["sell_asset_type"]
+  sell_asset = params["sell_asset"]
+  sell_issuer = params["sell_issuer"]
+  sort = params["sort"]
+  limit = params["limit"]
+  offset = params["offset"]
+  offerid = params["offerid"]
   #sort = "DESC||ASC"
   hash = {"orders"=>[]}
   if sort != "DESC" and sort != "ASC"
@@ -322,80 +374,112 @@ def get_offers(asset, issuer, sort, limit, offset, assetq, issuerq, offerid="")
   if offset.nil?
     offset = 0
   end
-  if issuer.nil?
-    issuer = ""
-  end
-  if asset.nil?
-    asset = ""
-  end
   if limit.nil?
-    limit = 10
+    limit = 30
   end
-  puts "sort : #{sort}"
-  puts "offset: #{offset}"
-  puts "limit: #{limit}"
-  limit = limit.to_i
-  if limit > 10
-    limit = 10
-  end
-  
-  if (asset == "native")or (asset == "XLM")
-    puts "asset native detected"
-    if assetq == "buyingassetcode"
-      hash["action"] = "get_buy_offers"
-      type = "buyingassettype"
-    else
-      hash["action"] = "get_sell_offers"
-      type = "sellingassettype"
-    end
-    native_type = 0 
-    query = "SELECT * FROM offers WHERE #{type}='#{native_type}' ORDER BY price #{sort} LIMIT '#{limit}' OFFSET #{offset}"
-    query2 = "SELECT Count(*) FROM offers WHERE #{type}='#{native_type}' ORDER BY price #{sort} LIMIT '#{limit}'"   
-  elsif (issuer == "any") or (issuer.length == 0)
-    puts "issuer any detected"
-    query = "SELECT * FROM offers WHERE #{assetq}='#{asset}' ORDER BY price #{sort} LIMIT '#{limit}' OFFSET #{offset}"
-    query2 = "SELECT Count(*) FROM offers WHERE #{assetq}='#{asset}' ORDER BY price #{sort} LIMIT '#{limit}'"
-  else
-    puts " all other"
-    query = "SELECT * FROM offers WHERE #{assetq}='#{asset}' AND #{issuerq}='#{issuer}' limit '#{limit}' OFFSET #{offset}"
-    query2 = "SELECT Count(*) FROM offers WHERE #{assetq}='#{asset}' AND #{issuerq}='#{issuer}' limit '#{limit}'"
-  end
-  if (asset == "any") or (asset.length == 0)
-    puts "asset any detected"
-    query = "SELECT * FROM offers WHERE  #{issuerq}='#{issuer}' ORDER BY price #{sort} limit '#{limit}' OFFSET #{offset}"
-    query2 = "SELECT Count(*) FROM offers WHERE  #{issuerq}='#{issuer}' limit '#{limit}'"
-  end
-  if ((issuer == "any") and (asset == "any")) or ((issuer.length == 0) and (asset.length == 0))
-    puts "any any detected"
-    query = "SELECT * FROM offers ORDER BY price #{sort} limit '#{limit}' OFFSET #{offset}"
-    query2 = "SELECT Count(*) FROM offers limit '#{limit}'"
-  end
-  
-  if offerid != ""
+  if !(offerid.nil?)
     hash["action"] = "get_offerid"
     puts "offerid detected"
     query = "SELECT * FROM offers WHERE offerid='#{offerid}' "
     query2 = "SELECT Count(*) FROM offers WHERE offerid='#{offerid}'"
+  else
+    
+    query = ""
+    first = true
+    if sell_asset == "XLM" and sell_asset_type != 1
+      first = false
+      query = query + " sellingassettype='0'"
+    end
+    
+    if !(sell_asset.nil?) and sell_asset != "XLM"
+      if !first
+        query = query + " AND"
+      end
+      first = false
+      query = query + " sellingassetcode='#{sell_asset}'"
+    end
+    
+    if !(sell_asset_type.nil?)
+      if !first
+        query = query + " AND"
+      end
+      first = false
+      query = query + " sellingassettype='#{sell_asset_type}"
+    end
+    
+    if !(sell_issuer.nil?)
+      if !first
+        query = query + " AND"
+      end
+      first = false
+      query = query + " sellingissuer='#{sell_issuer}'"
+    end
+    
+    if buy_asset == "XLM" and buy_asset_type != 1
+      if !first
+        query = query + " AND"
+      end 
+      first = false
+      query = query + " buyingassettype='0'"
+    end
+    
+    if !(buy_asset.nil?) and buy_asset != "XLM"
+      if !first
+        query = query + " AND"
+      end
+      first = false
+      query = query +  " buyingassetcode='#{buy_asset}'"
+    end
+    
+    if !(buy_asset_type.nil?)
+      if !first
+        query = query + " AND"
+      end
+      first = false
+      query = query + " buyingassettype='#{buy_asset_type}'"
+    end
+    
+    if !(buy_issuer.nil?)
+      if !first
+        query = query + " AND"
+      end
+      first = false
+      query = query + " buyingissuer='#{buy_issuer}'"
+    end 
+    if !first
+      query = " FROM offers WHERE" + query
+    else
+      query = " FROM offers "
+    end
+    query2 = "SELECT Count(*)" + query
+    query = "SELECT *" + query
+    query = query + " ORDER BY price #{sort} LIMIT '#{limit}' OFFSET '#{offset}'"
   end
   puts "query: #{query}"
   puts "query2: #{query2}"
-  #return get_db(query)
-  result = get_db(query,1)
-  #hash = {"orders"=>[]}
-  index = offset
-  result.each do |row|
-    row["index"]=index
-    row["amount"] = row["amount"]/10000000
-    row["inv_base_amount"] = 1.0/row["amount"]
-    row["inv_base_price"] = 1.0/row["price"]
-    hash["orders"].push(row)
-    index = index + 1
-  end
-  result2 = get_db(query2)
-  puts "result2: #{result2}"
-  hash["count"]=result2["Count(*)"]
-  return hash 
-end
+  begin
+    result = get_db(query,1)
+    #hash = {"orders"=>[]}
+    index = offset
+    result.each do |row|
+      #puts "row: #{row}"
+      row["index"]=index
+      row["amount"] = row["amount"]/10000000.0
+      row["inv_base_amount"] = 1.0/row["amount"]
+      row["inv_base_price"] = 1.0/row["price"]
+      hash["orders"].push(row)
+      index = index + 1
+    end
+    result2 = get_db(query2)
+    puts "result2: #{result2}"
+    hash["count"]=result2["Count(*)"]
+    return hash
+  
+  rescue
+    hash["status"]="error2"
+    return hash
+  end 
+end 
 
 
 def get_trustlines_local(account,issuer,currency)

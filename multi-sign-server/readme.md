@@ -254,57 +254,32 @@ or if working:
 
   * example return:
 {"accountid":"GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","assettype":1,"issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","assetcode":"AAA","tlimit":9000000000000000000,"balance":1000010,"flags":1,"lastmodified":835305}
-##get_sell_offers: look up all sell offers made with this issuer and with this asset name
+
+
+##get_offers: look up all offers that match given search params
+ * note: revised replacement for actions "get_sell_offers" and "get_buy_offers" and "get_offerid"
   * Values sent:
-    * issuer: stellar address of the issuer of the asset in this search, if set to "any" will search through all issures on this asset
-    * asset: example USD, if set to "any" will search through all assets on this issuer
-    * limit: limit of the number of offers listed in the stellar-core database max is 10
-    * sort:  sort output assending "ASC" or sort desending "DESC"
-    * offset: start output from index X, this is used to page through output that has more than 10 elements that is max output
+    * offerid: optional, if set all other input values are ignored and will search for the single matching offerid offer order
+    * sell_asset_type: optional, if set it will look for matches of asset types on sell asset that can be "0" for native, "1" for 4 letter asset type,  "2" ??
+    * sell_asset: optional, sell asset type example USD, if not set will search through all assets on this sell_issuer
+    * sell_issuer: optional, stellar address of the selling issuer of the asset in this search, if not set will search through all issures on this asset
+    * buy_asset_type: optional, if set it will look for matches of asset types on buy asset that can be "0" for native, "1" for 4 letter asset type, "2" ??
+    * buy_asset:  optional, example USD, if not set will search through all assets on the buy_issuer
+    * buy_issuer: optional, stellar address of the buying issuer of the asset in this search, if not set will search through all issures on this asset
+    * limit: optional, limit of the number of offers listed in the stellar-core database max is 30
+    * sort: optional,  sort output assending "ASC" or sort desending "DESC" default "ASC"
+    * offset: optional, start output from index X, this is used to page through output that has more than 10 elements that is max output
 
   * Values returned:
     * count: total number of orders found with these search params
     * orders: an array of orders found with these search params
-    * sellerid: stellar account address making this order
-    * offerid: index number of the offer in the stellar database
-    * sellingassettype: always 1 ?? maybe depends on weather 4 or 12 letter asset name?
-    * sellingassetcode: asset code that they are selling example "USD"
-    * sellingissuer:  issuer address of the asset they are offering to selling
-    * buyingassettype: alway 1 ??
-    * buyingassetcode: asset code that they are buying
-    * buyingissuer: issuer address of the asset they are offering to buying
-    * amount: the quantity of the asset we are offering to sell
-    * pricen: price numerator of the asset price being offered to sell
-    * priced: price denominator of the asset price being offered to sell
-    * price: the price per unit of the asset being offered for sale based on the selling asset
-    * flags: ?? it's in the stellar database but I don't know what it is
-    * lastmodified: the last ledgerseq number that this assest order was modified.
-    * index: this is the index position of this search with these search params, to indicate position in page depending on offset, this starts from zero
-
-  * example input:
-    {"action":"get_sell_offers", "issuer":"any","asset":"CCC","sort":"ASC", "offset":5}
-
-  * example return:
-   {"orders":[{"sellerid":"GAMC...","offerid":24,"sellingassettype":1,"sellingassetcode":"CCC","sellingissuer":"GAX4...","buyingassettype":1,"buyingassetcode":"DDD","buyingissuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","amount":10000000,"pricen":10,"priced":1,"price":10.0,"flags":0,"lastmodified":726345,"index":5}],"count":6}
-
-##get_buy_offers: look up all buy offers made with this issuer and with this asset name
-  * Values sent:
-    * issuer: stellar address of the issuer of the asset in this search, if set to "any" or empty string will search through all issures on this asset
-    * asset: example USD, if set to "any" or empty string will search through all assets on this issuer
-    * limit: limit of the number of offers listed in the stellar-core database max is 10
-    * sort:  sort output assending "ASC" or sort desending "DESC"
-    * offset: start output from index X, this is used to page through output that has more than 10 elements that is max output
-
-  * Values returned:
-    * count: total number of orders with these search params found
-    * orders: an array of orders found with these search params
       * sellerid: stellar account address making this order
       * offerid: index number of the offer in the stellar database
-      * sellingassettype: always 1 ?? maybe depends on weather 4 or 12 letter asset name?
+      * sellingassettype: 0 for native  1 - 2 depends on weather 4 or 12 letter asset name
       * sellingassetcode: asset code that they are selling example "USD"
       * sellingissuer:  issuer address of the asset they are offering to selling
-      * buyingassettype: alway 1 ??
-      * buyingassetcode: asset code that they are buying
+      * buyingassettype: 0 for native  1 - 2 depends on weather 4 or 12 letter asset name
+      * buyingassetcode: asset code that they are buying example "USD"
       * buyingissuer: issuer address of the asset they are offering to buying
       * amount: the quantity of the asset we are offering to sell
       * pricen: price numerator of the asset price being offered to sell
@@ -312,13 +287,45 @@ or if working:
       * price: the price per unit of the asset being offered for sale based on the selling asset
       * flags: ?? it's in the stellar database but I don't know what it is
       * lastmodified: the last ledgerseq number that this assest order was modified.
-      * index: this is the index position of this search with these search params, to indicate position in page depending on offset
-    
-  * example input:
-    {"action":"get_buy_offers", "issuer":"any","asset":"CCC","sort":"ASC", "offset":0}
+      * index: this is the index position of this search with these search params, to indicate position in page depending on offset, this starts from zero
+      * inv_base_price: is the 1/price to view what order would look like if reversed
+      * inv_base_amount: is 1/amount to view what order would look like if reversed 
 
-  * exmple output:
-    * should be the same output format as get_sell_offer above
+  * example input:
+    {"action":"get_offers" , "sell_asset":"BBB","sell_amount":4,  "buy_asset":"AAA"}
+
+  * example return:
+   {"orders":[{"sellerid":"GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","offerid":14,"sellingassettype":1,"sellingassetcode":"BBB","sellingissuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","buyingassettype":1,"buyingassetcode":"AAA","buyingissuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","amount":1.0,"pricen":2,"priced":1,"price":2.0,"flags":0,"lastmodified":642332,"index":0,"inv_base_amount":1.0,"inv_base_price":0.5},{"sellerid":"GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","offerid":18,"sellingassettype":1,"sellingassetcode":"BBB","sellingissuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","buyingassettype":1,"buyingassetcode":"AAA","buyingissuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","amount":1.0,"pricen":2,"priced":1,"price":2.0,"flags":0,"lastmodified":642352,"index":1,"inv_base_amount":1.0,"inv_base_price":0.5}]
+
+## get_market_price: return the averge price and the max bid needed to setup an order for a certain amount of one asset for another
+  * Values sent:
+    * offerid: optional, if set all other input values are ignored and will search for the single matching offerid
+    * sell_asset_type: optional, if set it will look for matches of asset types on sell asset that can be "0" for native, "1" for 4 letter asset type,  "2" ??
+    * sell_asset: optional, sell asset type example USD, if not set will search through all assets on this sell_issuer
+    * sell_issuer: optional, stellar address of the selling issuer of the asset in this search, if not set will search through all issures on this asset
+    * sell_amount: the quantity of the sell_asset you want to trade for the buy_asset
+    * buy_asset_type: optional, if set it will look for matches of asset types on buy asset that can be "0" for native, "1" for 4 letter asset type, "2" ??
+    * buy_asset:  optional, example USD, if not set will search through all assets on the buy_issuer
+    * buy_issuer: optional, stellar address of the buying issuer of the asset in this search, if not set will search through all issures on this asset
+    * limit: optional, limit of the number of offers listed in the stellar-core database max is 30
+    * sort: optional,  sort output assending "ASC" or sort desending "DESC" default "ASC"
+    * offset: optional, start output from index X, this is used to page through output that has more than 10 elements that is max output
+
+  * Values returned:
+    * action: returns "get_market_price"
+    * sell_asset: the sell_asset used in the search
+    * buy_asset: the buy_asset used in the search
+    * averge_price: the averge price that an order would end up costing if the max_bid price is used on this amount
+    * max_bid: the max bid is what would be required to bid on the asset to end up with the amount you are asking for
+    * status: return "success" or error or "not_liquid" depending on results of search, not_liquid means there are not that many open orders for the buy_asset
+    * amount_available: if the present orders on the order book don't cover what you are looking to sell in sell_amount, this will return the quantity you can buy   
+
+  * example input:
+ {"action":"get_market_price" , "sell_asset":"BBB","sell_amount":4,  "buy_asset":"AAA"}
+
+  * example returns:
+ {"action":"get_market_price","buy_asset":"AAA","sell_asset":"BBB","averge_price":2.25,"max_bid":3.0,"amount":4,"status":"success"}
+ {"action":"get_market_price","buy_asset":"AAA","sell_asset":"BBB","averge_price":3.3,"max_bid":5.0,"amount":400,"amount_available":10.0,"status":"not_liquid"}
 
 ##version: return the version git hash of stellar-utility and the stellar-core that it is operating
   * Values sent:
@@ -662,12 +669,13 @@ values explained
 * core_version: this is the stellar-core git hash first 8 letters that this system is controling if running in localcore mode
 
 
-## Test website for mss-server
- We have created a test web client that utilises the websocket of mss-server for people to experment with and to server as an example. 
- The client provides a box to send raw JSON with a send button.  The text JSON results are then seen at the bottom.
+## Test websites for mss-server using a browser
+ We have created a example test web clients that utilises the websocket mode of mss-server for people to experment with and to server as an example how to setup a browser interface to an mss-server. 
+ The example client provides a box to send raw JSON with a send button.  The text JSON results are then seen at the bottom.
  It also contains a list of some examples of some of the common usage functions with param values already contained to try.
  This can be seen sometimes (not stable site just adsl connected home computer due to limited resources and funding) at http://zipperhead.ddns.net/example_mss_server_actions.html. The code for this 
  is also in this github distribution for you to see and try.  The present server is also run on the unstable site so don't always expect a responce.
+ We also created a primitive wallet app site that works in multi modes including mss-server mode and horizon testnet and live modes so you can compare operations and speed of API bettween both horizon and mss-server interfaces at http://zipperhead.ddns.net/stellar_min_client.html
 
 ## Why was it create?
 Mss-server was originaly created to allow the publishing of multi sign transaction and provide a point of collection for the signers to pickup the original unsigned transaction, sign it and send a validation signature back to the mss-server that would collect all the needed signatures and when weighted threshold is met will send the multi signed transaction to the stellar-core network.  We later added features to make it more like a mini horizon API interface as well.
