@@ -4,7 +4,7 @@
   <title>Stellar mini transaction client </title>
   <meta charset="UTF-8" />
   <script src="js/aes.js"></script>
-  <script src="js/stellar-sdk.min.js"></script>
+  <script src="js/stellar-sdk.js"></script>
   <script src="js/stellar_min_client.js"></script>  
 </head>
 <body>
@@ -17,7 +17,7 @@ also refresh bal:<input id="change_network" type="button" value="change_network"
   <option>mss_server</option>
 <input id="current_mode"  value="current_mode?" /><br />
 MSS-server socket Status: <span id="status"></span><br />
-MSS-server URL: <input id="url" size="50" /><br />
+MSS-server socket URL: <input id="url" size="30" /><br />
 <input id="open" type="button" value="Connect" />&nbsp;
   <input id="close" type="button" value="Disconnect" /><br />
 <input id="save" type="button" value="save_seed" /> 
@@ -27,22 +27,23 @@ pass phrase:<input id="pass_phrase" size="60" /><br />
 seed nick name or public ID:<input id="seed_nick" size="60" value = "seed" /><br />    
 seed:<input id="seed" size="60" /><br /> 
 account:<input id="account" size="60" /><br />
+account native balance: <input id="balance" size="40" /><br />
+Asset type <input id="asset_type" size="5" /> balance: <input id="CHP_balance" size="40" /><br />
+_______________________________________________________<br />
 <input id="add_trustline" type="button" value="add_trustline" />
  asset type:<input id="tasset" size="12" value = "CHP" />
 trust issuer: <input id="tissuer" size="61" value = "" /><br />
-account native balance: <input id="balance" size="40" /><br />
-Asset type <input id="asset_type" size="5" /> balance: <input id="CHP_balance" size="40" /><br />
-memo: <input id="memo" size="25" /><br />
 ______________________________________________________<br />
 Send Transaction Info: <br />
 <input id="gen_random_dest" type="button" value="gen_random_dest" /> 
 <input id="send_payment" type="button" value="send_payment" />
 <input id="merge_accounts" type="button" value="merge_accounts" /><br />
+memo: <input id="memo" size="25" /><br />
 asset type:<input id="asset" size="13" value = "native" /><br />
 issuer address:<input id="issuer" size="60" value = "" /><br />
 amount to send:<input id="amount" size="10" /><br />
-destination account:<input id="destination" size="60" /><br />
 destination seed:<input id="dest_seed" size="60" /><br />
+destination account:<input id="destination" size="60" /><br />
 destination native balance: <input id="dest_balance" size="40" /><br />
 destination asset balance: <input id="dest_CHP_balance" size="40" /><br />
 <div style="width:800px;height:300px;line-height:3em;overflow:scroll;padding:10px;">

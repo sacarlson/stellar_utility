@@ -30,18 +30,25 @@ seed:<input id="seed" size="60" /><br />
 account:<input id="account" size="60" /><br />
 account native balance: <input id="balance" size="40" /><br />
 ______________________________________________________<br />
-Offer Entry: <br />
-Buy asset: <input id="buy_asset" size="6" />  issuer: <input id="buy_issuer" size="60" /><br />
-Sell asset: <input id="sell_asset" size="6" />  issuer: <input id="sell_issuer" size="60" /><br />
-amount: <input id="amount" size="6" /><br />
-price:  <input id="price" size="6" /> <br />
-<input id="submit_offer" type="button" value="submit_offer" /><br />
+Offer Entry:  Use asset XLM with no Issuer for native<br />
+Buy asset: <input id="buy_asset" size="6" />  Issuer: <input id="buy_issuer" size="60" />
+ Balance: <input id="buy_asset_bal" size="10" /><br />
+Sell asset: <input id="sell_asset" size="6" />  Issuer: <input id="sell_issuer" size="60" />
+ Balance: <input id="sell_asset_bal" size="10" /><br />
+Amount: <input id="amount" size="6" /> of sell asset we are selling<br />
+we would get: <input id="will_get" size="6" />  Buy assets at this Amount and Offer price <br />
+averge Ask Price: <input id="averge_price" size="6" /> they will get for 1 Sell asset, on averge for this order size Amount<br />
+max Ask Price: <input id="ask_price" size="6" /> they want for 1 Buy asset, that is needed to buy this order size Amount<br />
+Offer Price:  <input id="offer_price" size="6" /> we will sell 1 Sell asset for this many Buy asset<br />
+<input id="submit_offer" type="button" value="submit_bid_offer" />
+<input id="get_market_price" type="button" value="get_market_price" />
+<input id="full_search" type="button" value="full_search" /><br />
 ______________________________________________________<br />
 Cancel Offer: <br />
 offerId:  <input id="offerid" size="6" /> <br />
-<input id="cancel_offer" type="button" value="cancel_offer" /><br />
+<input id="cancel_offer" type="button" value="cancel_offer" /> <input id="show_offer" type="button" value="show_offer" /><br />
 ______________________________________________________<br />
-Order Book Search:  <br />
+Order Book Search: Use asset XLM with no Issuer for native <br />
 sort order <select name="sort" id="sort" >
   <option>ASC</option> 
   <option>DESC</option> 
@@ -54,9 +61,9 @@ sort order <select name="sort" id="sort" >
 
 
 <input id="start_search" type="button" value="start_search" /><br />
-asset <input id="asset" size="12" />
-issuer <input id="issuer" size="60" /><br />
-
+Asset <input id="asset" size="12" />
+Issuer <input id="issuer" size="60" /><br />
+____________________________________________________<br />
 <div style="width:800px;height:300px;line-height:3em;overflow:scroll;padding:10px;">
   <span id="message"></span>
 </div>

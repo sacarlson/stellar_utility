@@ -255,10 +255,34 @@ or if working:
   * example return:
 {"accountid":"GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","assettype":1,"issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","assetcode":"AAA","tlimit":9000000000000000000,"balance":1000010,"flags":1,"lastmodified":835305}
 
+## get_sell_offers: look up all sell offers that match given search params
+  * Values sent:
+    * asset: eqivilent to sell_asset in get_offers
+    * issuer: equivilent to sell_issuer in get_offers
+    * sellerid: optional, if set all orders that match this will be ignored to filter out looking at your own orders
+    * limit: optional, limit of the number of offers listed in the stellar-core database max is 30
+    * sort: optional,  sort output assending "ASC" or sort desending "DESC" default "ASC"
+    * offset: optional, start output from index X, this is used to page through output that has more than 10 elements that is max output
+
+  * Values returned:
+    * same as get_offers bellow
+
+## get_buy_offers: look up all buy offers that match given search params
+  * Values sent:
+    * asset: eqivilent to buy_asset in get_offers
+    * issuer: equivilent to buy_issuer in get_offers
+    * sellerid: optional, if set all orders that match this will be ignored to filter out looking at your own orders
+    * limit: optional, limit of the number of offers listed in the stellar-core database max is 30
+    * sort: optional,  sort output assending "ASC" or sort desending "DESC" default "ASC"
+    * offset: optional, start output from index X, this is used to page through output that has more than 10 elements that is max output
+
+  * Values returned:
+    * same as get_offers bellow
 
 ##get_offers: look up all offers that match given search params
- * note: revised replacement for actions "get_sell_offers" and "get_buy_offers" and "get_offerid"
+ * note: revised replacement for "get_offerid"
   * Values sent:
+    * sellerid: optional, if set all orders that match this will be ignored to filter out looking at your own orders
     * offerid: optional, if set all other input values are ignored and will search for the single matching offerid offer order
     * sell_asset_type: optional, if set it will look for matches of asset types on sell asset that can be "0" for native, "1" for 4 letter asset type,  "2" ??
     * sell_asset: optional, sell asset type example USD, if not set will search through all assets on this sell_issuer
@@ -299,6 +323,7 @@ or if working:
 
 ## get_market_price: return the averge price and the max bid needed to setup an order for a certain amount of one asset for another
   * Values sent:
+    * sellerid: optional, if set all orders that match this will be ignored to filter out looking at your own orders
     * offerid: optional, if set all other input values are ignored and will search for the single matching offerid
     * sell_asset_type: optional, if set it will look for matches of asset types on sell asset that can be "0" for native, "1" for 4 letter asset type,  "2" ??
     * sell_asset: optional, sell asset type example USD, if not set will search through all assets on this sell_issuer
@@ -315,17 +340,18 @@ or if working:
     * action: returns "get_market_price"
     * sell_asset: the sell_asset used in the search
     * buy_asset: the buy_asset used in the search
-    * averge_price: the averge price that an order would end up costing if the max_bid price is used on this amount
+    * averge_price: the averge price that 1 buy asset order would end up costing on this sell_amount
     * max_bid: the max bid is what would be required to bid on the asset to end up with the amount you are asking for
-    * status: return "success" or error or "not_liquid" depending on results of search, not_liquid means there are not that many open orders for the buy_asset
-    * amount_available: if the present orders on the order book don't cover what you are looking to sell in sell_amount, this will return the quantity you can buy   
+    * status: return "success" or "error" or "not_liquid" depending on results of search, not_liquid means there are not that many open orders for the buy_asset
+    * total_amount: the total number of buy asset shares seen on the books at this time with these search params
+    * amount_available: if status returns "not_liquid" this returns the total number of buy asset shares available on the books 
+    * max_sell_amount: if status returns "not_liquid" then this will return showing the max amount of sell asset you can sell to buy all available buy asset
 
   * example input:
- {"action":"get_market_price" , "sell_asset":"BBB","sell_amount":4,  "buy_asset":"AAA"}
+{"action":"get_market_price","sell_asset":"BBB","sell_issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","buy_asset":"AAA","buy_issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","sell_amount":"10","sellerid":"GCL2C4ESE5PQ6GHGQUYVJ2EFH42FEHCN4LOAWYZTKTVEBCZ2GSQD66T4"}
 
   * example returns:
- {"action":"get_market_price","buy_asset":"AAA","sell_asset":"BBB","averge_price":2.25,"max_bid":3.0,"amount":4,"status":"success"}
- {"action":"get_market_price","buy_asset":"AAA","sell_asset":"BBB","averge_price":3.3,"max_bid":5.0,"amount":400,"amount_available":10.0,"status":"not_liquid"}
+{"action":"get_market_price","buy_asset":"AAA","sell_asset":"BBB","averge_price":3.5999999880000004,"max_bid":5.0,"amount":10.0,"total_amount":5.3333334,"status":"success"} {"action":"get_market_price","buy_asset":"AAA","sell_asset":"BBB","averge_price":4.1249999859375,"max_bid":5.0,"amount":24.0,"amount_available":5.3333334,"max_sell_amount":22.000000200000002,"status":"not_liquid"}
 
 ##version: return the version git hash of stellar-utility and the stellar-core that it is operating
   * Values sent:

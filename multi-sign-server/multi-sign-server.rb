@@ -89,6 +89,18 @@ EM.run {
         #'{"issuer":"'+request_payload["issuer"]+'", "asset":"'+request_payload["asset"]+'", "balance":'+results.to_s+'}'
         puts "results: #{results}"
         results.to_json
+      when "get_buy_offers"
+        results = mult_sig.Utils.get_offers(request_payload)
+        if results.nil?
+          results = {"status"=>"no record found"}
+        end
+        results.to_json
+      when "get_sell_offers"
+        results = mult_sig.Utils.get_offers(request_payload)
+        if results.nil?
+          results = {"status"=>"no record found"}
+        end
+        results.to_json
       when "get_offers"
         results = mult_sig.Utils.get_offers(request_payload)
         if results.nil?
@@ -262,6 +274,18 @@ EM.run {
         results = mult_sig.Utils.get_trustlines_local(request_payload["account"],request_payload["issuer"],request_payload["asset"])
         #'{"issuer":"'+request_payload["issuer"]+'", "asset":"'+request_payload["asset"]+'", "balance":'+results.to_s+'}'
         puts "results: #{results}"
+        ws.send results.to_json
+       when "get_buy_offers"
+        results = mult_sig.Utils.get_buy_offers(request_payload)
+        if results.nil?
+          results = {"status"=>"no record found"}
+        end
+        ws.send results.to_json
+      when "get_sell_offers"
+        results = mult_sig.Utils.get_sell_offers(request_payload)
+        if results.nil?
+          results = {"status"=>"no record found"}
+        end
         ws.send results.to_json
       when "get_offers"
         results = mult_sig.Utils.get_offers(request_payload)

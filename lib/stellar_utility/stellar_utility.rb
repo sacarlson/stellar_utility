@@ -302,57 +302,73 @@ def get_market_price(params)
   puts "start get_market_price"
   sell_asset = params["sell_asset"]
   sell_issuer = params["sell_issuer"]
-  sell_amount = params["sell_amount"]
+  sell_amount = params["sell_amount"].to_f
   buy_asset = params["buy_asset"]
   buy_issuer = params["buy_issuer"]
+  #sellerid = params["sellerid"]
   if sell_asset.nil?
     sell_asset = "XLM"
     params["sell_asset"] = "XLM"
   end
-  if sell_amount.nil?
+  if sell_amount == 0
     sell_amount = 1
     params["sell_amount"] = 1
   end
   begin
-  results = get_offers(params)
-  puts "results: #{results}" 
-  orders = results["orders"]
-  total_amount = 0
-  total_cost = 0
-  averge_price = 0
-  max_bid = 0
-  orders.each do |row|
+    results = get_offers(params)
+    puts "results: #{results}" 
+    orders = results["orders"]
+    total_cost = 0.0
+    averge_price = 0.0
+    max_bid = 0.0
+    price = 0.0
+    total_amount = 0.0
+    puts   "sell_amount: #{sell_amount}"
+    orders.each do |row|
       puts "row: #{row}"   
-      amount = row["amount"]
-      price = row["price"]        
-      puts "total_amount: #{total_amount}  sell_amount: #{sell_amount}"
+      amount = row["amount"].to_f
+      price = row["price"].to_f              
       if max_bid < price
         max_bid = price
       end
-      total_amount = total_amount + amount
-      if total_amount >= sell_amount
-        puts "here?"
-        averge_cost = averge_price * (total_amount - amount)
-        puts "averge_cost: #{averge_cost}"
-        last_cost = price * (amount - (total_amount - sell_amount))
-        puts "last_cost: #{last_cost}"
-        final_price = (averge_cost + last_cost) / sell_amount
-        puts "final_price: #{final_price}"
-        return {"action"=>"get_market_price", "buy_asset"=>buy_asset, "sell_asset"=>sell_asset, "averge_price"=>final_price, "max_bid"=>max_bid, "amount"=>sell_amount, "status"=>"success"}
-      end      
+      total_amount = total_amount + amount      
+      puts "total_amount: #{total_amount}"     
+      puts "price: #{price}"
       total_cost = total_cost + (price * amount)
       puts "total_cost: #{total_cost}"
       if total_amount > 0
         averge_price = total_cost / total_amount
       else
-        averge_price = 0
+        averge_price = price
       end
       puts "averge_price: #{averge_price}"
-  end
-  return {"action"=>"get_market_price", "buy_asset"=>buy_asset, "sell_asset"=>sell_asset, "averge_price"=>averge_price, "max_bid"=>max_bid, "amount"=>sell_amount, "amount_available"=>total_amount, "status"=>"not_liquid"}
+      sale_equiv = sell_amount / averge_price
+      puts "sale_equiv: #{sale_equiv}"
+      if  total_amount >=  sale_equiv
+        puts "have liquidity"     
+        return {"action"=>"get_market_price", "buy_asset"=>buy_asset, "sell_asset"=>sell_asset, "averge_price"=>averge_price, "max_bid"=>max_bid, "amount"=>sell_amount, "total_amount"=>results["total_amount"], "status"=>"success"}
+      end            
+    end
+
+    max_sell_amount = averge_price * total_amount
+    return {"action"=>"get_market_price", "buy_asset"=>buy_asset, "sell_asset"=>sell_asset, "averge_price"=>averge_price, "max_bid"=>max_bid, "amount"=>sell_amount, "amount_available"=>total_amount, "max_sell_amount"=>max_sell_amount, "status"=>"not_liquid"}
   rescue
     return {"action"=>"get_market_price", "status"=>"error", "error"=>"bad input or missing params"}
   end
+end
+
+def get_buy_offers(params)
+  puts "asset: #{params["asset"]}"
+  params["buy_asset"] = params["asset"]
+  params["buy_issuer"] = params["issuer"] 
+  return get_offers(params)
+end
+
+def get_sell_offers(params)
+  puts "asset: #{params["asset"]}"
+  params["sell_asset"] = params["asset"]
+  params["sell_issuer"] = params["issuer"] 
+  return get_offers(params)
 end
     
 def get_offers(params)
@@ -366,8 +382,9 @@ def get_offers(params)
   limit = params["limit"]
   offset = params["offset"]
   offerid = params["offerid"]
+  sellerid = params["sellerid"]
   #sort = "DESC||ASC"
-  hash = {"orders"=>[]}
+  hash = {"action"=>"get_offers","orders"=>[]}
   if sort != "DESC" and sort != "ASC"
     sort = "ASC"
   end
@@ -391,12 +408,14 @@ def get_offers(params)
       query = query + " sellingassettype='0'"
     end
     
-    if !(sell_asset.nil?) and sell_asset != "XLM"
-      if !first
-        query = query + " AND"
+    if !(sell_asset.nil?)  and sell_asset != "XLM"
+      if sell_asset.length > 0
+        if !first
+          query = query + " AND"
+        end
+        first = false
+        query = query + " sellingassetcode='#{sell_asset}'"
       end
-      first = false
-      query = query + " sellingassetcode='#{sell_asset}'"
     end
     
     if !(sell_asset_type.nil?)
@@ -408,11 +427,23 @@ def get_offers(params)
     end
     
     if !(sell_issuer.nil?)
-      if !first
-        query = query + " AND"
+      if sell_issuer.length > 0 
+        if !first
+          query = query + " AND"
+        end
+        first = false
+        query = query + " sellingissuer='#{sell_issuer}'"
       end
-      first = false
-      query = query + " sellingissuer='#{sell_issuer}'"
+    end
+
+    if !(sellerid.nil?)
+      if sellerid.length > 0
+        if !first
+          query = query + " AND"
+        end
+        first = false
+        query = query + " sellerid!='#{sellerid}'"
+      end
     end
     
     if buy_asset == "XLM" and buy_asset_type != 1
@@ -423,12 +454,14 @@ def get_offers(params)
       query = query + " buyingassettype='0'"
     end
     
-    if !(buy_asset.nil?) and buy_asset != "XLM"
-      if !first
-        query = query + " AND"
+    if !(buy_asset.nil?)  and buy_asset != "XLM"
+      if buy_asset.length > 0
+        if !first
+          query = query + " AND"
+        end
+        first = false
+        query = query +  " buyingassetcode='#{buy_asset}'"
       end
-      first = false
-      query = query +  " buyingassetcode='#{buy_asset}'"
     end
     
     if !(buy_asset_type.nil?)
@@ -439,12 +472,14 @@ def get_offers(params)
       query = query + " buyingassettype='#{buy_asset_type}'"
     end
     
-    if !(buy_issuer.nil?)
-      if !first
-        query = query + " AND"
+    if !(buy_issuer.nil?) 
+      if buy_issuer.length > 0
+        if !first
+          query = query + " AND"
+        end
+        first = false
+        query = query + " buyingissuer='#{buy_issuer}'"
       end
-      first = false
-      query = query + " buyingissuer='#{buy_issuer}'"
     end 
     if !first
       query = " FROM offers WHERE" + query
@@ -461,15 +496,18 @@ def get_offers(params)
     result = get_db(query,1)
     #hash = {"orders"=>[]}
     index = offset
+    total_amount = 0.0
     result.each do |row|
       #puts "row: #{row}"
       row["index"]=index
       row["amount"] = row["amount"]/10000000.0
+      total_amount = total_amount + row["amount"]
       row["inv_base_amount"] = 1.0/row["amount"]
       row["inv_base_price"] = 1.0/row["price"]
       hash["orders"].push(row)
       index = index + 1
     end
+    hash["total_amount"] = total_amount
     result2 = get_db(query2)
     puts "result2: #{result2}"
     hash["count"]=result2["Count(*)"]
@@ -489,6 +527,16 @@ def get_trustlines_local(account,issuer,currency)
   account = convert_keypair_to_address(account) 
   issuer = convert_keypair_to_address(issuer) 
   puts "account: #{account}  issuer: #{issuer}   currency:  #{currency}"
+  if currency == "XLM" and issuer.length == 0    
+    result = {}
+    result["balance"] = get_native_balance_local(account)
+    result["status"] = "native balance"
+    result["accountid"] = account
+    result["issuer"] = issuer
+    result["assetcode"] = currency
+    result["action"] = "get_lines_balance"
+    return result
+  end
   query = "SELECT * FROM trustlines WHERE accountid='#{account}' AND assetcode='#{currency}' AND issuer='#{issuer}'"
   result = get_db(query)
   if result.nil?

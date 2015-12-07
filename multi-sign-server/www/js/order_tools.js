@@ -12,9 +12,16 @@
       var buy_issuer = document.getElementById("buy_issuer"); 
       var sell_asset = document.getElementById("sell_asset");      
       var sell_issuer = document.getElementById("sell_issuer");
+      var sell_asset_bal = document.getElementById("sell_asset_bal");
+      var buy_asset_bal = document.getElementById("buy_asset_bal");
       var amount = document.getElementById("amount");
-      var price = document.getElementById("price");
+      var will_get = document.getElementById("will_get");
+      var averge_price = document.getElementById("averge_price");
+      var ask_price = document.getElementById("ask_price");
+      var offer_price = document.getElementById("offer_price");
       var submit_offer = document.getElementById("submit_offer");
+      var get_market_price = document.getElementById("get_market_price");
+      var full_search = document.getElementById("full_search");
       var cancel_offer = document.getElementById("cancel_offer");
  
       var seed = document.getElementById("seed");          
@@ -298,7 +305,7 @@
      }
 
      function get_offerid() {
-       var action = '{"action":"get_offerid", "offerid":"' + offerid.value + '"}'
+       var action = '{"action":"get_offers", "offerid":"' + offerid.value + '"}'
        socket.send(action);
      }
 
@@ -316,40 +323,7 @@
        get_seq(key.address());
      }
 
-    function get_balance_updates_mss() {
-      // this querys balance updates from the mss-server
-      // see socket.addEventListener to see how the responces from this are feed 
-      // to browser display boxes
-      console.log("start get_balance_updates_mss");
-      if (socket.readyState === 1) {
-        var action = '{"action":"get_account_info","account":"';
-        var tail = '"}';
-        socket.send(action + account.value + tail);
-        var action = '{"action":"get_thresholds_info","account":"';
-        var tail = '"}';
-        socket.send(action + account.value + tail);
-        var action = '{"action":"get_signer_info","account":"';
-        var tail = '"}';
-        socket.send(action + account.value + tail);
-
-      }
-    }
-
-    function get_offers_mss() {
-      // this querys balance updates from the mss-server
-      // see socket.addEventListener to see how the responces from this are feed 
-      // to browser display boxes
-      console.log("start get_offers_mss");
-      if (socket.readyState === 1) {
-        if (buysell.value === "buy") {
-          var action = '{"action":"get_buy_offers","asset":"';
-        }else {
-          var action = '{"action":"get_sell_offers","asset":"';
-        }
-        var tail = '"}';
-        socket.send(action + asset.value + '","issuer":"'+ issuer.value +'","sort":"' + sort.value + tail);        
-      }
-    }
+   
      
 
       function createTransaction_horizon(key,operation) {
@@ -414,9 +388,9 @@
                  });
                }
 
-      function addTrustlineOperation(asset_type, address) {
+      function addTrustlineOperation(asset_type, issuer_address) {
                  //asset_type examples "USD", "CHP"
-                 asset = new StellarSdk.Asset(asset_type, address);
+                 asset = new StellarSdk.Asset(asset_type, issuer_address);
                  return StellarSdk.Operation.changeTrust({asset: asset}); 
                }
       
@@ -434,7 +408,7 @@
               opts.buying = new StellarSdk.Asset(buy_asset.value, buy_issuer.value);
             }
             opts.amount = amount.value;
-            opts.price = price.value;
+            opts.price = offer_price.value;
             if (cancel_offer_flag) {
               console.log("cancel_offer_flag true");
               opts.offerId = offerid.value;
@@ -467,8 +441,64 @@
                  return StellarSdk.Operation.setOptions(opts);
                }
 
-      
+       function get_balance_updates_mss() {
+      // this querys balance updates from the mss-server
+      // see socket.addEventListener to see how the responces from this are feed 
+      // to browser display boxes
+      console.log("start get_balance_updates_mss");
+      if (socket.readyState === 1) {
+        var action = '{"action":"get_account_info","account":"';
+        var tail = '"}';
+        socket.send(action + account.value + tail);       
+        var action = '{"action":"get_lines_balance","account":"';
+        var tail = '"}';
+        socket.send(action + account.value + '","issuer":"' + buy_issuer.value +'","asset":"' + buy_asset.value + tail);
+        var action = '{"action":"get_lines_balance","account":"';
+        var tail = '"}';
+        socket.send(action + account.value + '","issuer":"' + sell_issuer.value +'","asset":"' + sell_asset.value + tail);
+      }
+    }
 
+    function get_offers_mss() {
+      // this querys balance updates from the mss-server
+      // see socket.addEventListener to see how the responces from this are feed 
+      // to browser display boxes
+      console.log("start get_offers_mss");
+      if (socket.readyState === 1) {
+        if (buysell.value === "buy") {
+          var action = '{"action":"get_buy_offers","asset":"';
+        }else {
+          var action = '{"action":"get_sell_offers","asset":"';
+        }
+        var tail = '"}';
+        socket.send(action + asset.value + '","issuer":"'+ issuer.value +'","sort":"' + sort.value + tail);        
+      }
+    }
+
+    function get_offers_full_mss() {
+      console.log("start get_offers_full_mss");
+      if (socket.readyState === 1) {
+        var action = '{"action":"get_offers","sell_asset":"';  
+        var tail = '"}';
+        socket.send(action + buy_asset.value + '","sell_issuer":"'+ buy_issuer.value +'","buy_asset":"' + sell_asset.value + '","buy_issuer":"' + sell_issuer.value + '","sellerid":"' + account.value + tail);          
+      }
+      //var offer = (1.0 / Number(ask_price.value));
+      will_get.value = Number(offer_price.value) * Number(amount.value);
+    }
+
+
+    function get_market_price_mss() {
+      // this querys balance updates from the mss-server
+      // see socket.addEventListener to see how the responces from this are feed 
+      // to browser display boxes
+      console.log("start get_market_price_mss");
+      if (socket.readyState === 1) {        
+        var action = '{"action":"get_market_price","sell_asset":"';       
+        var tail = '"}';
+        socket.send(action + buy_asset.value + '","sell_issuer":"'+ buy_issuer.value +'","buy_asset":"' + sell_asset.value + '","buy_issuer":"' + sell_issuer.value + '","sell_amount":"' + amount.value + '","sellerid":"' + account.value + tail);        
+      }
+    }
+//{"action":"get_market_price", "sell_asset":"BBB","sell_amount":4, "buy_asset":"AAA"}
     
       function create_socket() {
         console.log("started create_socket");
@@ -485,13 +515,25 @@
         // Display messages received from the mss-server
         // and feed desired responce to browser input boxes
         socket.addEventListener("message", function(event) {
-          message.textContent = "Server Says: " + event.data;
+          message.textContent = "MSS Server responce: " + event.data;
           var event_obj = JSON.parse(event.data);
           console.log(event.data);
           console.log("event_obj.action");
           console.log(event_obj.action);
           if (event_obj.action == "get_account_info") {          
               balance.value = event_obj.balance;                       
+          }
+
+          if (event_obj.action == "get_lines_balance") {
+            console.log("get_lines_balance detected");
+            console.log(event_obj.issuer);
+            console.log(sell_issuer.value);
+            if (event_obj.issuer == sell_issuer.value && event_obj.assetcode == sell_asset.value) {
+              sell_asset_bal.value = event_obj.balance;
+            }
+            if (event_obj.issuer == buy_issuer.value && event_obj.assetcode == buy_asset.value) {
+              buy_asset_bal.value = event_obj.balance;
+            }            
           }
          
           if (event_obj.action == "get_sequence") {
@@ -503,11 +545,7 @@
           if (event_obj.action == "send_b64") {
             get_balance_updates_mss();
           }
-          
-          if (event_obj.action == "get_signer_info") {
-            
-          }
-
+                   
           if (event_obj.action == "get_offerid") {
 //{[{"sellerid":"GAMCHGO4ECUREZPKVUCQZ3NRBZMK6ESEQVHPRZ36JLUZNEH56TMKQXEB","offerid":70,"sellingassettype":0,"sellingassetcode":null,"sellingissuer":null,"buyingassettype":1,"buyingassetcode":"CCC","buyingissuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","amount":10000000,"pricen":1,"priced":1,"price":1.0,"flags":0,"lastmodified":1018137,"index":0,"inv_price":1.0}],"action":"get_offerid","count":1}
             var offer = event_obj.orders[0];            
@@ -525,11 +563,20 @@
               sell_asset.value = offer.sellingassetcode;
               sell_issuer.value = offer.sellingissuer;
             }
-            amount.value = "0.0";
-            price.value = offer.price;
+            amount.value = offer.amount;
+            offer_price.value = offer.price;
             manageOfferTransaction();         
           }
 
+          if (event_obj.action == "get_market_price") {
+            ask_price.value = event_obj.max_bid;
+            averge_price.value = event_obj.averge_price;
+            offer_price.value = (1.0 / Number(ask_price.value));
+            will_get.value = (1.0 / Number(averge_price.value)) * Number(amount.value);
+            if (event_obj.max_sell_amount) {
+              amount.value = event_obj.max_sell_amount;
+            }         
+          }
 
         });
 
@@ -655,8 +702,23 @@
         cancel_offer_flag = false;
         manageOfferTransaction();
       });
+
+      show_offer.addEventListener("click", function(event) {
+        cancel_offer_flag = false;
+        get_offerid();
+      });
+
+      get_market_price.addEventListener("click", function(event) {
+        cancel_offer_flag = false;
+        get_market_price_mss();
+      });
+
+      full_search.addEventListener("click", function(event) {
+        console.log("full_search");
+        get_offers_full_mss();
+      });
    
-      
+     
 
   });
 
