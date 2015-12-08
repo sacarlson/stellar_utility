@@ -23,7 +23,7 @@
       var open = document.getElementById("open");
       var close = document.getElementById("close");
       var merge_accounts = document.getElementById("merge_accounts");
-      //var status = document.getElementById("status");
+      var status = document.getElementById("status");
       var network = document.getElementById("network");
 
       var asset_obj = new StellarSdk.Asset.native();
@@ -32,6 +32,8 @@
       var operation_globle;
       var paymentsEventSource;
       var server;
+
+      
 
       //merge_accounts.disabled = true;
       network.value ="testnet";
@@ -58,13 +60,15 @@
             
       reset_horizon_server();
 
-      current_mode.value = "Stellar TestNet";
+      current_mode.value = "Stellar horizon TestNet";
 
       var key = StellarSdk.Keypair.fromSeed(seed.value);
       update_key();
     
       update_balances();
       start_effects_stream();
+
+          
 
           function attachToPaymentsStream(opt_startFrom) {
             console.log("start attacheToPaymentsStream");
@@ -105,9 +109,9 @@
                 attachToPaymentsStream(startListeningFrom);
             })
             .catch(function (err) {
+                //console.log(err);
                 console.log("error detected in attachToPaymentsStream");
-                attachToPaymentsStream('now');
-                console.log(err);
+                attachToPaymentsStream('now');               
             });
           }
 
@@ -228,7 +232,7 @@
           to_id1:"dest_balance",
           asset_code1:null,
           to_id2:"dest_CHP_balance",
-          asset_code2:asset_type.value,
+          asset_code2:asset.value,
           detail:false
         },update_balances_set); 
         }       
@@ -321,7 +325,7 @@
         var action = '{"action":"get_lines_balance","account":"';
         var tail = '"}';
         socket.send(action + account.value + '", "issuer":"' + tissuer.value + '", "asset":"' + asset_type.value + tail);
-        socket.send(action + destination.value + '", "issuer":"' + tissuer.value + '", "asset":"' +tasset.value + tail);
+        socket.send(action + destination.value + '", "issuer":"' + issuer.value + '", "asset":"' +asset.value + tail);
       }
     }
      
@@ -508,7 +512,7 @@
           open.disabled = true;
           StellarSdk.Network.useTestNet();
           hostname = "horizon-testnet.stellar.org";
-          current_mode.value = "Stellar TestNet";
+          current_mode.value = "Stellar horizon TestNet";
           console.log(socket);
           if (typeof(socket) !== "undefined") {
             socket.close();
@@ -522,7 +526,7 @@
           open.disabled = true;
           StellarSdk.Network.usePublicNetwork();
           hostname = "horizon-live.stellar.org";
-          current_mode.value = "Stellar Live!!";
+          current_mode.value = "Stellar horizon Live!!";
           console.log(socket);
           if (typeof(socket) !== "undefined") {
             socket.close();
@@ -538,7 +542,7 @@
           close.disabled = false;
           StellarSdk.Network.useTestNet();
           create_socket();
-          current_mode.value = "TestNet MSS-server";
+          current_mode.value = "MSS-server TestNet";
         }     
         update_balances();          
       });

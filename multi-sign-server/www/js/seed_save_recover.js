@@ -5,12 +5,44 @@
      
       var save = document.getElementById("save");
       var restore = document.getElementById("restore");
+      var gen_random_key = document.getElementById("gen_random_key");
       var pass_phrase = document.getElementById("pass_phrase");
       var seed = document.getElementById("seed"); 
       var key_id = document.getElementById("key_id");
+      var address = document.getElementById("address");
+      var address2 = document.getElementById("address2");
       var message = document.getElementById("message"); 
-      var encrypted;  
-      key_id.value = "seed"
+      var encrypted; 
+      var key;
+      var qrcode = new QRCode(document.getElementById("qrcode"), {
+	width : 200,
+	height : 200
+      });
+      var qrcode2 = new QRCode(document.getElementById("qrcode2"), {
+	width : 200,
+	height : 200
+      });
+ 
+      key_id.value = "seed";
+      address2.textContent = "test";
+      makeCode();
+
+          function makeCode () {		
+	  // qr-code generator
+	    if (!seed.value) {
+		alert("no seed value detected for qrcode, bad pass phrase?");
+		seed.focus();
+		return;
+	    }	
+	    qrcode.makeCode(seed.value);
+            qrcode2.makeCode(address.value);
+            address2.textContent = address.value;
+          }
+
+      function update_key() {
+        key = StellarSdk.Keypair.fromSeed(seed.value);
+        address.value = key.address();       
+      }
 
 function display_localstorage_keylist() {
   var result = "";
@@ -96,7 +128,14 @@ function displayContents(contents) {
     return true;
 }
       
- 
+      gen_random_key.addEventListener("click", function(event) {
+        console.log("gen_random");         
+        key = StellarSdk.Keypair.random();
+        address.value = key.address();
+        seed.value = key.seed();
+        makeCode();        
+      }); 
+
       save.addEventListener("click", function(event) {
         // save an encrypted copy of seed value box to LocalStorage at key_id location         
         if (typeof(Storage) !== "undefined") {
@@ -131,6 +170,8 @@ function displayContents(contents) {
           // Retrieve
           var encrypted = localStorage.getItem(key_id.value);
           seed.value = CryptoJS.AES.decrypt(encrypted, pass_phrase.value).toString(CryptoJS.enc.Utf8);
+          update_key();
+          makeCode();
           message.textContent = "raw data before decryption: " + encrypted;
         } else {
           seed.value = "Sorry, your browser does not support Web Storage...";
