@@ -27,30 +27,43 @@
       address2.textContent = "test";
       makeCode();
 
-          function makeCode () {		
-	  // qr-code generator
-	    if (!seed.value) {
-		alert("no seed value detected for qrcode, bad pass phrase?");
+      function makeCode () {		
+	// qr-code generator
+	if (!seed.value) {
+	  alert("no seed value detected for qrcode, bad pass phrase?");
 		seed.focus();
 		return;
-	    }	
-	    qrcode.makeCode(seed.value);
-            qrcode2.makeCode(address.value);
-            address2.textContent = address.value;
-          }
+	}	
+	//qrcode.makeCode(seed.value);
+        update_key();
+        qrcode.makeCode(export_to_centaurus());
+        qrcode2.makeCode(address.value);
+        address2.textContent = address.value;
+      }
 
       function update_key() {
         key = StellarSdk.Keypair.fromSeed(seed.value);
         address.value = key.address();       
       }
 
-function display_localstorage_keylist() {
-  var result = "";
-  for ( var i = 0, len = localStorage.length; i < len; ++i ) {
-     result = result + localStorage.key( i ) + ", ";
-  }
-  message.textContent = result;
-}
+      function export_to_centaurus () {
+        var cent_keys = {
+	  address : key.address(),
+	  secret : key.seed()
+        };
+	var plain = JSON.stringify(cent_keys);
+	var backupString = CryptoJS.AES.encrypt(plain, pass_phrase.value);
+	var body = 'centaurus:backup003' + backupString;
+	return body;
+      };
+		        
+      function display_localstorage_keylist() {
+  	var result = "";
+        for ( var i = 0, len = localStorage.length; i < len; ++i ) {
+          result = result + localStorage.key( i ) + ", ";
+        }
+        message.textContent = result;
+     }
 
 function json_to_LocalStorage(jobj) {
   var key_list = "";
