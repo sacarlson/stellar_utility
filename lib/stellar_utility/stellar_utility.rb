@@ -61,8 +61,19 @@ def initialize(load="default")
 end #end initalize
 
 def version
+  hash = {}
   puts "mode: #{@configs["mode"]}"
-  return "0.1.0"
+  hash["stellar_base_version"] = Stellar::Base::VERSION
+  hash["sqlite_version"] = SQLite3::VERSION
+  hash["ruby_version"] = "#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
+  begin
+    stellar_core_status = get_stellar_core_status(detail=true)
+    hash["stellar_core_version"] = stellar_core_status["info"]["build"]
+  rescue
+    hash["stellar_core_version"] = "error"
+  end 
+  #puts hash.to_json
+  return hash.to_json
 end
 
 def get_db(query,full=0)
@@ -228,16 +239,13 @@ def get_sorted_holdings(params)
   asset = params["asset"]
   issuer = params["issuer"]
   offset = params["offset"]
-  hash = {"accounts"=>[]}
-  if asset.nil?
-    hash["status"] = "error"
-    hash["error"] = "no asset param provided"
-    return hash
-  end
+  hash = {"accounts"=>[]}  
   if offset.nil?
     offset = 0
   end
-  if asset == "native"
+  if asset.nil?
+    query = "SELECT * FROM trustlines ORDER BY balance DESC LIMIT 30 OFFSET #{offset}"
+  elsif asset == "native"
     query = "SELECT * FROM accounts ORDER BY balance DESC LIMIT 30 OFFSET #{offset}"
   elsif !(issuer.nil?)
     query = "SELECT * FROM trustlines WHERE assetcode = '#{asset}' AND issuer = #{issuer} ORDER BY balance DESC LIMIT 30 OFFSET #{offset}"
