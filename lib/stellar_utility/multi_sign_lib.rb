@@ -26,7 +26,7 @@ class Multi_sign
   end  
 
   def version()
-    version = "su: "+@Utils.version+"  mss_version: " + @configs["version"] + " core_version: " + @configs["core_version"]
+    version = "su: "+@Utils.version+"  mss_version: " + @configs["version"] 
   end
 
   def get_db(query="none")

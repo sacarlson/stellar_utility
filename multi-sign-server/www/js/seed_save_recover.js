@@ -182,6 +182,7 @@ function displayContents(contents) {
         if (typeof(Storage) !== "undefined") {
           // Retrieve
           var encrypted = localStorage.getItem(key_id.value);
+          message.textContent = encrypted;
           seed.value = CryptoJS.AES.decrypt(encrypted, pass_phrase.value).toString(CryptoJS.enc.Utf8);
           update_key();
           makeCode();

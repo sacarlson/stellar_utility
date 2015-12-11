@@ -174,6 +174,7 @@ def get_tx_hist(params)
     offset = 0
   end  
   query = "SELECT * FROM txhistory ORDER BY ledgerseq DESC LIMIT 300 OFFSET #{offset}"
+  
   #txhistory = get_db(query)
   result = get_db(query,1)
   hash = {"txhistory"=>[]}
@@ -181,7 +182,6 @@ def get_tx_hist(params)
   add_to_list = false
   result.each do |row|
     puts "index: #{index}"
-    puts "row[txbody]: #{row["txbody"]}"
     txbody = envelope_to_hash(row["txbody"])    
     if txbody["operations"][0]["destination_address"] == params["destination_address"] and !(txbody["operations"][0]["destination_address"].nil?)
       if txbody["memo.text"] == params["memo_text"] or params["memo_text"].nil?
@@ -193,9 +193,18 @@ def get_tx_hist(params)
         add_to_list = true
       end
     end
+    if (params["destination_address"].nil?) and (txbody["memo.text"] == params["memo_text"])
+      add_to_list = true
+    end
+    if (params["source_address"].nil?) and (params["destination_address"].nil?) and (params["memo_text"].nil?)
+      add_to_list = true
+    end
     if add_to_list
-      txbody["txresults"] = txresult_resultcode(row["txresult"])
+      txr = txresult_resultcode(row["txresult"])
+      txbody["txresults"] = txr.name
       txbody["index"] = index
+      txbody["txid"] = row["txid"]
+      txbody["ledgerseq"] = row["ledgerseq"]
       txbody.delete("txmeta")
       txbody.delete("txindex")
       hash["txhistory"].push(txbody)
@@ -1044,12 +1053,14 @@ def send_native_tx(from_pair, to_account, amount, seqadd=0)
   return tx   
 end
 
-def send_native(from_pair, to_account, amount, memo= nil)
+def send_native(from_pair, to_account, amount, memo)
   # this will send native lunes from_pair account to_account
   # from_pair must be an active stellar key pair with the needed funds for amount
   # to_account can be an account address or an account pair with no need for secrete key.
   tx = send_native_tx(from_pair, to_account, amount)
-  if !(memo.nil?)    
+  puts "memo: #{memo}"
+  if !(memo.nil?)   
+     puts "memo detected" 
     tx.memo = Stellar::Memo.new(:memo_text, memo)
   end 
   b64 = tx.to_envelope(from_pair).to_xdr(:base64)
@@ -1926,7 +1937,9 @@ def envelope_to_hash(envelope_b64)
   if tx.memo.type == Stellar::MemoType.memo_text()   
     hash["memo.type"] = "memo_text"
     #puts "tx.memo: #{tx.memo.inspect}"
-    hash["memo.text"] = tx.memo.value
+    s = tx.memo.value
+    s.delete!("^\u{0000}-\u{007F}")
+    hash["memo.text"] = s
     #hash["memo.text"] = tx.memo.text
   end  
   # seems we can have more than one operation per tx but I've only ever sent one at a time before

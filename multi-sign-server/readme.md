@@ -386,7 +386,7 @@ or if working:
     * from_seed: the secreet seed of the account sending the funds
     * to_account: the stellar public address of the account we are sending the funds to
     * amount: the amount of XLM or native currency being sent to the to_account
-    * memo: a string that can be a message sent with the transaction
+    * memo_text: a string that can be a message sent with the transaction
 
   * example output:
   {"action":"send_native", "from_seed":"SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ", "to_account": "GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY", "amount":"1.25"}
@@ -403,7 +403,7 @@ or if working:
     * amount: the amount of the asset or currency being sent to the to_account
     * issuer: the stellar public address of the issuer of the asset to be sent
     * assetcode: the asset code of the asset being sent example USD, EUR ...
-    * memo: a string that can be a message sent with the transaction
+    * memo_text: a string that can be a message sent with the transaction
 
   * example output:
   {"action":"send_asset", "from_seed":"SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ", "to_account": "GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF", "assetcode":"AAA", "amount":"1.25"}
@@ -455,7 +455,7 @@ or if working:
 ##get_tx_hist: get the tx history from stellar-core db for search params given max return 10 last transactions.
  results are sorted in last transaction performed is on top of search, this is the new improved version of get_tx_hist...
 
-  * Values sent:
+  * Values sent: note if no filter values added it will return all transactions sorted by last performed first max 10 results as a time
     * txid: if txid input is present it will override all other input values and just get this txid as the return
     * source_address: source_address of the transaction target account to search
     * destination_address: destination_address of the transaction target account search
@@ -471,6 +471,8 @@ or if working:
     * memo.text:
     * op_length:
     * txresults: operation tx_success or fail results
+    * ledgerseq: the ledger sequence that the transaction was performed
+    * txid: the txid hash unique id of the transaction
     * index: index count of the search result used in offset for page sync to search more than one page of 10 
     * operations: an array of operations in this transaction
       * operation: name of the operation being performed

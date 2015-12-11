@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title>Mulit-Sign-WebSocket Client</title>
+  <title>Multi-Sign-Server Demo</title>
   <meta charset="UTF-8" />
   <script>
     "use strict";
@@ -105,7 +105,7 @@
   </script>
 </head>
 <body>
-  Test page for Multi-sign-websocket <br />
+  <h3> Test Demo page for Multi-Sign-Server </h3> <br />
   For details on mss-server JSON format see <a href="https://github.com/sacarlson/stellar_utility/tree/master/multi-sign-server">github..multi-sign-server</a><br />
   Status: <span id="status"></span><br />
   URL: <input id="url" size="50" /><br />
@@ -117,12 +117,15 @@ ____________________________________________________________<br />
   <option>'{"action":"version"}'</option>
   <option>'{"action":"core_status"}'</option>
   <option>'{"action":"create_keys"}'</option>
-  <option>'{"action":"send_native", "from_seed":"SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ", "to_account": "GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY", "amount":"1.25"}'</option>
+  <option>'{"action":"send_native", "from_seed":"SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ", "to_account": "GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY", "amount":"1.25","memo_text":"sacarlson"}'</option>
   <option>'{"action":"send_asset", "from_seed":"SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ", "to_account": "GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF", "assetcode":"AAA", "amount":"1.25"}'</option>
   <option>'{"action":"get_issuer_debt", "issuer":"GAMB56CPYXJZUM2QSWXTUFSFIWMNHB6GZBUFJ2YJQJRGW6WH223NRLND"}'</option>
   <option>'{"action":"get_tx_hist", "destination_address":"GA6U5X6WOPNKKDKQULBR7IDHDBAQKOWPHYEC7WSXHZBFEYFD3XVZAKOO","memo_text":"sacarlson"}'</option>
+ <option>'{"action":"get_tx_hist", "memo_text":"sacarlson"}'</option>
  <option>'{"action":"get_tx_hist", "txid":"6114f9034a5e2c143f80f61e816e4342bf0181a53a79ddfec6656cb413827af1"}'</option>
-  <option>'{"action":"version"}'</option>
+  <option>'{"action":"get_sorted_holdings"} '</option>
+  <option>'{"action":"get_sorted_holdings","offset":30} '</option>
+  <option>'{"action":"get_sorted_holdings","asset":"BEER"} '</option>
   <option>'{"action":"get_market_price", "sell_asset":"BBB","sell_amount":4, "buy_asset":"AAA"}'</option>
   <option>'{"action":"get_offers", "sell_asset":"BBB", "buy_asset":"AAA"}'</option>
   <option>'{"action":"get_offers", "sell_asset":"XLM"}'</option>
