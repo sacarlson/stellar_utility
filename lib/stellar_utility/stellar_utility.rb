@@ -66,6 +66,7 @@ def version
   hash["stellar_base_version"] = Stellar::Base::VERSION
   hash["sqlite_version"] = SQLite3::VERSION
   hash["ruby_version"] = "#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
+  hash["default_network"] = Stellar.current_network
   begin
     stellar_core_status = get_stellar_core_status(detail=true)
     hash["stellar_core_version"] = stellar_core_status["info"]["build"]
@@ -1043,11 +1044,14 @@ def send_native_tx(from_pair, to_account, amount, seqadd=0)
   return tx   
 end
 
-def send_native(from_pair, to_account, amount)
+def send_native(from_pair, to_account, amount, memo= nil)
   # this will send native lunes from_pair account to_account
   # from_pair must be an active stellar key pair with the needed funds for amount
   # to_account can be an account address or an account pair with no need for secrete key.
   tx = send_native_tx(from_pair, to_account, amount)
+  if !(memo.nil?)    
+    tx.memo = Stellar::Memo.new(:memo_text, memo)
+  end 
   b64 = tx.to_envelope(from_pair).to_xdr(:base64)
   send_tx(b64)
 end
@@ -1119,10 +1123,13 @@ def send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, cu
   return tx
 end
 
-def send_currency(from_account_pair, to_account_pair, issuer_pair, amount, currency)
+def send_currency(from_account_pair, to_account_pair, issuer_pair, amount, currency, memo=nil)
   # to_account_pair and issuer_pair can be ether a pair or just account address
   # from_account_pair must have full pair with secreet key
   tx = send_currency_tx(from_account_pair, to_account_pair, issuer_pair, amount, currency)
+  if !(memo.nil?)    
+    tx.memo = Stellar::Memo.new(:memo_text, memo)
+  end 
   b64 = tx.to_envelope(from_account_pair).to_xdr(:base64)
   send_tx(b64)
 end
@@ -1910,9 +1917,12 @@ def envelope_to_hash(envelope_b64)
   if tx.memo.type == Stellar::MemoType.memo_none()   
     hash["memo.type"] = "memo_none"
   end
-  if tx.memo.type == :memo_none   
-    hash["memo.type"] = "memo_none"
-  end 
+  if tx.memo.type == Stellar::MemoType.memo_id()
+    puts "memo.type: memo_id"
+    hash["memo.type"] = "memo_id"
+    hash["memo_id"] = tx.memo.value
+    puts "memo.id: #{tx.memo.value}"
+  end
   if tx.memo.type == Stellar::MemoType.memo_text()   
     hash["memo.type"] = "memo_text"
     #puts "tx.memo: #{tx.memo.inspect}"
@@ -2017,18 +2027,28 @@ def view_envelope(envelope_b64)
   else
     puts "time_bounds: nil"
   end
+  begin
+  puts "tx.memo.type: #{tx.memo.type}"
+  puts "tx.memo.type.inspect: #{tx.memo.type.inspect}"
+  
   if tx.memo.type == Stellar::MemoType.memo_none()
     puts "memo.type:  memo_none"
     hash["memo.type"] = "memo_none"
+  end  
+  if tx.memo.type == Stellar::MemoType.memo_id()
+    puts "memo.type: memo_id"
+    hash["memo.type"] = "memo_id"
+    hash["memo_id"] = tx.memo.value
+    puts "memo.id: #{tx.memo.value}"
   end
-  if tx.memo.type == :memo_none
-    puts "memo_none:  #{tx.memo.text}"
-    hash["memo.type"] = "memo_none"
-  end 
   if tx.memo.type == Stellar::MemoType.memo_text()
-    puts "memo_txt:  #{tx.memo.text}"
+    puts "tx.memo: #{tx.memo}"
+    puts "memo_txt:  #{tx.memo.value}"
     hash["memo.type"] = "memo_text"
-    hash["memo.text"] = tx.memo.text
+    hash["memo.text"] = tx.memo.value
+  end
+  rescue
+    hash["memo.type"] = "bad_memo_contents"
   end
   puts "tx.ext:  #{tx.ext}"
   #puts "tx.operations:  #{tx.operations}"

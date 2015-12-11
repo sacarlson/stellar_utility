@@ -386,6 +386,7 @@ or if working:
     * from_seed: the secreet seed of the account sending the funds
     * to_account: the stellar public address of the account we are sending the funds to
     * amount: the amount of XLM or native currency being sent to the to_account
+    * memo: a string that can be a message sent with the transaction
 
   * example output:
   {"action":"send_native", "from_seed":"SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ", "to_account": "GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY", "amount":"1.25"}
@@ -402,6 +403,7 @@ or if working:
     * amount: the amount of the asset or currency being sent to the to_account
     * issuer: the stellar public address of the issuer of the asset to be sent
     * assetcode: the asset code of the asset being sent example USD, EUR ...
+    * memo: a string that can be a message sent with the transaction
 
   * example output:
   {"action":"send_asset", "from_seed":"SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ", "to_account": "GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF", "assetcode":"AAA", "amount":"1.25"}

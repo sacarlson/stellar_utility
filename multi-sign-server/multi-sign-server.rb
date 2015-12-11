@@ -69,14 +69,14 @@ EM.run {
         results.to_json
       when "send_native"
         begin
-          results =  mult_sig.Utils.send_native(Stellar::KeyPair.from_seed(request_payload["from_seed"]), request_payload["to_account"], request_payload["amount"])
+          results =  mult_sig.Utils.send_native(Stellar::KeyPair.from_seed(request_payload["from_seed"]), request_payload["to_account"], request_payload["amount"],request_payload["memo"])
         rescue
           results = {"action"=>"send_native","status"=>"error" ,"error"=>"bad input"}
         end
         results.to_json
       when "send_asset"
         begin
-          results =  mult_sig.Utils.send_currency(Stellar::KeyPair.from_seed(request_payload["from_seed"]), request_payload["to_account"],request_payload["issuer"], request_payload["amount"],request_payload["assetcode"])
+          results =  mult_sig.Utils.send_currency(Stellar::KeyPair.from_seed(request_payload["from_seed"]), request_payload["to_account"],request_payload["issuer"], request_payload["amount"],request_payload["assetcode"],request_payload["memo"])
         rescue
           results = {"action"=>"send_native","status"=>"error" ,"error"=>"bad input"}
         end

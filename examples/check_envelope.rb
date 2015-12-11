@@ -3,8 +3,8 @@
 # to verify that it has the desired action in it before it is signed by a signer.
 require '../lib/stellar_utility/stellar_utility.rb'
 
-Utils = Stellar_utility::Utils.new("horizon")
-#Utils = Stellar_utility::Utils.new()
+#Utils = Stellar_utility::Utils.new("horizon")
+Utils = Stellar_utility::Utils.new()
 puts "Utils version: #{Utils.version}"
 puts "configs: #{Utils.configs}"
 puts ""
@@ -47,6 +47,12 @@ rndstring = "test#{rnd}"
 #puts "#{rndstring}"
 #tx = Utils.set_options_tx(multi_sig_account_keypair,home_domain: rndstring)
 tx = Utils.send_native_tx(multi_sig_account_keypair, signerA_keypair, 2)
+memo = Stellar::Memo.new(:memo_text, "test_this_out")
+# if memo_hash or memo_return are not 32 letters in length I get errors in view_envelope, now converted to a memo.type return of "bad_memo_contents"
+#memo = Stellar::Memo.new(:memo_hash, "hxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+#memo = Stellar::Memo.new(:memo_return, "hxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+#memo = Stellar::Memo.new(:memo_id, 4)
+tx.memo = memo
 #tx = Utils.add_trust_tx(multi_sig_account_keypair,signerA_keypair,"CHP",100)
 #tx = Utils.create_account_tx(signerA_keypair, multi_sig_account_keypair,100)
 #tx = Utils.allow_trust_tx(account, trustor, code, authorize=true)  // not done
@@ -55,6 +61,8 @@ tx = Utils.send_native_tx(multi_sig_account_keypair, signerA_keypair, 2)
 env_b64 = tx.to_envelope(funder).to_xdr(:base64)
 
 #env_b64 = 'AAAAAJBrzw3ONDO46vf15HXGwuWaXCqUC5fW+wK5BJm5nfaMAAAD6AAAIU0AAAACAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAAws9GWXeTd+kwubYVinVteea3EbflvS3k1plWg1IJ7F0AAAAAAAAAAACYloAAAAAAAAAAAbmd9owAAABAbVJYfpKjAqZquIFu1FMKg1Wjr7v8eM7UCA/YURSMnWJVwj7hnDQoQi4RbgG2t0UneWvpVeGz0v1oQ6fyOqriAw=='
+
+#env_b64 = 'AAAAAAjUE6sKUXWxKAJ/rXUUeDwr/IY9Lxv0qxZKUEJG1mmJAAAAZAAAIeoAAAAEAAAAAAAAAAAAAAABAAAAAAAAAAEAAAAACNQTqwpRdbEoAn+tdRR4PCv8hj0vG/SrFkpQQkbWaYkAAAAAAAAJor/oBCEAAAAAAAAAAA=='
 
 #puts "env_b64:  #{env_b64}"
 
@@ -65,6 +73,7 @@ hash = Utils.view_envelope(env_b64)
 #hash = Utils.envelope_to_hash(env_b64)
 puts "hash: #{hash}"
 
+exit -1
 #Utils.send_tx(env_b64)
 
 hash_template = {"source_address"=>"GAQC2M6FJI6Q3UFTY6B43LKQAZ4OL7WG3N4JSFC7AOMTNRQ3DBKYVHE5", "fee"=>10, "seq_num"=>899512180670465, "time_bounds"=>nil, "memo.type"=>"memo_none", "op_length"=>1, "operation"=>:payment_op, "destination_address"=>"GBBOGXDHIIT6RCJ6K453B2OJ7ZO4K2C5HIHZ5QL5DI7O623WYO4TVFVY", "asset"=>"native", "amount"=>22.0}
