@@ -452,6 +452,28 @@ or if working:
   * example return:
   {"status":"success", "debt":{"CHP":200110.12,"USD":300}, "issuer","GAMB56CPYXJZUM2QSWXTUFSFIWMNHB6GZBUFJ2YJQJRGW6WH223NRLND"} 
 
+##get_tx_order_hist:
+  * Values sent:
+    * sell_asset_type: optional, if set it will look for matches of asset types on sell asset that can be "0" for native, "1" for 4 letter asset type,  "2" ??
+    * sell_asset: optional, sell asset type example USD, if not set will search through all assets on this sell_issuer
+    * sell_issuer: optional, stellar address of the selling issuer of the asset in this search, if not set will search through all issures on this asset
+    * buy_asset_type: optional, if set it will look for matches of asset types on buy asset that can be "0" for native, "1" for 4 letter asset type, "2" ??
+    * buy_asset:  optional, example USD, if not set will search through all assets on the buy_issuer
+    * buy_issuer: optional, stellar address of the buying issuer of the asset in this search, if not set will search through all issures on this asset
+    * limit: optional, limit of the number of offers listed in the stellar-core database max is 30
+    * sort: optional,  sort output assending "ASC" or sort desending "DESC" default "ASC"
+    * offset: optional, start output from index X, this is used to page through output that has more than 10 elements that is max output
+    * closed: if set to "true" only returns with closed trades with offer_id = 0 are returned, if set "false" only return open orders if nil both are returned
+
+  * Values returned:
+   * TBD
+
+  * example input:
+ {"action":"get_tx_offer_hist","sell_asset":"BBB","sell_issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","closed":"true"}
+
+  * example return:
+ {"txhistory":[{"source_address":"GCL2C4ESE5PQ6GHGQUYVJ2EFH42FEHCN4LOAWYZTKTVEBCZ2GSQD66T4","fee":100,"seq_num":4943404278480914,"memo_type":"memo_none","op_length":1,"operations":[{"operation":"manage_offer_op","selling.asset":"BBB\u0000","selling.issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","buying.asset":"AAA\u0000","buying.issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","amount":1.0,"price":{"attributes":{"n":1,"d":2}},"offer_id":0}],"txresults":"tx_success","index":0,"txid":"c23ae0e216b99de57263afed9b88cffed5d9d8efda3ad01d2a8c00f0bcf7f745","ledgerseq":1165140}]}
+
 ##get_tx_hist: get the tx history from stellar-core db for search params given max return 10 last transactions.
  results are sorted in last transaction performed is on top of search, this is the new improved version of get_tx_hist...
 

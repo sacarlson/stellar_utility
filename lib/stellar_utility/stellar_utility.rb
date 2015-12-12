@@ -164,6 +164,72 @@ def issuer_debt_total(params)
   return debt
 end
 
+def get_tx_offer_hist(params) 
+  offset = params["offset"]
+  puts "sell_asset: #{params["sell_asset"]}"
+  puts "sell_issuer: #{params["sell_issuer"]}"
+  if offset.nil?
+    offset = 0
+  end  
+  query = "SELECT * FROM txhistory ORDER BY ledgerseq DESC LIMIT 400 OFFSET #{offset}"  
+  result = get_db(query,1)
+  hash = {"txhistory"=>[]}
+  index = offset
+  add_to_list = false
+  result.each do |row|
+    #puts "index: #{index}"
+    txbody = envelope_to_hash(row["txbody"]) 
+    operation = txbody["operations"][0]["operation"]
+    #puts ":operation: #{operation}  class: #{operation.class}"
+    if operation == :manage_offer_op
+      offer = txbody["operations"][0]
+      puts "selling.asset: #{offer["selling.asset"]}  class: #{offer["selling.asset"].class}  lenght: #{offer["selling.asset"].length} "
+      puts "offer: #{offer}"
+      if !(params["sell_asset"].nil?) and offer["selling.asset"].include?(params["sell_asset"])
+        puts "selling match"
+        if offer["selling.issuer"] == params["sell_issuer"] or params["sell_issuer"].nil? 
+          puts "selling issuer match"
+          add_to_list = true
+        end
+      end
+      if !(params["buy_asset"].nil?) and offer["buying.asset"].include?(params["buy_asset"])
+        if offer["buying.issuer"] == params["buy_issuer"] or params["buy_issuer"].nil? 
+          add_to_list = true
+        end
+      end
+      if !(params["closed"].nil?) 
+        if params["closed"] == "true"
+          if offer["offer_id"].to_i > 0
+            add_to_list = false
+          end
+        else
+          if offer["offer_id"].to_i == 0
+            add_to_list = false
+          end
+        end
+      end
+    end
+    
+    if add_to_list
+      txr = txresult_resultcode(row["txresult"])
+      txbody["txresults"] = txr.name
+      txbody["index"] = index
+      txbody["txid"] = row["txid"]
+      txbody["ledgerseq"] = row["ledgerseq"]
+      txbody.delete("txmeta")
+      txbody.delete("txindex")
+      hash["txhistory"].push(txbody)
+      puts "hash: #{hash}"
+      index = index + 1
+    end
+    if (index - offset) > 30
+      return hash
+    end
+    add_to_list = false
+  end
+  return hash
+end
+
 def get_tx_hist(params)
   if !(params["txid"].nil?) and (params["txid"] != "all")
     puts "txid2: #{params["txid"]}"
@@ -2007,8 +2073,8 @@ def envelope_to_hash(envelope_b64)
         hash["operations"][opnum]["buying.asset"] = "native"
       else
         begin
-          hash["operations"][opnum]["buying.asset"] = op.body.value.selling.code
-          hash["operations"][opnum]["buying.issuer"] = public_key_to_address(op.body.value.selling.issuer)
+          hash["operations"][opnum]["buying.asset"] = op.body.value.buying.code
+          hash["operations"][opnum]["buying.issuer"] = public_key_to_address(op.body.value.buying.issuer)
         rescue
           hash["operations"][opnum]["buying.asset"] = "error"
         end

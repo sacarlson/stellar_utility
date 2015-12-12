@@ -89,6 +89,9 @@ EM.run {
         #'{"issuer":"'+request_payload["issuer"]+'", "asset":"'+request_payload["asset"]+'", "balance":'+results.to_s+'}'
         puts "results: #{results}"
         results.to_json
+      when "get_tx_offer_hist"
+        results = mult_sig.Utils.get_tx_offer_hist(request_payload)
+        results.to_json 
       when "get_buy_offers"
         results = mult_sig.Utils.get_offers(request_payload)
         if results.nil?
@@ -328,6 +331,9 @@ EM.run {
       when "get_issuer_debt"
         results = mult_sig.Utils.issuer_debt_total(request_payload)
         ws.send results.to_json
+      when "get_tx_offer_hist"
+        results = mult_sig.Utils.get_tx_offer_hist(request_payload)
+        ws.send results.to_json 
       when "get_tx_hist"
         results = mult_sig.Utils.get_tx_hist(request_payload)
         ws.send results.to_json 
