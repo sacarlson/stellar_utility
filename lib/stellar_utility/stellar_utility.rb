@@ -165,7 +165,7 @@ def issuer_debt_total(params)
 end
 
 def get_tx_hist(params)
-  if !(params["txid"].nil?)
+  if !(params["txid"].nil?) and (params["txid"] != "all")
     puts "txid2: #{params["txid"]}"
     return get_txhistory(params["txid"],params["detail"])
   end
@@ -173,7 +173,7 @@ def get_tx_hist(params)
   if offset.nil?
     offset = 0
   end  
-  query = "SELECT * FROM txhistory ORDER BY ledgerseq DESC LIMIT 300 OFFSET #{offset}"
+  query = "SELECT * FROM txhistory ORDER BY ledgerseq DESC LIMIT 400 OFFSET #{offset}"
   
   #txhistory = get_db(query)
   result = get_db(query,1)
@@ -183,21 +183,34 @@ def get_tx_hist(params)
   result.each do |row|
     puts "index: #{index}"
     txbody = envelope_to_hash(row["txbody"])    
-    if txbody["operations"][0]["destination_address"] == params["destination_address"] and !(txbody["operations"][0]["destination_address"].nil?)
-      if txbody["memo.text"] == params["memo_text"] or params["memo_text"].nil?
+    
+    if (params["destination_address"].nil?) and params["source_address"].nil?
+      if  (txbody["memo_text"].to_s == params["memo_text"].to_s) and !(params["memo_text"].nil?)
         add_to_list = true
       end
-    end
-    if txbody["source_address"] == params["source_address"] and !(txbody["source_address"].nil?)
-      if txbody["memo.text"] == params["memo_text"] or params["memo_text"].nil?
+      if  (txbody["memo_id"].to_i == params["memo_id"].to_i) and !(params["memo_id"].nil?)
         add_to_list = true
       end
-    end
-    if (params["destination_address"].nil?) and (txbody["memo.text"] == params["memo_text"])
-      add_to_list = true
-    end
-    if (params["source_address"].nil?) and (params["destination_address"].nil?) and (params["memo_text"].nil?)
-      add_to_list = true
+      if  (txbody["memo_value"].to_s == params["memo"].to_s) and !(params["memo"].nil?)
+        add_to_list = true
+      end
+      if (txbody["memo_type"] == params["memo_type"]) and !(params["memo_type"].nil?)
+        add_to_list = true
+      end
+      if "all" == params["txid"]
+        add_to_list = true
+      end
+    else
+      if txbody["operations"][0]["destination_address"] == params["destination_address"] and !(txbody["operations"][0]["destination_address"].nil?)
+        if txbody["memo_value"].to_s == params["memo"].to_s or txbody["memo_id"].to_i == params["memo_id"].to_i or (params["memo"].nil? and params["memo_id"].nil?)
+          add_to_list = true
+        end
+      end
+      if txbody["source_address"] == params["source_address"] and !(txbody["source_address"].nil?)
+        if txbody["memo_value"].to_s == params["memo"].to_s or txbody["memo_id"].to_i == params["memo_id"].to_i or (params["memo"].nil? and params["memo_id"].nil?)
+          add_to_list = true
+        end
+      end
     end
     if add_to_list
       txr = txresult_resultcode(row["txresult"])
@@ -211,7 +224,7 @@ def get_tx_hist(params)
       puts "hash: #{hash}"
       index = index + 1
     end
-    if (index - offset) > 10
+    if (index - offset) > 30
       return hash
     end
     add_to_list = false
@@ -1914,7 +1927,7 @@ def envelope_to_hash(envelope_b64)
   begin
     tx = env.tx 
   rescue
-    return "bad_envelope"
+    return hash = {"status"=>"error", "error"=>"bad_envelope"}
   end
   pk = tx.source_account
   hash["source_address"] = public_key_to_address(pk)
@@ -1926,20 +1939,24 @@ def envelope_to_hash(envelope_b64)
     hash["time_bounds_min_time"] = tx.time_bounds.min_time
   end
   if tx.memo.type == Stellar::MemoType.memo_none()   
-    hash["memo.type"] = "memo_none"
+    hash["memo_type"] = "memo_none"
+  else
+    hash["memo_type"] = Stellar::MemoType.memo_none()
   end
   if tx.memo.type == Stellar::MemoType.memo_id()
-    puts "memo.type: memo_id"
-    hash["memo.type"] = "memo_id"
+    puts "memo_type: memo_id"
+    hash["memo_type"] = "memo_id"
     hash["memo_id"] = tx.memo.value
+    hash["memo_value"] = tx.memo.value.to_s
     puts "memo.id: #{tx.memo.value}"
   end
   if tx.memo.type == Stellar::MemoType.memo_text()   
-    hash["memo.type"] = "memo_text"
+    hash["memo_type"] = "memo_text"
     #puts "tx.memo: #{tx.memo.inspect}"
     s = tx.memo.value
     s.delete!("^\u{0000}-\u{007F}")
-    hash["memo.text"] = s
+    hash["memo_text"] = s
+    hash["memo_value"] = s
     #hash["memo.text"] = tx.memo.text
   end  
   # seems we can have more than one operation per tx but I've only ever sent one at a time before

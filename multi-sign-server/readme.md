@@ -455,20 +455,25 @@ or if working:
 ##get_tx_hist: get the tx history from stellar-core db for search params given max return 10 last transactions.
  results are sorted in last transaction performed is on top of search, this is the new improved version of get_tx_hist...
 
-  * Values sent: note if no filter values added it will return all transactions sorted by last performed first max 10 results as a time
-    * txid: if txid input is present it will override all other input values and just get this txid as the return
+  * Values sent: note if txid = "all" then all transactions sorted by last ledger sequence first, max 30 results at a time returned
+    * txid: if txid input is present it will override all other input values and just get this txid as the return, or if set to  "all" will return all txid
     * source_address: source_address of the transaction target account to search
     * destination_address: destination_address of the transaction target account search
-    * memo_text: only list if memo_text matches text memo in transaction or if memo_text is nil then memo will just be ignored
-    * offset: offset in search results to allow paging through more than 10 resulting transactions in a searchs
+    * memo_text: add to list if memo_text string matches a type memo_text memo in a transaction, if memo_text is nil then memo_text will be ignored
+    * memo_id: add to list if memo_id number integer matches a type memo_id memo in a transaction, if memo_id is nil then memo_id will be ignored
+    * memo: add to list if the contents of ether type memo_text or memo_id when converted to string match the contents 
+    * memo_type: add to list if memo_type of or one of the type including memo_text, memo_id, memo_hash, memo_return matches
+    * offset: offset in search results to allow paging through more than 30 resulting transactions a search
 
   * Values return:
     * txhistory: and array of tx history events
-    * source_address:
-    * fee:
-    * seq_num:
-    * memo.type:
-    * memo.text:
+    * source_address: the source accountid that this transaction was sent from
+    * fee: fee paid in this transaction
+    * seq_num: the sequence number of this transaction
+    * memo_type: if memo is present in transaction this returns type of memo_text, memo_id, memo_hash, memo_return, memo_none
+    * memo_text: returns a string with value of memo_text if a memo_text type memo is found in the tx
+    * memo_id: returns an integer number value of memo_id if a memo_id type memo is found in the tx
+    * memo_value: always returns a string of the contents of eather memo_text string or memo_id number converted to string
     * op_length:
     * txresults: operation tx_success or fail results
     * ledgerseq: the ledger sequence that the transaction was performed

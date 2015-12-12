@@ -300,7 +300,12 @@
 
      function createTransaction_mss_submit(key,operation,seq_num) {
        var account = new StellarSdk.Account(key.address(), seq_num);
-       var transaction = new StellarSdk.TransactionBuilder(account,{fee:100, memo: StellarSdk.Memo.text(memo.value)})            
+       if (isNaN(memo.value)) {
+         var memo_tr = StellarSdk.Memo.text(memo.value);
+       } else {
+         var memo_tr = StellarSdk.Memo.id(memo.value);
+       }
+       var transaction = new StellarSdk.TransactionBuilder(account,{fee:100, memo: memo_tr})            
            .addOperation(operation)          
            .addSigner(key)
            .build();
@@ -331,9 +336,14 @@
      
 
       function createTransaction_horizon(key,operation) {
+        if (isNaN(memo.value)) {
+          var memo_tr = StellarSdk.Memo.text(memo.value);
+        } else {
+          var memo_tr = StellarSdk.Memo.id(memo.value);
+        }
         server.loadAccount(key.address())
           .then(function (account) {
-            var transaction = new StellarSdk.TransactionBuilder(account,{fee:100, memo: StellarSdk.Memo.text(memo.value)})            
+            var transaction = new StellarSdk.TransactionBuilder(account,{fee:100, memo: memo_tr})            
             .addOperation(operation)          
             .addSigner(key)
             .build();                     
