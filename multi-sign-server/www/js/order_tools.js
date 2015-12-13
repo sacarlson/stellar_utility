@@ -21,6 +21,7 @@
       var offer_price = document.getElementById("offer_price");
       var submit_offer = document.getElementById("submit_offer");
       var get_market_price = document.getElementById("get_market_price");
+      var closed_state = document.getElementById("closed_state");
       var full_search = document.getElementById("full_search");
       var cancel_offer = document.getElementById("cancel_offer");
  
@@ -486,6 +487,21 @@
       will_get.value = Number(offer_price.value) * Number(amount.value);
     }
 
+    function get_offers_hist_mss() {
+      console.log("start get_offers_hist_mss");
+      if (socket.readyState === 1) {
+        var action = '{"action":"get_tx_offer_hist","sell_asset":"';
+        if (closed_state.value == "all") {  
+          var tail = '"}';
+        } else if (closed_state.value == "canceled") {
+           var tail = '","closed":"true"}';
+        } else {
+           var tail = '","closed":"false"}';
+        }
+        socket.send(action + buy_asset.value + '","sell_issuer":"'+ buy_issuer.value +'","buy_asset":"' + sell_asset.value + '","buy_issuer":"' + sell_issuer.value + tail);          
+      }
+    }
+
 
     function get_market_price_mss() {
       // this querys balance updates from the mss-server
@@ -717,8 +733,12 @@
         console.log("full_search");
         get_offers_full_mss();
       });
+
+      search_offer_hist.addEventListener("click", function(event) {
+        console.log("search_offer_hist");
+        get_offers_hist_mss();
+      });
    
-     
 
   });
 

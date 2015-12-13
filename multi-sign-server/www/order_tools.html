@@ -42,7 +42,13 @@ max Ask Price: <input id="ask_price" size="6" /> they want for 1 Buy asset, that
 Offer Price:  <input id="offer_price" size="6" /> we will sell 1 Sell asset for this many Buy asset<br />
 <input id="submit_offer" type="button" value="submit_bid_offer" />
 <input id="get_market_price" type="button" value="get_market_price" />
-<input id="full_search" type="button" value="full_search" /><br />
+<input id="full_search" type="button" value="search_open_offers" />
+<input id="search_offer_hist" type="button" value="search_offer_hist" />
+<select name="closed_state" id="closed_state" >
+  <option>canceled</option>
+  <option>traded</option>
+  <option>all</option>
+</select><br />
 ______________________________________________________<br />
 Cancel Offer: <br />
 offerId:  <input id="offerid" size="6" /> <br />

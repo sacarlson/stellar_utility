@@ -185,15 +185,15 @@ def get_tx_offer_hist(params)
       offer = txbody["operations"][0]
       puts "selling.asset: #{offer["selling.asset"]}  class: #{offer["selling.asset"].class}  lenght: #{offer["selling.asset"].length} "
       puts "offer: #{offer}"
-      if !(params["sell_asset"].nil?) and offer["selling.asset"].include?(params["sell_asset"])
+      if !(params["sell_asset"].nil?)  and offer["selling.asset"].include?(params["sell_asset"])
         puts "selling match"
-        if offer["selling.issuer"] == params["sell_issuer"] or params["sell_issuer"].nil? 
+        if offer["selling.issuer"] == params["sell_issuer"] or params["sell_issuer"].nil? or (params["sell_issuer"].length == 0)
           puts "selling issuer match"
           add_to_list = true
         end
       end
-      if !(params["buy_asset"].nil?) and offer["buying.asset"].include?(params["buy_asset"])
-        if offer["buying.issuer"] == params["buy_issuer"] or params["buy_issuer"].nil? 
+      if !(params["buy_asset"].nil?)  and offer["buying.asset"].include?(params["buy_asset"])
+        if offer["buying.issuer"] == params["buy_issuer"] or params["buy_issuer"].nil? or (params["buy_issuer"].length == 0)
           add_to_list = true
         end
       end

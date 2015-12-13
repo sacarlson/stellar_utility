@@ -17,6 +17,7 @@
       var CHP_balance = document.getElementById("CHP_balance");
       var asset_type = document.getElementById("asset_type");
       var memo = document.getElementById("memo");
+      var memo_mode = document.getElementById("memo_mode");
       var dest_balance = document.getElementById("dest_balance");
       var dest_CHP_balance = document.getElementById("dest_CHP_balance");      
       var url = document.getElementById("url");
@@ -300,10 +301,16 @@
 
      function createTransaction_mss_submit(key,operation,seq_num) {
        var account = new StellarSdk.Account(key.address(), seq_num);
-       if (isNaN(memo.value)) {
-         var memo_tr = StellarSdk.Memo.text(memo.value);
-       } else {
+       if (memo_mode.value == "auto") {
+         if (isNaN(memo.value)) {
+           var memo_tr = StellarSdk.Memo.text(memo.value);
+         } else {
+           var memo_tr = StellarSdk.Memo.id(memo.value);
+         }
+       } else if (memo_mode.value == "memo.id") {
          var memo_tr = StellarSdk.Memo.id(memo.value);
+       } else {
+         var memo_tr = StellarSdk.Memo.text(memo.value);
        }
        var transaction = new StellarSdk.TransactionBuilder(account,{fee:100, memo: memo_tr})            
            .addOperation(operation)          
@@ -336,10 +343,20 @@
      
 
       function createTransaction_horizon(key,operation) {
-        if (isNaN(memo.value)) {
-          var memo_tr = StellarSdk.Memo.text(memo.value);
-        } else {
+        if (memo_mode.value == "auto") {
+          if (isNaN(memo.value)) {
+            console.log("auto memo.text");
+            var memo_tr = StellarSdk.Memo.text(memo.value);
+          } else {
+            console.log("auto memo.id");
+            var memo_tr = StellarSdk.Memo.id(memo.value);
+          }
+        } else if (memo_mode.value == "memo.id") {
+          console.log("manual memo.id");
           var memo_tr = StellarSdk.Memo.id(memo.value);
+        } else {
+          console.log("manual memo.text");
+          var memo_tr = StellarSdk.Memo.text(memo.value);
         }
         server.loadAccount(key.address())
           .then(function (account) {
