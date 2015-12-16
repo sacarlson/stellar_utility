@@ -166,8 +166,16 @@ end
 
 def get_tx_offer_hist(params) 
   offset = params["offset"]
+  if params["sell_asset"].nil?
+    params["sell_asset"] = ""
+  end
+  if params["buy_asset"].nil?
+    params["buy_asset"] = ""
+  end
   puts "sell_asset: #{params["sell_asset"]}"
   puts "sell_issuer: #{params["sell_issuer"]}"
+  puts "buy_asset: #{params["buy_asset"]}"
+  puts "buy_issuer: #{params["buy_issuer"]}"
   if offset.nil?
     offset = 0
   end  
@@ -185,17 +193,24 @@ def get_tx_offer_hist(params)
       offer = txbody["operations"][0]
       puts "selling.asset: #{offer["selling.asset"]}  class: #{offer["selling.asset"].class}  lenght: #{offer["selling.asset"].length} "
       puts "offer: #{offer}"
-      if !(params["sell_asset"].nil?)  and offer["selling.asset"].include?(params["sell_asset"])
+      if params["sell_asset"].nil?
+        puts "sell_asset is nil"
+      elsif  params["sell_asset"].length > 0 and offer["selling.asset"].include?(params["sell_asset"])
         puts "selling match"
         if offer["selling.issuer"] == params["sell_issuer"] or params["sell_issuer"].nil? or (params["sell_issuer"].length == 0)
           puts "selling issuer match"
           add_to_list = true
         end
       end
-      if !(params["buy_asset"].nil?)  and offer["buying.asset"].include?(params["buy_asset"])
+      if params["buy_asset"].nil?
+        puts "buy_asset is nil"
+      elsif params["buy_asset"].length > 0 and offer["buying.asset"].include?(params["buy_asset"])
         if offer["buying.issuer"] == params["buy_issuer"] or params["buy_issuer"].nil? or (params["buy_issuer"].length == 0)
           add_to_list = true
         end
+      end
+      if params["buy_asset"].length == 0 and params["sell_asset"].length == 0
+        add_to_list = true
       end
       if !(params["closed"].nil?) 
         if params["closed"] == "true"

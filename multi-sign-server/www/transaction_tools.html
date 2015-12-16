@@ -32,9 +32,10 @@ port: <input id="port" size="6" />  secure
 <input id="restore" type="button" value="restore_seed" />
 <input id="list_seed_keys" type="button" value="list_seed_keys" />
 <input id="swap_seed_dest" type="button" value="swap_seed_dest" /><br />
-pass phrase:<input id="pass_phrase" size="60" /><br /> 
-seed nick name or public ID:<input id="seed_nick" size="60" value = "seed" /><br />    
-seed:<input id="seed" size="60" /><br /> 
+seed nick name or public ID:<input id="seed_nick" size="60" value = "seed" /><br /> 
+encrypt/decrypt seed pass phrase:<input id="pass_phrase" size="60" /><br /> 
+seed:<input id="seed" size="60" />
+<input id="decrypt_seed" type="button" value="decrypt_seed" /><br /> 
 account:<input id="account" size="60" /><br />
 account native balance: <input id="balance" size="40" /><br />
 Asset type <input id="asset_type" size="5" /> balance: <input id="CHP_balance" size="40" /><br />
@@ -43,6 +44,10 @@ _______________________________________________________<br />
  asset type:<input id="tasset" size="12" value = "CHP" />
 trust issuer: <input id="tissuer" size="61" value = "" /><br />
 ______________________________________________________<br />
+<input id="send_tx" type="button" value="send_tx" />
+tx envelope base64 :<input id="envelope_b64" size="130" value = "" /><br />
+______________________________________________________<br />
+
 Send Transaction Info: <br />
 <input id="gen_random_dest" type="button" value="gen_random_dest" /> 
 <input id="send_payment" type="button" value="send_payment" />

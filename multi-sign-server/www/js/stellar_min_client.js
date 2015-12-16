@@ -34,6 +34,36 @@
       var paymentsEventSource;
       var server;
 
+      seed.value = 'SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ'; 
+
+      var env_b64 = window.location.href.match(/\?env_b64=(.*)/);
+      var encrypted_seed = window.location.href.match(/\?seed=(.*)/);
+      var accountID = window.location.href.match(/\?accountID=(.*)/);
+      var json_param = window.location.href.match(/\?json=(.*)/);
+      if (env_b64 !== null) {
+        console.log(env_b64[1]);
+      }
+      if (json_param != null) {
+        //escape(str)
+        json_param = unescape(json_param[1]);
+        var params = JSON.parse(json_param);
+        console.log(params);
+        console.log(params["accountID"]);
+        console.log(params["env_b64"]);
+        account.value = params["accountID"];
+        if (typeof params["seed"] != "undefined") {
+          seed.value = params["seed"];
+        }
+      } 
+      if (encrypted_seed != null) {
+        console.log(encrypted_seed[1]);
+        seed.value = encrypted_seed[1];      
+      }    
+      if (accountID != null) {
+        console.log(accountID[1]);
+        account.value = accountID[1];
+      }    
+    
       
 
       //merge_accounts.disabled = true;
@@ -48,7 +78,7 @@
       memo.value = "scotty_is_cool";
       amount.value = "1";      
       asset_type.value = "AAA";
-      seed.value = 'SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ'; 
+      //seed.value = 'SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ'; 
       tissuer.value = 'GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF';
       issuer.value = tissuer.value;
       tasset.value = 'AAA';
@@ -63,11 +93,17 @@
 
       current_mode.value = "Stellar horizon TestNet";
 
-      var key = StellarSdk.Keypair.fromSeed(seed.value);
-      update_key();
-    
+      if (account.value.length > 0) {
+        console.log("account value: " + account.value);
+        console.log(typeof account.value);
+      } else {  
+        var key = StellarSdk.Keypair.fromSeed(seed.value);
+        update_key();
+      }   
+
       update_balances();
       start_effects_stream();
+
 
           
 
@@ -627,6 +663,20 @@
         var operation = addTrustlineOperation(tasset.value, tissuer.value);
         createTransaction(key,operation);
       });
+ 
+      swap_seed_dest.addEventListener("click", function(event) { 
+        var seed_swap = seed.value;
+        seed.value = dest_seed.value;
+        dest_seed.value = seed_swap;         
+        update_key();
+        var temp_key = StellarSdk.Keypair.fromSeed(dest_seed.value);
+        destination.value = temp_key.address();
+      });
+
+      decrypt_seed.addEventListener("click", function(event) {
+        seed.value = CryptoJS.AES.decrypt(seed.value, pass_phrase.value).toString(CryptoJS.enc.Utf8);
+      });
+
 
   });
 

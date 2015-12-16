@@ -28,15 +28,47 @@
       var merge_accounts = document.getElementById("merge_accounts");
       var status = document.getElementById("status");
       var network = document.getElementById("network");
-
+      var envelope_b64 = document.getElementById("envelope_b64");      
       var asset_obj = new StellarSdk.Asset.native();
       var socket;
       var socket_open_flag = false;
       var operation_globle;
       var paymentsEventSource;
       var server;
+      var key;
 
-      
+      seed.value = 'SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ'; 
+
+      var env_b64 = window.location.href.match(/\?env_b64=(.*)/);
+      var encrypted_seed = window.location.href.match(/\?seed=(.*)/);
+      var accountID = window.location.href.match(/\?accountID=(.*)/);
+      var json_param = window.location.href.match(/\?json=(.*)/);
+      if (env_b64 !== null) {
+        console.log(env_b64[1]);
+      }
+      if (json_param != null) {
+        //escape(str)
+        console.log("json_param detecte");
+        json_param = unescape(json_param[1]);
+        var params = JSON.parse(json_param);
+        console.log(params);
+        console.log(params["accountID"]);
+        console.log(params["env_b64"]);
+        envelope_b64.value = params["env_b64"];
+        account.value = params["accountID"];
+        if (typeof params["seed"] != "undefined") {
+          seed.value = params["seed"];
+        }
+      } 
+      if (encrypted_seed != null) {
+        console.log(encrypted_seed[1]);
+        seed.value = encrypted_seed[1];      
+      }    
+      if (accountID != null) {
+        console.log("here?");
+        console.log(accountID[1]);
+        account.value = accountID[1];
+      }
 
       //merge_accounts.disabled = true;
       network.value ="testnet";
@@ -52,7 +84,7 @@
       memo.value = "scotty_is_cool";
       amount.value = "1";      
       asset_type.value = "AAA";
-      seed.value = 'SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ'; 
+      //seed.value = 'SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ'; 
       tissuer.value = 'GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF';
       issuer.value = tissuer.value;
       tasset.value = 'AAA';
@@ -66,9 +98,14 @@
       reset_horizon_server();
 
       current_mode.value = "Stellar horizon TestNet";
-
-      var key = StellarSdk.Keypair.fromSeed(seed.value);
-      update_key();
+      
+      if (account.value.length > 0) {
+        console.log("account value: " + account.value);
+        console.log(typeof account.value);
+      } else {  
+        key = StellarSdk.Keypair.fromSeed(seed.value);
+        update_key();
+      }      
     
       update_balances();
       start_effects_stream();
@@ -288,6 +325,7 @@
 
      function accountMergeTransaction() {
           // this will send all native of key from seed.value account to destination.value account
+          update_key();
           console.log("accountMerge");        
           key = StellarSdk.Keypair.fromSeed(seed.value);
           console.log(key.address());
@@ -303,12 +341,23 @@
        socket.send(action);
      }
 
+     function submitTransaction_mss_b64(b64_string) {
+       var action = '{"action":"send_b64", "envelope_b64":"' + b64_string + '"}';
+       socket.send(action);
+     }
+
+     function submitTransaction_horizon_b64(b64_string){
+       var tx = new StellarSdk.Transaction(b64_string);
+       server.submitTransaction(tx);
+     }
+
      function get_seq(address) {
        var action = '{"action":"get_sequence", "account":"' + address + '"}'
        socket.send(action);
      }
 
-     function createTransaction_mss_submit(key,operation,seq_num) {
+     function createTransaction_mss_submit(operation,seq_num) {
+       update_key();
        var account = new StellarSdk.Account(key.address(), seq_num);
        if (memo_mode.value == "auto") {
          if (isNaN(memo.value)) {
@@ -352,6 +401,7 @@
      
 
       function createTransaction_horizon(key,operation) {
+        update_key();
         if (memo_mode.value == "auto") {
           if (isNaN(memo.value)) {
             console.log("auto memo.text");
@@ -499,7 +549,7 @@
             var seq_num = (event_obj.sequence).toString();
             console.log("got sequence");
             console.log(seq_num);
-            createTransaction_mss_submit(key, operation_globle, seq_num)
+            createTransaction_mss_submit(operation_globle, seq_num)
           }
           if (event_obj.action == "send_b64") {
             get_balance_updates_mss();
@@ -688,6 +738,20 @@
         destination.value = temp_key.address();
       });
 
+      decrypt_seed.addEventListener("click", function(event) {
+        seed.value = CryptoJS.AES.decrypt(seed.value, pass_phrase.value).toString(CryptoJS.enc.Utf8);
+      });
+
+      send_tx.addEventListener("click", function(event) {
+        if (network.value == "mss_server") {
+          console.log("send_tx mss_server mode");
+          submitTransaction_mss_b64(envelope_b64.value);
+        } else {
+          console.log("send_tx horizon mode");
+          console.log(envelope_b64.value);
+          submitTransaction_horizon_b64(envelope_b64.value);
+        }
+      });
 
   });
 
