@@ -36,6 +36,8 @@
       var paymentsEventSource;
       var server;
       var key;
+      var email_flag = false;
+      var transaction;
 
       seed.value = 'SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ'; 
 
@@ -54,15 +56,24 @@
         console.log(params);
         console.log(params["accountID"]);
         console.log(params["env_b64"]);
-        envelope_b64.value = params["env_b64"];
         account.value = params["accountID"];
+        if (typeof params["env_b64"] != "undefined") {
+          console.log("env_b64 param detected");
+          envelope_b64.value = params["env_b64"];
+          account.value = new StellarSdk.Transaction(envelope_b64.value).operations[0].destination;
+          console.log(new StellarSdk.Transaction(envelope_b64.value).operations[0].asset);
+          tissuer.value = new StellarSdk.Transaction(envelope_b64.value).operations[0].asset.issuer;
+          tasset.value = new StellarSdk.Transaction(envelope_b64.value).operations[0].asset.code;
+          asset_type.value = tasset.value;
+        }               
         if (typeof params["seed"] != "undefined") {
           seed.value = params["seed"];
         }
       } 
       if (encrypted_seed != null) {
         console.log(encrypted_seed[1]);
-        seed.value = encrypted_seed[1];      
+        seed.value = encrypted_seed[1];
+        update_key();      
       }    
       if (accountID != null) {
         console.log("here?");
@@ -82,12 +93,13 @@
       open.disabled = true;
       
       memo.value = "scotty_is_cool";
-      amount.value = "1";      
-      asset_type.value = "AAA";
-      //seed.value = 'SA3CKS64WFRWU7FX2AV6J6TR4D7IRWT7BLADYFWOSJGQ4E5NX7RLDAEQ'; 
-      tissuer.value = 'GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF';
-      issuer.value = tissuer.value;
-      tasset.value = 'AAA';
+      amount.value = "1"; 
+      if (typeof asset_type.value == "undefined") {     
+        asset_type.value = "AAA";
+        tissuer.value = 'GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF';
+        issuer.value = tissuer.value;
+        tasset.value = 'AAA';
+      }
       destination.value = 'GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY';
       dest_seed.value = "SBV5OHE3LGOHC6CBRMSV3ZQNTT4CM7I7L37KAAU357YDDPER2GNP2WWL";      
 
@@ -110,7 +122,12 @@
       update_balances();
       start_effects_stream();
 
-          
+          function email_funds_now () {
+             var mail = "mailto:" + email_address.value +"?subject= Stellar funds transmittal for: " + amount.value + " of asset: "+ asset.value + "&body=Click on the link bellow to collect the funds I have sent you for the amount of " + amount.value + " of asset type: "+ asset.value + " to the accountID " + destination.value + " secret seed if contained: " + dest_seed.value  + "  just click Link: http://zipperhead.ddns.net/transaction_tools.html?json={%22env_b64%22:%22" + envelope_b64.value + "%22}   " +  ". From within the wallet just hit send_tx button to transact the issued transaction and verify balance received.   Or if you prefer other methods of receiving the transaction the Stellar envelope base64: " + envelope_b64.value;
+        console.log("mail content: ");
+        console.log(mail);
+        window.open(mail);
+          }
 
           function attachToPaymentsStream(opt_startFrom) {
             console.log("start attacheToPaymentsStream");
@@ -252,7 +269,10 @@
           asset_code:params.asset_code1,
           detail:false}
         );
-
+        if (params.asset_code2 == "XLM"){
+          CHP_balance.value = balance.value;
+          return;
+        }
         display_balance(account_obj,{
           to_id:params.to_id2,
           asset_code:params.asset_code2,
@@ -337,6 +357,12 @@
      function submitTransaction_mss(transaction) {
        console.log("start submitTransaction_mss");
        var b64 = transaction.toEnvelope().toXDR().toString("base64");
+       envelope_b64.value = b64;
+       if (email_flag) {
+         email_funds_now();
+         email_flag = false;
+         return;
+       }
        var action = '{"action":"send_b64", "envelope_b64":"' + b64 + '"}';
        socket.send(action);
      }
@@ -419,19 +445,28 @@
         }
         server.loadAccount(key.address())
           .then(function (account) {
-            var transaction = new StellarSdk.TransactionBuilder(account,{fee:100, memo: memo_tr})            
+             transaction = new StellarSdk.TransactionBuilder(account,{fee:100, memo: memo_tr})            
             .addOperation(operation)          
             .addSigner(key)
-            .build();                     
-           server.submitTransaction(transaction);           
+            .build();
+           if ( email_flag != true ) { 
+             console.log("horizon mode email_flag detected");                               
+             server.submitTransaction(transaction); 
+           }          
           })
           .then(function (transactionResult) {
             console.log(transactionResult);
             //console.log(transaction.toEnvelope().toXDR().toString("base64"));
-            //message.textContent = transaction.toEnvelope().toXDR().toString("base64");
+            envelope_b64.value = transaction.toEnvelope().toXDR().toString("base64");
+            if ( email_flag ) {
+              email_funds_now ();
+              email_flag = false;
+            }  
+           
           })
           .catch(function (err) {
             console.log(err);
+            email_flag = false; 
           });
         }
      
@@ -526,7 +561,8 @@
         // and feed desired responce to browser input boxes
         socket.addEventListener("message", function(event) {
           message.textContent = "Server Says: " + event.data;
-          var event_obj = JSON.parse(event.data);
+          console.log(event.data);
+          var event_obj = JSON.parse(event.data);          
           console.log("event_obj.action");
           console.log(event_obj.action);
           if (event_obj.action == "get_account_info") {          
@@ -751,6 +787,16 @@
           console.log(envelope_b64.value);
           submitTransaction_horizon_b64(envelope_b64.value);
         }
+      });
+
+      email_funds.addEventListener("click", function(event) {
+        // this will generate a transaction to send funds to
+        // the destination accountID and seed will be included in the email of the body
+        // it will then generate a transaction and add it as a link to the wallet in the body of the email
+        // we will later make the transaction expire if demand exists
+        email_flag = true;
+        sendPaymentTransaction();
+        
       });
 
   });

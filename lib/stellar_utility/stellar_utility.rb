@@ -639,7 +639,7 @@ def get_trustlines_local(account,issuer,currency)
   account = convert_keypair_to_address(account) 
   issuer = convert_keypair_to_address(issuer) 
   puts "account: #{account}  issuer: #{issuer}   currency:  #{currency}"
-  if currency == "XLM" and issuer.length == 0    
+  if currency == "XLM" and (issuer.length == 0 or issuer == "undefined")    
     result = {}
     result["balance"] = get_native_balance_local(account)
     result["status"] = "native balance"
