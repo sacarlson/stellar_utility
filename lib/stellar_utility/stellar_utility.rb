@@ -61,6 +61,7 @@ def initialize(load="default")
 end #end initalize
 
 def version
+  get_set_stellar_core_network()
   hash = {}
   puts "mode: #{@configs["mode"]}"
   hash["stellar_base_version"] = Stellar::Base::VERSION
@@ -82,10 +83,13 @@ def get_db(query,full=0)
   if @configs["mode"] == "localcore"
     
     if @configs["default_network"] == "auto"
+      puts "current_network: #{Stellar.current_network}"
       if (Stellar.current_network == "Public Global Stellar Network ; September 2015")
+        puts" get_db detects LIVE!"
         puts "db file #{@configs["db_file_path_live"]}"
         db_file_path = @configs["db_file_path_live"]
       else 
+        puts " get_db detects testnet"
         puts "db file #{@configs["db_file_path"]}"
         db_file_path = @configs["db_file_path"]
       end
