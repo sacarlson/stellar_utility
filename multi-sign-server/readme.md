@@ -235,6 +235,38 @@ or if working:
   * example return:
 {"accountid":"GDVYGXTUJUNVSJGNEX75KUDTANHW35VQZEZDDIFTIQT6DNPHSX3I56RY","balance":10001.99964,"seqnum":2757845745401892,"numsubentries":35,"inflationdest":null,"homedomain":"","thresholds":"AQAAAA==","flags":0,"lastmodified":811510,"action":"get_account_info"}
 
+## federation: convert a federated address into a public account_id
+  * Values send:
+    * fed_id:  example jed*stellar.org or jed@stellar.org all @ will be converted to * in search
+  
+  * Values returned: 
+    * account_id
+    * stellar_address
+    * others depending on server
+
+  * example return:
+ {
+    stellar_address: <username*domain.tld>,
+    account_id: <account_id>,
+    memo_type: <"text", "id" , or "hash"> *optional*
+    memo: <memo to attach to any payment. if "hash" type then will be base32 encoded> *optional*
+ }
+## reverse_federation
+  * Values send:
+    * account:  stellar public account_id
+  
+  * Values returned: 
+    * account_id
+    * stellar_address
+    * others depending on server
+
+  * example return:
+ {
+    stellar_address: <username*domain.tld>,
+    account_id: <account_id>,
+    memo_type: <"text", "id" , or "hash"> *optional*
+    memo: <memo to attach to any payment. if "hash" type then will be base32 encoded> *optional*
+ }
 ##get_lines_balance:
   * Values sent:
     * account: stellar address base 32 example GCYFPRSLBKM...

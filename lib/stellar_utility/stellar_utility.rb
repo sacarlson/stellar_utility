@@ -146,6 +146,47 @@ def get_accounts_local(account)
     return result
 end
 
+def reverse_federation_lookup(account)
+  info = get_accounts_local(account)
+  homedomain = info["homedomain"]
+  #https://api.stellar.org/federation?q=GD6WU64OEP5C4LRBH6NK3MHYIA2ADN6K6II6EXPNVUR3ERBXT4AN4ACD&type=id
+  if !(homedomain.nil?)
+    send = homedomain + "/federation?q=" + account + "&type=id"
+    puts "sending:  #{send}"
+    begin
+    postdata = RestClient.get send
+    rescue => e
+      return  {"status"=>"error", "error"=>e.response}
+    end
+    data = JSON.parse(postdata)
+    return data
+  else
+    return {"status"=>"error","error"=>"no_homedomain"}
+  end
+end
+
+def federation_lookup(fed_id) 
+  #https://api.stellar.org/federation?q=jed*stellar.org&type=name  
+  if !(fed_id.nil?)
+    fed_id.gsub!('@', "*")
+    url = fed_id.split("*")
+    puts "url: #{url}"
+    url = url[1]
+    puts "url1: #{url}"
+    send = url + "/federation?q=" + fed_id + "&type=name"
+    puts "sending:  #{send}"
+    begin
+    postdata = RestClient.get send
+    rescue => e
+      return  {"status"=>"error", "error"=>e.response}
+    end
+    data = JSON.parse(postdata)
+    return data
+  else
+    return {"status"=>"error","error"=>"no_fed_id"}
+  end
+end
+
 def issuer_debt_total(params)
   #input {"issuer":"GXSTT..."}
   if params["issuer"].nil?

@@ -84,6 +84,12 @@ EM.run {
       when "get_account_info"
         results = mult_sig.Utils.get_accounts_local(request_payload["account"])
         results.to_json
+      when "reverse_federation"
+        results = mult_sig.Utils.reverse_federation_lookup(request_payload["account"])
+        results.to_json
+      when "federation"
+        results = mult_sig.Utils.federation_lookup(request_payload["fed_id"])
+        results.to_json
       when "get_lines_balance"
         results = mult_sig.Utils.get_trustlines_local(request_payload["account"],request_payload["issuer"],request_payload["asset"])
         #'{"issuer":"'+request_payload["issuer"]+'", "asset":"'+request_payload["asset"]+'", "balance":'+results.to_s+'}'
@@ -272,6 +278,12 @@ EM.run {
         #results = mult_sig.get_account_info(request_payload["account"])
         results = mult_sig.Utils.get_accounts_local(request_payload["account"])
         #results["action"]= "get_account_info"
+        ws.send results.to_json
+      when "reverse_federation"
+        results = mult_sig.Utils.reverse_federation_lookup(request_payload["account"])
+        ws.send results.to_json
+      when "federation"
+        results = mult_sig.Utils.federation_lookup(request_payload["fed_id"])
         ws.send results.to_json
       when "get_lines_balance"
         results = mult_sig.Utils.get_trustlines_local(request_payload["account"],request_payload["issuer"],request_payload["asset"])
