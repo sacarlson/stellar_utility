@@ -420,6 +420,64 @@ def get_sorted_holdings(params)
   return hash
 end
 
+def get_pool_members(params)  
+  # this will return a list of the stellar inflation destination pool members and there account details
+  # it will later be modified to return a sorted list from top lumens balance pool members on top of list
+  # later we will need to add max account returns that will later default to 30 max
+  # standar offset will also later be added to page beyond 30 members
+  # param inf_dest = inflation_destination accountID used in the pool 
+  # params is hash example {"inf_dest"=>"GEWG...", "offset"=>0, "total_inflation"=>"18000000"}
+  inf_dest = params["inf_dest"]
+  offset = params["offset"]
+  total_inflation = params["total_inflation"]
+  if total_inflation.nil?
+    total_inflation=0
+  end
+  total_inflation = total_inflation.to_f
+  hash = {"accounts"=>[]}  
+  if offset.nil?
+    offset = 0
+  end
+  
+  query = "SELECT accountid, balance FROM accounts WHERE inflationdest= '#{inf_dest}'"
+
+  #txhistory = get_db(query)
+  result = get_db(query,1)  
+  index = offset
+  total = 0
+
+  result.each do |row|
+    puts "index: #{index}"
+    row["index"] = index   
+    row["balance"] = row["balance"].to_f/10000000
+    total = total + row["balance"]   
+    hash["accounts"].push(row)
+    index = index + 1
+  end
+  index2 = 0
+  hash["accounts"].each do |row|
+    puts "index2: #{index2}"
+    #row["index"] = index
+    #row["balance"] = row["balance"].to_f/10000000   
+    #multiplier = total / row["balance"]
+    multiplier = row["balance"] / total 
+    hash["accounts"][index2]["to_receive"] = total_inflation * multiplier 
+    hash["accounts"][index2]["multiplier"] = multiplier
+    puts "mult: #{multiplier}"
+    puts "bal: #{row["balance"]}"
+    puts "index: #{row["index"]}"
+    #hash["accounts"].push(row)
+    index2 = index2 + 1
+  end
+  hash["total_pool"] = total
+  hash["total_inflation"] = total_inflation
+  hash["action"] = "get_pool_members"
+  hash["status"] = "success"
+  return hash
+end
+
+#SELECT accountid, balance FROM accounts WHERE inflationdest='GBL7AE2HGRNQSPWV56ZFLILXNT52QWSMOQGDBBXYOP7XKMQTCKVMX2ZL';
+
 
 def get_account_txhistory(account,offset=0)
   if offset.nil?

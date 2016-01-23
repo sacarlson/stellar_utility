@@ -97,6 +97,9 @@ EM.run {
         results.to_json
       when "get_tx_offer_hist"
         results = mult_sig.Utils.get_tx_offer_hist(request_payload)
+        results.to_json
+      when "get_pool_members"
+        results = mult_sig.Utils.get_pool_members(request_payload)
         results.to_json 
       when "get_buy_offers"
         results = mult_sig.Utils.get_offers(request_payload)
@@ -273,6 +276,9 @@ EM.run {
         ws.send results.to_json
       when "get_sorted_holdings"
         results = mult_sig.Utils.get_sorted_holdings(request_payload)
+        ws.send results.to_json
+      when "get_pool_members"
+        results = mult_sig.Utils.get_pool_members(request_payload)
         ws.send results.to_json
       when "get_account_info"
         #results = mult_sig.get_account_info(request_payload["account"])

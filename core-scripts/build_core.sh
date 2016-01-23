@@ -10,6 +10,10 @@
 # for the json parse function to work in "auto" you will need to sudo apt-get install jq
 #   now that this just makes symbolic links to already existing builds this could be run in cron on a regular basis to keep updated
 #   the other option is on sync fail we run this in my ruby stellar-core state checker that is already writen
+#  to find get the info of what horizon.stellar.org stellar-core version is pointing to and download, compile the same
+# example command line: ./build_core.sh auto live
+#  to do the same as above but for testnet
+# ./build_core.sh auto testnet  or just ./build_core.sh auto
 
 #corepath is the path of the source code to update and compile 
 COREPATH='/home/sacarlson/github/stellar/stellar-core'
@@ -20,7 +24,7 @@ LIVE='/home/sacarlson/github/stellar/stellar_utility/stellar-live'
 
 if [ "$1" = "auto" ]; then
   if [ "$2" = "live" ]; then
-    echo "live will but updated compiled and linked"
+    echo "live will be updated compiled and linked"
     VERSION=`curl 'https://horizon.stellar.org' | jq -r '.core_version'`
     LIVETEST="live"
   else
@@ -62,6 +66,7 @@ if [ ! -f $TESTNET/stellar-core_bin_$VERSION ]; then
   fi
 else
   echo "this version already exist so just setup links"
+fi
 
   if [ "$LIVETEST" = "live" ]; then
     echo "will copy bin to live and link"
@@ -73,4 +78,3 @@ else
     rm -f $TESTNET/stellar-core
     ln -s $TESTNET/stellar-core_bin_$VERSION $TESTNET/stellar-core
   fi
-fi
