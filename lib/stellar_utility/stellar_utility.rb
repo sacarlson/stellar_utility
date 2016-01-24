@@ -424,9 +424,12 @@ def get_pool_members(params)
   # this will return a list of the stellar inflation destination pool members and there account details
   # it will later be modified to return a sorted list from top lumens balance pool members on top of list
   # later we will need to add max account returns that will later default to 30 max
-  # standar offset will also later be added to page beyond 30 members
-  # param inf_dest = inflation_destination accountID used in the pool 
+  # standard offset will also later be added to page beyond 30 members
+  # param inf_dest = inflation_destination accountID used in the pool
+  # total_inflation = what the pool has that they are going to be paying out to all it's members on this round  
   # params is hash example {"inf_dest"=>"GEWG...", "offset"=>0, "total_inflation"=>"18000000"}
+  # example output:
+  #{"accounts":[{"accountid":"GDRFRGR2FDUFF2RI6PQE5KFSCJHGSEIOGET22R66XSATP3BYHZ46BPLO","balance":2096.91552,"index":0,"to_receive":17768140.824134596,"multiplier":0.9871189346741442},{"accountid":"GDTHJDFZOENIOR5TITSW46KMSDQQN7WUULBJXO5EDOAOVDAAGEEB7LQQ","balance":27.36297,"index":1,"to_receive":231859.17586540172,"multiplier":0.01288106532585565}],"total_pool":2124.27849,"total_inflation":18000000.0,"action":"get_pool_members","status":"success"}
   inf_dest = params["inf_dest"]
   offset = params["offset"]
   total_inflation = params["total_inflation"]
@@ -434,6 +437,7 @@ def get_pool_members(params)
     total_inflation=0
   end
   total_inflation = total_inflation.to_f
+     
   hash = {"accounts"=>[]}  
   if offset.nil?
     offset = 0
@@ -455,6 +459,9 @@ def get_pool_members(params)
     index = index + 1
   end
   index2 = 0
+  if total_inflation == 0 
+    total_inflation = (total * 0.01)/52
+  end
   hash["accounts"].each do |row|
     puts "index2: #{index2}"
     #row["index"] = index
@@ -1233,6 +1240,62 @@ end
 def account_address_to_keypair(account_address)
   # return a keypair from an account number
   Stellar::KeyPair.from_address(account_address)
+end
+
+def generate_pool_tx(from_key_pair, to_hash)
+  #example input to_hash is derived from the get_pool_members output format
+  #{"accounts":[{"accountid":"GDRFRGR2FDUFF2RI6PQE5KFSCJHGSEIOGET22R66XSATP3BYHZ46BPLO","balance":2096.91552,"index":0,"to_receive":17768140.824134596,"multiplier":0.9871189346741442},{"accountid":"GDTHJDFZOENIOR5TITSW46KMSDQQN7WUULBJXO5EDOAOVDAAGEEB7LQQ","balance":27.36297,"index":1,"to_receive":231859.17586540172,"multiplier":0.01288106532585565}],"total_pool":2124.27849,"total_inflation":18000000.0,"action":"get_pool_members","status":"success"}
+  # this function will return with b64 envelope with up to 98 transactions to send, you can then add more sigs to this envelope and send it
+  to_array = []
+  if to_hash["accounts"].length > 98
+    puts "we can't handle more than 98 transactions at this time, will exit return error"
+    return {"status"=>"error", "error"=>"over 98 transactions not supported yet"}
+  end
+  to_hash["accounts"].each do |account|
+    puts "accountid: #{account["accountid"]}"
+    puts "account_to_receive: #{account["to_receive"]}"
+    new_set = {}
+    new_set["accountid"] = account["accountid"]
+    new_set["amount"] = account["to_receive"]
+    to_array.push(new_set)
+  end
+  tx = send_native_to_many_tx(from_key_pair, to_array)
+  b64 = tx.to_envelope(from_key_pair).to_xdr(:base64)
+  return b64 
+end
+
+def send_native_to_many_tx(from_pair, to_array)
+  # send from one account to many accounts in a single transaction (max 99 transactions)
+  # to_array is formated [{"accountid"=>"GDFRG...", "amount"=>"1.23"}, {"accountid"=>"GTRTB...", "amount"=>"3.24"}]
+  # returns with a tx transaction that can later signed and converted to b64
+  seq = next_sequence(from_pair)
+  puts "from_pair: #{from_pair}"
+  to_pair = convert_address_to_keypair(to_array[0]["accountid"]) 
+  puts "to_pair: #{to_pair}"
+  puts "amount: #{to_array[0]["amount"].to_s}"
+  puts "seq: #{seq}"
+  tx = Stellar::Transaction.payment({
+    account:     from_pair,
+    destination: to_pair,
+    sequence:    seq,
+    amount:      [:native, to_array[0]["amount"].to_s ],
+    fee: 0
+  })
+  to_array.drop(1).each do | hash |
+    seq = seq + 1
+    to_pair = convert_address_to_keypair(hash["accountid"])
+    tx2 = Stellar::Transaction.payment({
+      account:     from_pair,
+      destination: to_pair,
+      sequence:    seq,
+      amount:      [:native, hash["amount"].to_s ],
+      fee: 0
+    })
+    tx = tx.merge(tx2)
+  end
+  # should play with this number to be sure this is correct fee needed (might be less)
+  tx.fee = to_array.length * 100
+  return tx
 end
 
 def send_native_tx(from_pair, to_account, amount, seqadd=0)
