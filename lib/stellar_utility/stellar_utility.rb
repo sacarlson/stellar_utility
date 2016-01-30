@@ -434,19 +434,29 @@ def get_pool_members(params)
   if inf_dest.length != 56
     return {"status"=>"error", "error"=>"inf_dest contains invalid accountID "}
   end 
-  offset = params["offset"]
+  
   total_inflation = params["total_inflation"]
   if total_inflation.nil?
     total_inflation=0
   end
   total_inflation = total_inflation.to_f
-     
-  hash = {"accounts"=>[]}  
+       
+  offset = params["offset"] 
   if offset.nil?
     offset = 0
   end
-  
-  query = "SELECT accountid, balance FROM accounts WHERE inflationdest= '#{inf_dest}'"
+
+  query = "SELECT accountid, balance, lastmodified FROM accounts WHERE inflationdest = '#{inf_dest}'"
+  if params["lastmodified"].nil?
+    lastmodified = 0
+  else
+    lastmodified = params["lastmodified"].to_f
+    query = "SELECT accountid, balance, lastmodified FROM accounts WHERE inflationdest = '#{inf_dest}' AND lastmodified < '#{lastmodified}'"
+  end
+  puts "query: " + query
+  hash = {"accounts"=>[]} 
+
+  #query = "SELECT accountid, balance FROM accounts WHERE inflationdest= '#{inf_dest}'"
 
   #txhistory = get_db(query)
   result = get_db(query,1)  
@@ -473,13 +483,14 @@ def get_pool_members(params)
     multiplier = row["balance"] / total 
     hash["accounts"][index2]["to_receive"] = total_inflation * multiplier 
     hash["accounts"][index2]["multiplier"] = multiplier
+    hash["accounts"][index2]["lastmodified"] = row["lastmodified"]
     puts "mult: #{multiplier}"
     puts "bal: #{row["balance"]}"
     puts "index: #{row["index"]}"
     #hash["accounts"].push(row)
     index2 = index2 + 1
   end
- 
+  hash["member_count"] = hash["accounts"].length
   hash["total_pool"] = total
   hash["total_inflation"] = total_inflation
   hash["action"] = "get_pool_members"
@@ -1270,13 +1281,9 @@ def generate_pool_tx(from_key_pair, to_hash)
     to_array.push(new_set)
   end
   tx = send_native_to_many_tx(from_key_pair, to_array)
-  # generate dumy_key_pair to allow us to generate an unsigned envelope
-  # this key set is invalid on any account but we will later add sigs to this envelope when it is distributed to signers
-  # this was the only work around I could think of to make it posible to create an unsigned envelope. however I could have also used a random account
-  #dumy_seed = 'SD6IJ667LOJCEX55KEACUO6LJRUDWPPAPHAL6C275MGUPFPPKIDR4LJI'
-  #dumy public accountID = GAY2KB5HD54OKL4ZMXPKJ5NBMCYQD2V5R6OKXEJMFUZPULAEFOR637AV
-  #dumy_key_pair = Stellar::KeyPair.from_seed(dumy_seed)
-  #dumy_key_pair = Stellar::KeyPair.random
+  if tx == "none"
+    return "none"
+  end
   env = Stellar::TransactionEnvelope.new({
     :signatures => [],
     :tx => tx
@@ -1292,6 +1299,9 @@ def send_native_to_many_tx(from_pair, to_array)
   # returns with a tx transaction that can later signed and converted to b64
   seq = next_sequence(from_pair)
   puts "from_pair: #{from_pair}"
+  if to_array.length == 0 
+    return "none"
+  end
   to_pair = convert_address_to_keypair(to_array[0]["accountid"]) 
   puts "to_pair: #{to_pair}"
   puts "amount: #{to_array[0]["amount"].to_s}"
@@ -1350,6 +1360,9 @@ def send_native_to_many_v2_tx(from_pair, to_array)
   # note this generates unsigned tx base 64 envelopes that must each be later signed by one or all needed signers.
   seq = next_sequence(from_pair)
   puts "from_pair: #{from_pair}"
+  if to_array.length == 0
+    return "none"
+  end
   to_pair = convert_address_to_keypair(to_array[0]["accountid"]) 
   puts "to_pair: #{to_pair}"
   puts "amount: #{to_array[0]["amount"].to_s}"
