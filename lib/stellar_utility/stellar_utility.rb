@@ -64,13 +64,13 @@ def version
   get_set_stellar_core_network()
   hash = {}
   puts "mode: #{@configs["mode"]}"
-  hash["stellar_base_version"] = Stellar::Base::VERSION
-  hash["sqlite_version"] = SQLite3::VERSION
-  hash["ruby_version"] = "#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}"
-  hash["default_network"] = Stellar.current_network
+  #hash["stellar_base_version"] =  CGI.escape(Stellar::Base::VERSION)
+  hash["sqlite_version"] =  CGI.escape(SQLite3::VERSION)
+  hash["ruby_version"] =  CGI.escape("#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}")
+  hash["default_network"] =  CGI.escape(Stellar.current_network)
   begin
     stellar_core_status = get_stellar_core_status(detail=true)
-    hash["stellar_core_version"] = stellar_core_status["info"]["build"]
+    #hash["stellar_core_version"] =  CGI.escape(stellar_core_status["info"]["build"].to_json)
   rescue
     hash["stellar_core_version"] = "error"
   end 
@@ -431,6 +431,9 @@ def get_pool_members(params)
   # example output:
   #{"accounts":[{"accountid":"GDRFRGR2FDUFF2RI6PQE5KFSCJHGSEIOGET22R66XSATP3BYHZ46BPLO","balance":2096.91552,"index":0,"to_receive":17768140.824134596,"multiplier":0.9871189346741442},{"accountid":"GDTHJDFZOENIOR5TITSW46KMSDQQN7WUULBJXO5EDOAOVDAAGEEB7LQQ","balance":27.36297,"index":1,"to_receive":231859.17586540172,"multiplier":0.01288106532585565}],"total_pool":2124.27849,"total_inflation":18000000.0,"action":"get_pool_members","status":"success"}
   inf_dest = params["inf_dest"]
+  if inf_dest.length != 56
+    return {"status"=>"error", "error"=>"inf_dest contains invalid accountID "}
+  end 
   offset = params["offset"]
   total_inflation = params["total_inflation"]
   if total_inflation.nil?
@@ -476,10 +479,17 @@ def get_pool_members(params)
     #hash["accounts"].push(row)
     index2 = index2 + 1
   end
+ 
   hash["total_pool"] = total
   hash["total_inflation"] = total_inflation
   hash["action"] = "get_pool_members"
   hash["status"] = "success"
+  # convert the inf_dest to a no signature pair, it's not used for signing at this time
+  from_key_pair = account = convert_address_to_keypair(inf_dest)
+  b64_envelope_tx = generate_pool_tx(from_key_pair, hash)
+  b64_tx_array = generate_pool_array_tx(from_key_pair, hash)  
+  hash["b64_tx"] = b64_envelope_tx
+  hash["b64_tx_array"] = b64_tx_array
   return hash
 end
 
@@ -1260,7 +1270,19 @@ def generate_pool_tx(from_key_pair, to_hash)
     to_array.push(new_set)
   end
   tx = send_native_to_many_tx(from_key_pair, to_array)
-  b64 = tx.to_envelope(from_key_pair).to_xdr(:base64)
+  # generate dumy_key_pair to allow us to generate an unsigned envelope
+  # this key set is invalid on any account but we will later add sigs to this envelope when it is distributed to signers
+  # this was the only work around I could think of to make it posible to create an unsigned envelope. however I could have also used a random account
+  #dumy_seed = 'SD6IJ667LOJCEX55KEACUO6LJRUDWPPAPHAL6C275MGUPFPPKIDR4LJI'
+  #dumy public accountID = GAY2KB5HD54OKL4ZMXPKJ5NBMCYQD2V5R6OKXEJMFUZPULAEFOR637AV
+  #dumy_key_pair = Stellar::KeyPair.from_seed(dumy_seed)
+  #dumy_key_pair = Stellar::KeyPair.random
+  env = Stellar::TransactionEnvelope.new({
+    :signatures => [],
+    :tx => tx
+  })
+  #b64 = tx.to_envelope(dumy_key_pair).to_xdr(:base64)
+  b64 = tx.to_xdr(:base64)
   return b64 
 end
 
@@ -1296,6 +1318,89 @@ def send_native_to_many_tx(from_pair, to_array)
   # should play with this number to be sure this is correct fee needed (might be less)
   tx.fee = to_array.length * 100
   return tx
+end
+
+def generate_pool_array_tx(from_key_pair, to_hash)
+  #example input to_hash is derived from the get_pool_members output format
+  #{"accounts":[{"accountid":"GDRFRGR2FDUFF2RI6PQE5KFSCJHGSEIOGET22R66XSATP3BYHZ46BPLO","balance":2096.91552,"index":0,"to_receive":17768140.824134596,"multiplier":0.9871189346741442},{"accountid":"GDTHJDFZOENIOR5TITSW46KMSDQQN7WUULBJXO5EDOAOVDAAGEEB7LQQ","balance":27.36297,"index":1,"to_receive":231859.17586540172,"multiplier":0.01288106532585565}],"total_pool":2124.27849,"total_inflation":18000000.0,"action":"get_pool_members","status":"success"}
+  # this function will return with b64 envelope with up to 98 transactions to send, you can then add more sigs to this envelope and send it
+  to_array = []
+  if to_hash["accounts"].length > 98
+    puts "we can't handle more than 98 transactions at this time, will exit return error"
+    return {"status"=>"error", "error"=>"over 98 transactions not supported yet"}
+  end
+  to_hash["accounts"].each do |account|
+    puts "accountid: #{account["accountid"]}"
+    puts "account_to_receive: #{account["to_receive"]}"
+    new_set = {}
+    new_set["accountid"] = account["accountid"]
+    new_set["amount"] = account["to_receive"]
+    to_array.push(new_set)
+  end
+  tx_array = send_native_to_many_v2_tx(from_key_pair, to_array)  
+  return tx_array 
+end
+
+def send_native_to_many_v2_tx(from_pair, to_array)
+  # send by generating an array of tx from one account to many accounts in a array of transactions with each tx in the array having up to the limit
+  # of 99 operations in each that is the limit stellar has per tx envelope
+  # this is an improved version of send_native_to_many_tx that had a limitation of 98 max tx transactions,  this version has no real limits 
+  # to_array is formated [{"accountid"=>"GDFRG...", "amount"=>"1.23"}, {"accountid"=>"GTRTB...", "amount"=>"3.24"}]
+  # returns with an array of tx transaction in base 64 format that can later be signed 
+  # note this generates unsigned tx base 64 envelopes that must each be later signed by one or all needed signers.
+  seq = next_sequence(from_pair)
+  puts "from_pair: #{from_pair}"
+  to_pair = convert_address_to_keypair(to_array[0]["accountid"]) 
+  puts "to_pair: #{to_pair}"
+  puts "amount: #{to_array[0]["amount"].to_s}"
+  puts "seq: #{seq}"
+  tx = Stellar::Transaction.payment({
+    account:     from_pair,
+    destination: to_pair,
+    sequence:    seq,
+    amount:      [:native, to_array[0]["amount"].to_s ],
+    fee: 0
+  })
+  # max_tx now set at 10 just for test, will set to 98 or 99 for production that is max stellar tx number per envelope
+  max_tx = 98
+  count = 0
+  tx_array = []
+  to_array.drop(1).each do | hash |
+    seq = seq + 1
+    to_pair = convert_address_to_keypair(hash["accountid"])
+    tx2 = Stellar::Transaction.payment({
+      account:     from_pair,
+      destination: to_pair,
+      sequence:    seq,
+      amount:      [:native, hash["amount"].to_s ],
+      fee: 0
+    })
+    
+    count = count + 1
+    if max_tx == count
+      tx.fee = tx.operations.length * 100
+      puts "tx.fee: #{tx.fee}"
+      env = Stellar::TransactionEnvelope.new({
+        :signatures => [],
+        :tx => tx
+      })
+      b64 = tx.to_xdr(:base64)
+      tx_array.push(b64)
+      tx = tx2
+      count = 0
+    else
+      tx = tx.merge(tx2)
+    end
+  end
+  tx.fee = tx.operations.length * 100
+  env = Stellar::TransactionEnvelope.new({
+    :signatures => [],
+    :tx => tx
+  })
+  #b64 = tx.to_envelope(dumy_key_pair).to_xdr(:base64)
+  b64 = tx.to_xdr(:base64)
+  tx_array.push(b64)
+  return tx_array
 end
 
 def send_native_tx(from_pair, to_account, amount, seqadd=0)

@@ -27,7 +27,7 @@ class Multi_sign
 
   def version()
     #version =  @configs["version"] 
-    version = '{"su":' + @Utils.version+ ',"mss_version":' + @configs["version"] + '}' 
+    version = CGI.escape(@Utils.version) + CGI.escape(@configs["version"]) 
   end
 
   def get_db(query="none")
