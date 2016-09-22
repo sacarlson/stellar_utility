@@ -82,6 +82,9 @@ puts "sellers_account: #{sellers_account.address}"
 puts "sellers_account seed: #{sellers_account.seed}"
 puts "buyers_account: #{buyers_account.address}"
 puts "buyers_account seed: #{buyers_account.seed}"
+
+
+
 trade_seller_hash = {"account_keypair"=>sellers_account, "sell_issuer"=>issuer.address,"sell_currency"=>sell_currency,"buy_issuer"=>issuer.address,"buy_currency"=>buy_currency}
 trade_buyer_hash = {"account_keypair"=>buyers_account, "sell_issuer"=>issuer.address,"sell_currency"=>buy_currency,"buy_issuer"=>issuer.address,"buy_currency"=>sell_currency}
 orders_aray = [{"amount"=>1, "price"=>1}]

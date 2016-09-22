@@ -16,3 +16,4 @@ gemspec
 #gem "rspec-core"
 #gem 'simplecov'
 #gem 'pry'
+#gem 'mysql'

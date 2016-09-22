@@ -38,6 +38,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "rspec"
   spec.add_dependency "rspec-core"
   spec.add_dependency 'simplecov'
+  spec.add_dependency 'mysql'
 
   spec.add_development_dependency "bundler", "~> 1.10"
   spec.add_development_dependency "rake", "~> 10.0"

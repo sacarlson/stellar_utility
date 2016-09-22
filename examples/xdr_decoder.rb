@@ -32,7 +32,7 @@ Utils.decode_txmeta_b64(b64)
 exit -1
 end
 
-if 1==1
+if 1==0
 #account thresholds
 # default {:master_weight=>1, :low=>0, :medium=>0, :high=>0}
 #b64 = 'AQAAAA=='
@@ -45,13 +45,16 @@ Utils.decode_thresholds_b64(b64)
 exit -1
 end
 
-if 1==0
+if 1==1
 #this can be used to view what is inside of a stellar db txhistory txresult in a more human readable format than b64
 #TransactionResultPair 
 b64 = '3E2ToLG5246Hu+cyMqanBh0b0aCON/JPOHi8LW68gZYAAAAAAAAACgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA=='
 b64 = 'vbk+9tuTcnX5JdRUcY3E9fqwG3fnGPH0WVBGeC3QDtIAAAAAAAAACv////8AAAABAAAAAAAAAAX/////AAAAAA=='
 b64 = 'o1+xo6/fzgtu4ryqv7EyjOX7BUnbYEr6U1YaQaXti5IAAAAAAAAACv////8AAAABAAAAAAAAAAD////9AAAAAA=='
 b64 = '68oKNtU3ST9+pQ0VHAKwe2IzSgaWfwgl0QlnCFIMpooAAAAAAAAACgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAA=='
+b64 = 'sZ4YV2OLZV+cBsd6epyFAXFLOq1+Z76PZ1FeV4Ovg+8AAAAAAAAAZP////8AAAABAAAAAAAAAAH////6AAAAAA=='
+b64 = 'MsI08rMXXyVLTHgVjQNAOzur+s9Q6rUrqcxDHAA+iDEAAAAAAAAAZP////8AAAABAAAAAAAAAAb////8AAAAAA=='
+b64 = 'z6GuLQVQmJXqnDViGFUiuU5bAS1eG+gaiphdDgePQ9oAAAAAAAAAZP////8AAAABAAAAAAAAAAP////0AAAAAA=='
 result = Utils.decode_txresult_b64(b64)
 #puts "result:  #{result}" 
 #:CreateAccountResultCode.create_account_low_reserve(-3)

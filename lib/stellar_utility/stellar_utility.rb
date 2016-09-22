@@ -893,9 +893,76 @@ def get_account_info_horizon(account)
     begin
     postdata = RestClient.get send
     rescue => e
-      return  e.response
+      puts "error in RestClient responce: #{e}"
+      return  e
     end
     data = JSON.parse(postdata)
+    return data
+end
+
+def get_account_offers_horizon(account)
+    account = convert_keypair_to_address(account)
+    params = '/accounts/'
+    url = @configs["url_horizon"]
+    #puts "url_horizon:  #{url}"
+    send = url + params + account + "/offers"
+    #puts "sending:  #{send}"
+    begin
+    postdata = RestClient.get send
+    rescue => e
+      puts "error in RestClient responce: #{e}"
+      return  e
+    end
+    data = JSON.parse(postdata)
+    return data
+end
+
+def get_order_book_horizon(params)
+    buy_asset_type = params["buy_asset_type"]
+    buy_asset = params["buy_asset"]
+    buy_issuer = params["buy_issuer"]
+    sell_asset_type = params["sell_asset_type"]
+    sell_asset = params["sell_asset"]
+    sell_issuer = params["sell_issuer"]
+    
+    if (params["buy_asset_type"].nil?)
+      if (buy_asset == "XLM" || buy_asset == "native")
+        buy_asset_type = "native"
+      elsif (buy_asset.length > 4)
+        buy_asset_type = "credit_alphanum12"
+      else
+        buy_asset_type = "credit_alphanum4"
+      end
+    else
+      buy_asset_type = params["buy_asset_type"]
+    end
+
+    if (params["sell_asset_type"].nil?)
+      if (sell_asset == "XLM" || sell_asset == "native")
+        sell_asset_type = "native"
+      elsif (buy_asset.length > 4)
+        sell_asset_type = "credit_alphanum12"
+      else
+        sell_asset_type = "credit_alphanum4"
+      end
+    else
+      sell_asset_type = params["sell_asset_type"]
+    end
+    #https://horizon-testnet.stellar.org/order_book?selling_asset_type=native&selling_asset_code=USD&selling_asset_issuer=GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF&buying_asset_type=credit_alphanum4&buying_asset_code=THB&buying_asset_issuer=GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF
+
+    params = '/order_book?selling_asset_type='
+    url = @configs["url_horizon"]
+    #puts "url_horizon:  #{url}"
+    send = url + params + sell_asset_type + "&selling_asset_code=" + sell_asset + "&selling_asset_issuer=" + sell_issuer + "&buying_asset_type=" + buy_asset_type + "&buying_asset_code=" + buy_asset + "&buying_asset_issuer=" + buy_issuer
+    puts "sending:  #{send}"
+    begin
+      postdata = RestClient.get send
+    rescue => e
+      puts " error in RestClient responce: #{e}"
+      return  e
+    end
+      #puts "postdata: #{postdata}"
+      data = JSON.parse(postdata)
     return data
 end
 
@@ -1145,7 +1212,7 @@ def send_tx_horizon(b64)
     puts "decoded_error:  #{response["decoded_error"]}"    
     return response
   end
-  puts response
+  #puts response
   sleep 12
   return response
 end
@@ -1535,14 +1602,15 @@ def create_new_account_with_CHP_trust(acc_issuer_pair)
   return to_pair
 end
 
-def offer(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price)
-  tx = offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price)
+def offer(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price,offerid="")
+  tx = offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price,offerid)
   b64 = tx.to_envelope(account).to_xdr(:base64)
   return b64
 end
 
-def offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price)
+def offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price,offerid)
   #get_set_stellar_core_network()
+  puts "offer_tx offerid #{offerid}"
   sell_issuer = convert_address_to_keypair(sell_issuer)
   buy_issuer = convert_address_to_keypair(buy_issuer)
   tx = Stellar::Transaction.manage_offer({
@@ -1553,6 +1621,7 @@ def offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,
     amount:     amount.to_s,
     fee:        @configs["fee"].to_i,
     price:      price.to_s,
+    offer_id:    offerid.to_i
   })
   return tx
 end

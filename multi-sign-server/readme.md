@@ -670,6 +670,58 @@ or if working:
 
   * Example return: {"acc_info":{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","balance":1219997700,"seqnum":2418066587666,"numsubentries":2,"inflationdest":null,"homedomain":"","thresholds":"AQACAg==","flags":0,"lastmodified":17037},"thresholds":{"master_weight":1,"low":0,"medium":2,"high":2},"signer_info":{"signers":[{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","publickey":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","weight":1},{"accountid":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","publickey":"GA4GWCCN7YNN5NFUX6MQ3IYPT3LBOFNBRZE3J2JVBJC3P6PNYWWIRPCG","weight":1}]},"timebound":1444648666,"timestamp":"1444648566","witness_account":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","signature":"CsoU4TKWVeJHW8645P6/uHD45QZIaoSIX/Gb9WJqTQEjMjJuCz58j1HF6jmy\nfb/Vrt9P8SNIC0N8hBciLonrAw==\n","unlock":{"status":"success","target_account":"GBYX56PB2I3T2W64ZZ62W7X4RUXQZJRR4EG7U4K7SCKDHU3DLM5NPCJM","witness_address":"GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX","timebound":1444648666,"timenow":1444648566,"unlock_env_b64":"AAAAAHF++eHSNz1b3M59q378jS8MpjHhDfpxX5CUM9NjWzrXAAAAZAAAAjMAAAATAAAAAQAAAABWG5baHPaMEF1SfmQAAAAAAAAAAQAAAAAAAAAFAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAQAAAAEAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAEGjFFJAAAAQGbbtB58wWShTwCWu/1Fd4D9LrrRAgTDt+wsBmhCwAVWbq0hZNFFqlQqa2IkjeiJRfDPu2E9AMz3abwd6yRi0wc="}}
 
+##get_ticker: Get historic price records between assets being traded on the stellar.org network.  
+  * Values send:
+    * timestamp_start: default undefined that is seen as start of Now() start time is present
+      start and stop range of timestamps on each is in standard int seconds since Jan 01 1970. (UTC) if timestamp_end > 365
+    * timestamp_end: default undefined that is also seen as start of now() to the end of time or max number or record pulls in the past
+      if timestamp_end is less than 365 then the value is looked at as days back from timestamp_start - 24 hours/day
+    * asset_code: query for only asset_code that match this value example "USD", if undefined will return all asset_code seen in present records
+    * asset_code_issuer: the stellar.org network issuer address of the asset_code above (presently not used planed to add)
+    * base_asset_code: base asset_code that is being traded with asset_code 
+    * base_asset_issuer: the stellar.org network issuer address of the base_asset_code
+    * limit: the max number of records to pull from the database, default 1000
+    * mode: sets the return format with 0 default, 1, and 2. mode 1 and 2 return arrays of just timestamp,ask,ask,ask,ask to be compatible with graph lib
+      mode 2 just removes ask_volume so only 5 array elements returned in each sample.
+
+  * Values returned mode = 0 default:
+    * action: "get_ticker" is returned to verify this is the return for this function
+    * status: "success" or "fail" status of returned data
+    * data: any array of sampled asset pair prices and added info see bellow for obj inside each array element
+      * id: an intiger index of the sample taken, each sample increments this value by one.
+      * datetime: human readable date and time example '2016-09-18 15:33:12 +0700' when the sample prices were taken
+      * timestamp: unix integer timestamp example: "1474187592" when the sample was taken
+      * ask_price: the price the listed asset was being sold for (asking price) at this time window (at liquidity setting explained later)
+      * ask_volume: This is really the volume avalable at point of liquidity (explained later)
+      * ask_avg_price: This is the averge price you would pay at the point of minimal liquidy (explained later)
+      * ask_offer_count: The number of orders hit with the present minimal liquidity settings 
+      * ask_total_volume: The total number of shares for sale on this asset at this window of time
+      * ask_total_avg_price: if you purchased all the shares presently on the market at this time this is the averge price per share
+      * ask_total_offers: total number of different ask offers on the books at this window of time
+      * bid_price: the price the listed asset was being offered for (bid price) at this time window
+      * bid_volume: This is really the volume avalable at point of liquidity (explained later)
+      * bid_avg_price: This is the averge price you would bid at the point of minimal liquidy (explained later)
+      * bid_offer_count: The number of orders hit with the present minimal liquidity settings 
+      * bid_total_volume: The total number of shares that are being offered a price on this asset at this window of time
+      * bid_total_avg_price: if you sold all the shares presently being bid on at the market at this time this is the averge price per share you would rec
+      * bid_total_offers: total number of different bid offers on the books at this window of time
+
+  * Example mode= 0 return: {"action":"get_ticker","status":"success","data":[{"id":"247","datetime":"'2016-09-22 16:04:29 +0700'","timestamp":"1474535069","ask_price":"35.3689998","ask_volume":"2.941559","ask_avg_price":"35.3689998","ask_offer_count":"1","ask_total_volume":"2.941559","ask_total_avg_price":"35.3689998","ask_total_offers":"1","bid_price":"33.9955784","bid_volume":"100","bid_avg_price":"33.9955784","bid_offer_count":"1","bid_total_volume":"100","bid_total_avg_price":"33.9955784","bid_total_offers":"1","base_asset_type":"credit_alphanum4","base_asset_code":"USD","base_asset_issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","asset_code":"THB","asset_issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","asset_type":"credit_alphanum4"},{"id":"246","datetime":"'2016-09-22 15:08:52 +0700'","timestamp":"1474531732","ask_price":"35.371203","ask_volume":"2.9413757","ask_avg_price":"35.371203","ask_offer_count":"1","ask_total_volume":"2.9413757","ask_total_avg_price":"35.371203","ask_total_offers":"1","bid_price":"33.9976961","bid_volume":"100","bid_avg_price":"33.9976961","bid_offer_count":"1","bid_total_volume":"100","bid_total_avg_price":"33.9976961","bid_total_offers":"1","base_asset_type":"credit_alphanum4","base_asset_code":"USD","base_asset_issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","asset_code":"THB","asset_issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","asset_type":"credit_alphanum4"},{"id":"245","datetime":"'2016-09-22 14:07:09 +0700'","timestamp":"1474528029","ask_price":"35.376813","ask_volume":"2.9409093","ask_avg_price":"35.376813","ask_offer_count":"1","ask_total_volume":"2.9409093","ask_total_avg_price":"35.376813","ask_total_offers":"1","bid_price":"34.0030882","bid_volume":"100","bid_avg_price":"34.0030882","bid_offer_count":"1","bid_total_volume":"100","bid_total_avg_price":"34.0030882","bid_total_offers":"1","base_asset_type":"credit_alphanum4","base_asset_code":"USD","base_asset_issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","asset_code":"THB","asset_issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","asset_type":"credit_alphanum4"},{"id":"244","datetime":"'2016-09-22 13:05:31 +0700'","timestamp":"1474524331","ask_price":"35.3611662","ask_volume":"2.9422106","ask_avg_price":"35.3611662","ask_offer_count":"1","ask_total_volume":"2.9422106","ask_total_avg_price":"35.3611662","ask_total_offers":"1","bid_price":"33.988049","bid_volume":"100","bid_avg_price":"33.988049","bid_offer_count":"1","bid_total_volume":"100","bid_total_avg_price":"33.988049","bid_total_offers":"1","base_asset_type":"credit_alphanum4","base_asset_code":"USD","base_asset_issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","asset_code":"THB","asset_issuer":"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","asset_type":"credit_alphanum4"}]}
+
+  * Example mode=1 return:  {"action":"get_ticker","status":"success","data":[[1474535069000,35.3689998,35.3689998,35.3689998,35.3689998,2.941559],[1474531732000,35.371203,35.371203,35.371203,35.371203,2.9413757],[1474528029000,35.376813,35.376813,35.376813,35.376813,2.9409093],[1474524331000,35.3611662,35.3611662,35.3611662,35.3611662,2.9422106]]}
+
+# all input values are now in params for example params["timestamp_start"] to integrate with mss-server
+  #if timestamp_end = 0 or default undefined that is also seen as start of now() to the end of time or max number or record pulls in the past
+  #if timestamp_start = 0 or default undefined that is seen as start of Now() start time is present
+  # if timestamp_end is less than 365 then the value is looked at as days back from timestamp_start - 24 hours/day
+  # you can specify a start and stop range of timestamps on each that is in standard int seconds since Jan 01 1970. (UTC) if timestamp_end > 365
+  # if asset_code is left blank default, we will return all asset_codes that have been recorded on the server
+  # if you enter an asset_code with base_asset_code left blank, it will return all ask, bids on all matches of asset_code
+  # with all other base_asset_code pairs found and returned.
+  # if both asset_code and base_asset_code are entered, of course they must both match to be returned in query
+  # in the return data the asset_code = counter_asset_code and base_asset_code = base_asset_code, sorry that's just how it ended up
+  # I might consider rename of counter_asset_code to just asset_code in return at some point but not today
+
 ##broadcast: send a custom json packet to all that are presently connected to this mss-server 
   * Values sent:
     * any custom json index:value set is acceptable and will be echoed accept indexes "action" and "tx_code" due to conflicts in listener apps.
@@ -756,14 +808,22 @@ values explained
 
 * core_version: this is the stellar-core git hash first 8 letters that this system is controling if running in localcore mode
 
+* mysql_host: the host address of the mysql server that presently is only used for get_ticker function example value 'localhost'
 
-## Test websites for mss-server using a browser
+* mysql_user: mysql server user name presently is only used for get_ticker function example value 'ticker_user'
+
+* mysql_password: mysql server password presently is only used for get_ticker function example value 'password'
+
+* mysql_db: mysql server dababase name presently is only used for get_ticker function example value 'ticker_record'
+
+
+## Test websites for mss-server using a browser with websockets
  We have created a example test web clients that utilises the websocket mode of mss-server for people to experment with and to server as an example how to setup a browser interface to an mss-server. 
  The example client provides a box to send raw JSON with a send button.  The text JSON results are then seen at the bottom.
  It also contains a list of some examples of some of the common usage functions with param values already contained to try.
  This can be seen sometimes (not stable site just adsl connected home computer due to limited resources and funding) at http://zipperhead.ddns.net/example_mss_server_actions.html. The code for this 
  is also in this github distribution for you to see and try.  The present server is also run on the unstable site so don't always expect a responce.
- We also created a primitive wallet app site that works in multi modes including mss-server mode and horizon testnet and live modes so you can compare operations and speed of API bettween both horizon and mss-server interfaces at http://zipperhead.ddns.net/stellar_min_client.html
+ 
 
 ## Why was it create?
 Mss-server was originaly created to allow the publishing of multi sign transaction and provide a point of collection for the signers to pickup the original unsigned transaction, sign it and send a validation signature back to the mss-server that would collect all the needed signatures and when weighted threshold is met will send the multi signed transaction to the stellar-core network.  We later added features to make it more like a mini horizon API interface as well.

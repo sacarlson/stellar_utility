@@ -37,12 +37,15 @@ require 'active_support'
     return_status_tx = {"status"=>"sent","tx_num"=>"123","sign_count"=>"2","signed"=>["GDZ4AF...","GDOJM..."]}
     #status pending means that the transaction hasn't got all the needed signers yet, sent means we got the signers and it was transacted
     return_status_tx_not_sent = {"status"=>"pending","tx_num"=>"123","sign_count"=>"1","signed"=>["GDZ4AF..."]}
+  
+    get_seq_num = {"action"=>"get_seq_num", "account"=>"GDM6RBPBTDY3YE35I7LLU53LP4IZH26PIFE5IFPITGCEOZBX66IFZIDH"}
+
     #dataout = {"signed"=>[xyz,zyx]}
     #data = get_tx
     #data = get_account_info
-    data = version
+    data = get_buy_offers
 
-    url = "localhost:9494"
+    url = "localhost:9495"
     if data.class != String    
       s = data.to_json
       puts "sent: #{data.to_json}"

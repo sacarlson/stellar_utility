@@ -5,6 +5,7 @@ require 'json'
 require 'sqlite3'
 require 'yaml'
 require 'base32'
+require 'mysql'
 require '../lib/stellar_utility/stellar_utility.rb'
 
 
@@ -461,6 +462,224 @@ class Multi_sign
     puts "witness: #{results}"
     return results
   end
+
+def read_ticker2(params)
+  # read_ticker(params)
+  # all input values are now in params for example params["timestamp_start"] to integrate with mss-server
+  #if timestamp_end = 0 or default undefined that is also seen as start of now() to the end of time or max number or record pulls in the past
+  #if timestamp_start = 0 or default undefined that is seen as start of Now() start time is present
+  # if timestamp_end is less than 365 then the value is looked at as days back from timestamp_start - 24 hours/day
+  # you can specify a start and stop range of timestamps on each that is in standard int seconds since Jan 01 1970. (UTC) if timestamp_end > 365
+  # if asset_code is left blank default, we will return all asset_codes that have been recorded on the server
+  # if you enter an asset_code with base_asset_code left blank, it will return all ask, bids on all matches of asset_code
+  # with all other base_asset_code pairs found and returned.
+  # if both asset_code and base_asset_code are entered, of course they must both match to be returned in query
+  # in the return data the asset_code = counter_asset_code and base_asset_code = base_asset_code, sorry that's just how it ended up
+  # I might consider rename of counter_asset_code to just asset_code in return at some point but not today
+  if params["timestamp_end"].nil?
+    params["timestamp_end"] = 0
+  end
+  
+  puts "params: #{params}" 
+  timestamp_end = params["timestamp_end"]
+  timestamp_start = params["timestamp_start"]
+  asset_code = params["asset_code"]
+  asset_code_issuer = params["asset_issuer"]
+  base_asset_code = params["base_asset_code"]
+  base_asset_issuer = params["base_asset_issuer"]
+  limit = params["limit"]
+  
+  if limit.nil?
+    limit = 100
+  end
+
+  #timestamp_end=0,timestamp_start=0,asset_code="THB", base_asset_code=""
+
+  begin
+    if timestamp_start == 0 || timestamp_start.nil?
+      timestamp_start = Time.now.to_i
+    end
+
+    if timestamp_end < 365
+      if timestamp_end > 0
+         timestamp_end = timestamp_start - (timestamp_end * 24 * 60 * 60)
+      end
+    end
+
+    puts "timestamp_start: #{timestamp_start}"
+    puts "timestamp_end:  #{timestamp_end}"
+    puts "limit: #{limit}"
+  
+    con = Mysql.new(@configs["mysql_host"], @configs["mysql_user"], @configs["mysql_password"], @configs["mysql_db"]) 
+ 
+
+    if timestamp_end == 0
+      rs = con.query("SELECT * FROM ticker ORDER BY timestamp DESC LIMIT " + limit.to_s )
+    else
+      if (asset_code.length > 0 && base_asset_code.length > 0)
+        puts "got here"
+        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `base_asset_code` = '" + base_asset_code + "' AND  `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp DESC LIMIT " + limit.to_s
+      elsif (asset_code.length > 0)
+        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp DESC LIMIT " + limit.to_s
+      else
+        query_string = "SELECT * FROM ticker WHERE `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp DESC LIMIT " + limit.to_s 
+      end
+      puts "query_string: #{query_string}" 
+      rs = con.query(query_string)
+    end
+
+    n_rows = rs.num_rows    
+    puts "There are #{n_rows} rows in the result set"
+
+    array = []
+    n_rows.times do
+        row = rs.fetch_hash  
+        row["timestamp"] = Time.parse(row["timestamp"]).to_i.to_s
+        array.push(row)
+    end
+
+    puts "array: #{array}"
+ 
+  rescue Mysql::Error => e
+    puts e.errno
+    puts e.error
+    
+  ensure
+    con.close if con
+  end
+
+  return array
+
+end
+
+def read_ticker(params)
+  # read_ticker(params)
+  # all input values are now in params for example params["timestamp_start"] to integrate with mss-server
+  #if timestamp_end = 0 or default undefined that is also seen as start of now() to the end of time or max number or record pulls in the past
+  #if timestamp_start = 0 or default undefined that is seen as start of Now() start time is present
+  # if timestamp_end is less than 365 then the value is looked at as days back from timestamp_start - 24 hours/day
+  # you can specify a start and stop range of timestamps on each that is in standard int seconds since Jan 01 1970. (UTC) if timestamp_end > 365
+  # if asset_code is left blank default, we will return all asset_codes that have been recorded on the server
+  # if you enter an asset_code with base_asset_code left blank, it will return all ask, bids on all matches of asset_code
+  # with all other base_asset_code pairs found and returned.
+  # if both asset_code and base_asset_code are entered, of course they must both match to be returned in query
+  # in the return data the asset_code = asset_code and base_asset_code = base_asset_code, 
+  
+  if params["timestamp_end"].nil?
+    params["timestamp_end"] = 0
+  end
+  
+  puts "params: #{params}" 
+  timestamp_end = params["timestamp_end"]
+  timestamp_start = params["timestamp_start"]
+  asset_code = params["asset_code"]
+  asset_code_issuer = params["asset_issuer"]
+  base_asset_code = params["base_asset_code"]
+  base_asset_issuer = params["base_asset_issuer"]
+  limit = params["limit"]
+  mode = params["mode"]
+
+  if mode.nil?
+    mode = 0
+  end
+  
+  if limit.nil?
+    #30 days at 1 sample per hour
+    limit = 721
+  end
+
+  #timestamp_end=0,timestamp_start=0,asset_code="THB", base_asset_code=""
+
+  begin
+    if timestamp_start == 0 || timestamp_start.nil?
+      timestamp_start = Time.now.to_i
+    end
+
+    if timestamp_end.to_i < 365
+      if timestamp_end.to_i > 0
+         timestamp_end = timestamp_start.to_i - (timestamp_end.to_i * 24 * 60 * 60)
+      end
+    end
+
+    puts "timestamp_start: #{timestamp_start}"
+    puts "timestamp_end:  #{timestamp_end}"
+    puts "limit: #{limit}"
+
+    #con = Mysql.new(Utils.configs["mysql_host"], Utils.configs["mysql_user"],Utils.configs["mysql_password"], Utils.configs["mysql_db"]) 
+    con = Mysql.new(@configs["mysql_host"], @configs["mysql_user"], @configs["mysql_password"], @configs["mysql_db"]) 
+
+    if timestamp_end == 0
+      rs = con.query("SELECT * FROM ticker ORDER BY timestamp DESC LIMIT " + limit.to_s )
+    else
+      if (!asset_code.nil? && !base_asset_code.nil?)
+        puts "got here"
+        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `base_asset_code` = '" + base_asset_code + "' AND  `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp DESC LIMIT " + limit.to_s
+      elsif (!asset_code.nil?)
+        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp DESC LIMIT " + limit.to_s
+      else
+        query_string = "SELECT * FROM ticker WHERE `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp DESC LIMIT " + limit.to_s 
+      end
+      puts "query_string: #{query_string}" 
+      rs = con.query(query_string)
+    end
+
+    n_rows = rs.num_rows    
+    puts "There are #{n_rows} rows in the result set"
+
+    array = []
+    if mode == "0"
+       n_rows.times do
+        row = rs.fetch_hash  
+        row["timestamp"] = Time.parse(row["timestamp"]).to_i.to_s
+        row["asset_code"] = row.delete("counter_asset_code")
+        row["asset_issuer"] = row.delete("counter_asset_issuer")
+        row["asset_type"] = row.delete("counter_asset_type")
+        array.push(row)
+      end
+      
+    elsif mode == "1"
+      n_rows.times do
+        in_array = []
+        row = rs.fetch_hash  
+        in_array[0] = ((Time.parse(row["timestamp"]).to_i) * 1000)
+        in_array[1] = row["ask_price"].to_f # open
+        in_array[2] = row["ask_price"].to_f # high
+        in_array[3] = row["ask_price"].to_f # low
+        in_array[4] = row["ask_price"].to_f # close
+        in_array[5] = row["ask_total_volume"].to_f # trade volume
+        array.push(in_array)
+      end      
+    else
+      n_rows.times do
+        in_array = []
+        row = rs.fetch_hash  
+        in_array[0] = ((Time.parse(row["timestamp"]).to_i) * 1000)
+        in_array[1] = row["ask_price"].to_f # open
+        in_array[2] = row["ask_price"].to_f # high
+        in_array[3] = row["ask_price"].to_f # low
+        in_array[4] = row["ask_price"].to_f # close
+        #in_array[5] = row["ask_total_volume"] # trade volume
+        array.push(in_array)
+      end
+    end
+
+    puts "array: #{array}"
+ 
+  rescue Mysql::Error => e
+    puts e.errno
+    puts e.error
+    
+  ensure
+    con.close if con
+  end
+  hash = {}
+  
+  hash["action"] = "get_ticker"
+  hash["status"] = "success"
+  hash["data"] = array
+  return hash
+
+end
 
 end #end class Multi_sign
 

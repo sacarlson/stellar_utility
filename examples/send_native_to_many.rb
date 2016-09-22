@@ -1,5 +1,5 @@
 #(c) 2015 by sacarlson  sacarlson_2000@yahoo.com
-# this a test jig to test functionality of send_native_many_tx and and generate_pool_tx functions
+# this is a test jig to test functionality of send_native_many_tx and and generate_pool_tx functions
 # that were added to stellar_utility.rb to support the inflation destination pool project
 
 require '../lib/stellar_utility/stellar_utility.rb'
@@ -18,7 +18,8 @@ data = '{"accounts":[{"accountid":"GDW3CNKSP5AOTDQ2YCKNGC6L65CE4JDX3JS5BV427OB54
 to_hash = JSON.parse(data)
 
 puts "check: #{data["accounts"][0]}"
-
+# remove key from master address to generate completely unsigned b64 envelope
+funder = Utils.convert_address_to_keypair(master.address)
 b64 = Utils.generate_pool_tx(funder, to_hash)
 
 puts "b64: #{b64}"

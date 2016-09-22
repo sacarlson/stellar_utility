@@ -15,6 +15,6 @@ gem "stellar-base"
 gem "faraday"
 gem "faraday_middleware"
 gem "pg"
-
+gem 'mysql'
 
 

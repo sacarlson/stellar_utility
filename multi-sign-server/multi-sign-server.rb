@@ -9,6 +9,7 @@ require './multi_sign_lib.rb'
 if File.file?("./stellar_utilities.cfg")
   configs = YAML.load(File.open("./stellar_utilities.cfg"))
   configs["mss_port2"] = configs["mss_port"].to_i + 1
+  puts "configs: #{configs}"
 else 
   puts "config file ./stellar_utilities.cfg not found, can't run without configs, will exit now"
   exit -1
@@ -45,6 +46,13 @@ EM.run {
         sendback = eval(stat)
         #puts "sendback: #{sendback}"
         sendback.to_json
+      when "get_ticker"
+        begin
+          results = mult_sig.read_ticker(request_payload)
+        rescue
+          results = {"action"=>"get_ticker","status"=>"error" ,"error"=>"bad input"}
+        end
+          results.to_json
       when "create_keys"
         keypair = Stellar::KeyPair.random
         results = {"action"=>"create_keys","secret_seed"=>keypair.seed, "public_address"=>keypair.address}
@@ -230,6 +238,13 @@ EM.run {
         sendback = eval(stat)
         #puts "sendback: #{sendback}"
         ws.send sendback.to_json
+      when "get_ticker"
+        begin
+          results = mult_sig.read_ticker(request_payload)
+        rescue
+          results = {"action"=>"get_ticker","status"=>"error" ,"error"=>"bad input"}
+        end
+          ws.send results.to_json
       when "create_keys"
         keypair = Stellar::KeyPair.random
         results = {"action"=>"create_keys","secret_seed"=>keypair.seed, "public_address"=>keypair.address}
