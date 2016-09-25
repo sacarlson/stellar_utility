@@ -681,8 +681,10 @@ or if working:
     * base_asset_code: base asset_code that is being traded with asset_code 
     * base_asset_issuer: the stellar.org network issuer address of the base_asset_code
     * limit: the max number of records to pull from the database, default 1000
-    * mode: sets the return format with 0 default, 1, and 2. mode 1 and 2 return arrays of just timestamp,ask,ask,ask,ask to be compatible with graph lib
-      mode 2 just removes ask_volume so only 5 array elements returned in each sample.
+    * mode: sets the return format with 0 default, 1, and 2. mode 1 and 2 return arrays of arrays of 1) [timestamp,ask,ask,ask,ask,ask_volume]
+       or 2) [timestamp,ask,ask,bid,ask,ask_volume] to be compatible with our js graphic libs, the bid replaces low in our js lib.
+       in our js graphic lib it's maped as [timestamp,open,high,low,close,trade_volume]. We hope to make ours the same someday.
+      
 
   * Values returned mode = 0 default:
     * action: "get_ticker" is returned to verify this is the return for this function

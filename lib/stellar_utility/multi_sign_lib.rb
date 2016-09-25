@@ -656,9 +656,9 @@ def read_ticker(params)
         in_array[0] = ((Time.parse(row["timestamp"]).to_i) * 1000)
         in_array[1] = row["ask_price"].to_f # open
         in_array[2] = row["ask_price"].to_f # high
-        in_array[3] = row["ask_price"].to_f # low
+        in_array[3] = row["bid_price"].to_f # low
         in_array[4] = row["ask_price"].to_f # close
-        #in_array[5] = row["ask_total_volume"] # trade volume
+        in_array[5] = row["ask_total_volume"].to_f # trade volume
         array.push(in_array)
       end
     end
