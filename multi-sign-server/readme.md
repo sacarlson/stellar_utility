@@ -684,6 +684,7 @@ or if working:
     * mode: sets the return format with 0 default, 1, and 2. mode 1 and 2 return arrays of arrays of 1) [timestamp,ask,ask,ask,ask,ask_volume]
        or 2) [timestamp,ask,ask,bid,ask,ask_volume] to be compatible with our js graphic libs, the bid replaces low in our js lib.
        in our js graphic lib it's maped as [timestamp,open,high,low,close,trade_volume]. We hope to make ours the same someday.
+    * sort_desc: will sort by timestamp in descending order if this is set to "true", default is sorted by timestamp in asending order. 
       
 
   * Values returned mode = 0 default:

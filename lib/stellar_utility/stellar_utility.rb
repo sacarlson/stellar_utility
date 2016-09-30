@@ -1611,13 +1611,34 @@ end
 def offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price,offerid)
   #get_set_stellar_core_network()
   puts "offer_tx offerid #{offerid}"
-  sell_issuer = convert_address_to_keypair(sell_issuer)
-  buy_issuer = convert_address_to_keypair(buy_issuer)
+  if !sell_issuer.nil? && sell_issuer.length > 10
+    sell_issuer = convert_address_to_keypair(sell_issuer)
+  end
+  if  !buy_issuer.nil? && buy_issuer.length > 10 
+    buy_issuer = convert_address_to_keypair(buy_issuer)
+  end
+  if sell_currency == "XLM" || sell_currency == "native"
+    selling = [:native]
+  else
+    selling = [:alphanum4, sell_currency, sell_issuer]
+  end
+  if buy_currency == "XLM" || buy_currency == "native"
+    buying = [:native]
+  else
+    buying = [:alphanum4, buy_currency, buy_issuer]
+  end
+
+  #puts "selling: #{selling}"
+  #puts "buying: #{buying}"
+  #puts "amount.to_s: #{amount.to_s}"
+  #puts "price.to_s: #{price.to_s}"
+  #puts "offerid.to_i: #{offerid.to_i}"
+  
   tx = Stellar::Transaction.manage_offer({
     account:    account,
     sequence:   next_sequence(account),
-    selling:    [:alphanum4, sell_currency, sell_issuer],
-    buying:     [:alphanum4, buy_currency, buy_issuer],
+    selling:    selling,
+    buying:     buying,
     amount:     amount.to_s,
     fee:        @configs["fee"].to_i,
     price:      price.to_s,

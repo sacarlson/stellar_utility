@@ -208,7 +208,7 @@ EM.run {
       # path, query_string, origin, headers
 
       # Publish message to the client
-      ws.send '{"status":"success", "version":"'+mult_sig.version+'"}'
+      ws.send '{"action":"connected","status":"success", "version":"'+mult_sig.version+'"}'
     }
 
     ws.onclose {
@@ -342,10 +342,11 @@ EM.run {
         results = mult_sig.get_acc_mss(request_payload["account"])
         ws.send results.to_json
       when "version"
-        ws.send '{"status":"success", "version":"'+mult_sig.version+'"}'
+        ws.send '{"action":"version","status":"success", "version":"'+mult_sig.version+'"}'
       when "broadcast"
         request_payload.delete("action")
         request_payload.delete("tx_code")
+        request_payload["action"] = "noop"
         results = request_payload
         puts "bc: #{results}"
         ws.send results.to_json

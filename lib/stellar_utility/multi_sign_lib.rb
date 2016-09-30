@@ -578,6 +578,7 @@ def read_ticker(params)
   base_asset_issuer = params["base_asset_issuer"]
   limit = params["limit"]
   mode = params["mode"]
+  sort = params["sort_desc"]
 
   if mode.nil?
     mode = 0
@@ -607,17 +608,24 @@ def read_ticker(params)
 
     #con = Mysql.new(Utils.configs["mysql_host"], Utils.configs["mysql_user"],Utils.configs["mysql_password"], Utils.configs["mysql_db"]) 
     con = Mysql.new(@configs["mysql_host"], @configs["mysql_user"], @configs["mysql_password"], @configs["mysql_db"]) 
-
+    if params["sort_desc"] == "true"
+      desc_asc = "DESC"
+    else
+      desc_asc = ""
+    end
     if timestamp_end == 0
-      rs = con.query("SELECT * FROM ticker ORDER BY timestamp DESC LIMIT " + limit.to_s )
+      rs = con.query("SELECT * FROM ticker ORDER BY timestamp " + desc_asc + " LIMIT " + limit.to_s )
     else
       if (!asset_code.nil? && !base_asset_code.nil?)
         puts "got here"
-        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `base_asset_code` = '" + base_asset_code + "' AND  `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp DESC LIMIT " + limit.to_s
+        #order acending
+        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `base_asset_code` = '" + base_asset_code + "' AND  `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp " + desc_asc +" LIMIT " + limit.to_s
+        #order decending
+        #query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `base_asset_code` = '" + base_asset_code + "' AND  `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp DESC LIMIT " + limit.to_s
       elsif (!asset_code.nil?)
-        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp DESC LIMIT " + limit.to_s
+        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp " + desc_asc +" LIMIT " + limit.to_s
       else
-        query_string = "SELECT * FROM ticker WHERE `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp DESC LIMIT " + limit.to_s 
+        query_string = "SELECT * FROM ticker WHERE `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp " + desc_asc + " LIMIT " + limit.to_s 
       end
       puts "query_string: #{query_string}" 
       rs = con.query(query_string)
@@ -629,11 +637,17 @@ def read_ticker(params)
     array = []
     if mode == "0"
        n_rows.times do
-        row = rs.fetch_hash  
+        row = rs.fetch_hash
         row["timestamp"] = Time.parse(row["timestamp"]).to_i.to_s
         row["asset_code"] = row.delete("counter_asset_code")
         row["asset_issuer"] = row.delete("counter_asset_issuer")
         row["asset_type"] = row.delete("counter_asset_type")
+        if  row["asset_type"] == "native"
+         row["asset_code"] = "XLM"
+        end
+        if row["base_asset_type"] == "native"
+          row["base_asset_code"] = "XLM"
+        end
         array.push(row)
       end
       
@@ -676,6 +690,10 @@ def read_ticker(params)
   
   hash["action"] = "get_ticker"
   hash["status"] = "success"
+  hash["asset_code"] = asset_code
+  hash["base_asset_code"] = params["base_asset_code"]
+  hash["base_asset_issuer"] = params["base_asset_issuer"]
+  hash["asset_issuer"] = params["asset_issuer"]
   hash["data"] = array
   return hash
 
