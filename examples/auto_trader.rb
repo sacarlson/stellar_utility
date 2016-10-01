@@ -28,6 +28,8 @@
 #
 #
 # to start app: bundler exec ruby ./auto_trader.rb
+#
+# plan to add GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM for jpy order_book_pair listing
 
 require '../lib/stellar_utility/stellar_utility.rb'
 require "mysql"
@@ -39,6 +41,7 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
   params = {}
   params["trade_pairs"] = [["USD","THB",10],["BTC","XLM",0.002],["BTC","USD",0.001],["USD","XLM",10]]
   #params["trade_pairs"] = [["BTC","XLM",0.004]]
+  params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
   params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
     #GBROAGZJGZSSQWJIIH2OHOPQUI4ZDZL4MOH7CSWLQBDGWBYDCDQT7CU4
   params["trader_account"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account"])
@@ -57,6 +60,7 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
   params["exchange_feed_key"] = Utils.configs["openexchangerates_key"]  
   params["min_liquid"] = 0
   params["loop_time_sec"] = 3600
+  #params["loop_time_sec"] = 5
   params["feed_poloniex"] = ["BTC","XLM","USDT","USD"]
   params["feed_other"] = ["THB","USD"]
   params["trade_single_side_pair"] = false
@@ -75,6 +79,24 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
 # normally with default params["trade_single_side_pair"] = false it trades both sides with two orders of buy and sell on the currency set
 #[base_code,currency_code,amount]
 # params["trade_pairs"] = [["USD","THB",100],["BTC","XLM",1]]
+# added options now added in array for changing  params["sell_issuer"] and params["buy_issuer"]:  [sell_asset,buy_asset,amount,sell_issuer,buy_issuer]
+
+#order_book_pairs is an asset pair array that is a list of what is recorded in the local mysql database of what is seen on 
+# the orderbook of stellar for these assets at the time. [base_asset,currency]. it records both buy and sell side
+# with this data in mysql we also have a feed and methods to plot history on a webpage
+# with this list now separate we can now capture and plot pairs that we are not the market maker for.
+# we will also later add optional issuer address for each["USD","THB","GBDDUSD...","GBDDTHB..."] as we might for the others as well
+# with no issuer values seen it will default both to the params["sell_issuer"] value as it does now
+#params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"]]
+# added options now added in array for changing  params["sell_issuer"] and params["buy_issuer"]: [sell_asset,buy_asset,sell_issuer,buy_issuer]
+
+# trade_peg_pairs
+# [peged_asset,asset_peg,peg_multiple,counter_asset,sell_ammount]
+# so in this example: ["FUNT","THB",40,"XLM",10]  we want to sell FUNT peged at the value each of 40 THB,
+# so we want to trade 10 FUNT for XLM at the price of 40 THB. it will setup a set of trades of buy and sell above and bellow that price +- margins 
+#params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
+#added options now added in array for changing  params["sell_issuer"] and params["buy_issuer"]:
+# [sell_asset,peg_asset,peg_asset_multiple,buy_asset,sell_amount,sell_issuer,buy_issuer]
 
 # max_diff is the max difference bettween two currency api feeds that are compared to verify that data is acurate within reason 
 $max_diff = 0.003
@@ -1262,6 +1284,7 @@ def record_order_book_set(params)
 end
 
 def send_tx_array(params,array=nil)
+  begin
   if params["disable_trade"] == "true" || params["disable_trade"] == true
     puts "disable_trade is set true will not be trading b"
     return
@@ -1274,6 +1297,9 @@ def send_tx_array(params,array=nil)
   b64 = tx_all.to_envelope(params["trader_account"]).to_xdr(:base64)
   puts "sending batch of tx"
   result = Utils.send_tx(b64)
+  rescue
+    puts "send_tx_array failed,  try again next loop"
+  end
 end
 
 
@@ -1307,6 +1333,10 @@ end
   #params["disable_record_feed"] = true
   #params["disable_delete_offers"] = true
   #params["disable_trade_peg"] = true  
+  params["tx_array_in"] = []
+  params["tx_buy_array_in"] = []
+  params["tx_sell_array_in"] = []
+  params["market_ask_price"] = nil
 
 puts "started infinite loop on auto trader, hit ctl-c to exit"
 puts "trade_pairs: #{params["trade_pairs"]}"
@@ -1319,44 +1349,39 @@ puts "profit_margin: #{ params["profit_margin"]}"
 puts "amount: #{params["amount"]}"
 puts "min_liquid: #{params["min_liquid"]}"
 
-
+backup_params = params.clone
 
 while true  do
-  puts "top of loop"
+  puts "top of loop"  
   if params["dual_trader"] == true
     delete_offers(params["trader_account_buy"], "")
     delete_offers(params["trader_account_sell"], "")
   else
     delete_offers(params["trader_account"], "")
   end
-  puts "delete all offers completed"
+  
+#params["trade_peg_pairs"] = [["FUNT","THB",40,"XLM",10],["FUNT","THB",40,"THB",10],["mBTC","BTC",0.001,"USD",10]]
 
-    params["tx_array_in"] = []
-    params["tx_buy_array_in"] = []
-    params["tx_sell_array_in"] = []
-    params["sell_currency"] = "FUNT"
-    params["buy_currency"] = "XLM"
-    # trade FUNT and XLM set
-    trade_peg(params)
-    params["tx_array_in"] = []
-    params["tx_buy_array_in"] = []
-    params["tx_sell_array_in"] = []
-    params["buy_currency"] = "THB"
-    # trade FUNT and THB set
-    trade_peg(params)
-    params["tx_array_in"] = []
-    params["tx_buy_array_in"] = []
-    params["tx_sell_array_in"] = []
-    params["sell_currency"] = "mBTC"
-    params["buy_currency"] = "USD"
-    params["peg_base_asset"] = "BTC"
-    params["peg_multiple"] = 0.001 
-    # trade mBTC and USD set   
-    trade_peg(params)
-    params["tx_array_in"] = []
-    params["tx_buy_array_in"] = []
-    params["tx_sell_array_in"] = []
-    params["market_ask_price"] = nil
+  if params["disable_trade_peg"] != true
+    params["trade_peg_pairs"].each { |pair|
+      params["sell_currency"] = pair[0]
+      params["peg_base_asset"] = pair[1]
+      params["peg_multiple"] = pair[2]
+      params["buy_currency"] = pair[3]      
+      params["amount"] = pair[4]
+      if !pair[5].nil?
+        params["sell_issuer"] = pair[5]
+      end
+      if !pair[6].nil?
+        params["buy_issuer"] = pair[6]
+      end    
+      params["tx_array_in"] = []
+      params["tx_buy_array_in"] = []
+      params["tx_sell_array_in"] = []
+      trade_peg(params)
+    }
+    params = backup_params.clone
+  end
 
   if params["trade_pairs"].nil?
     puts " trade_pairs nil will trade params[sell_currency] #{trade params[sell_currency]} instead"
@@ -1366,10 +1391,7 @@ while true  do
     if params["disable_delete_offers"] != true
       params["trade_pairs"].each { |pair|
         puts "delete order pair: #{pair}"
-        #params["sell_currency"] = pair[0]
-        #params["buy_currency"] = pair[1]
-        #params["amount"] = pair[2]
-        #puts "params: #{params}"
+        params["sell_currency"] = pair[0]
         if params["dual_trader"] == true
           delete_offers(params["trader_account_sell"],params["sell_currency"])
           delete_offers(params["trader_account_buy"], params["sell_currency"])
@@ -1378,16 +1400,25 @@ while true  do
         end
       }
     end
+    params = backup_params.clone
     params["tx_array_in"] = []
     params["tx_buy_array_in"] = []
     params["tx_sell_array_in"] = []
+    params["market_ask_price"] = nil
+
     params["trade_pairs"].each { |pair|
       puts "pair: #{pair}"
       params["sell_currency"] = pair[0]
       params["buy_currency"] = pair[1]
       params["amount"] = pair[2]
+      if !pair[3].nil?    
+        params["sell_issuer"] = pair[3]
+      end
+      if !pair[4].nil?
+        params["buy_issuer"] = pair[4]
+      end
       #puts "params: #{params}"
-      params["tx_array_in"] = trade_offer_set(params)
+      trade_offer_set(params)
     }
     if params["tx_mode"] == true
       #puts"tx_array_in: #{params["tx_array_in"]}"
@@ -1395,21 +1426,27 @@ while true  do
         params["trader_account"] = params["trader_account_sell"]
         send_tx_array(params,params["tx_sell_array_in"])
         params["trader_account"] = params["trader_account_buy"]
-        send_tx_array(params,params["tx_buy_array_in"])
-        params["trader_account"] = params["trader_account_sell"]                 
+        send_tx_array(params,params["tx_buy_array_in"])               
       else
         send_tx_array(params)
       end
     end
+    params = backup_params.clone
     params["order_book_pairs"].each { |pair|
       puts "pair: #{pair}"
       params["sell_currency"] = pair[0]
       params["buy_currency"] = pair[1]
+      if !pair[2].nil?    
+        params["sell_issuer"] = pair[2]
+      end
+      if !pair[3].nil?
+        params["buy_issuer"] = pair[3]
+      end
       #params["amount"] = pair[2]
       #puts "params: #{params}"
       record_order_book_set(params)
     }
-    
+    params = backup_params.clone
   end
   puts "Time.now: " + Time.now.to_s
   puts "next loop run in: " + params["loop_time_sec"].to_s + " secounds or " + (params["loop_time_sec"]/60/60).to_s + " hour"
