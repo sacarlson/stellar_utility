@@ -954,7 +954,7 @@ def get_order_book_horizon(params)
     url = @configs["url_horizon"]
     #puts "url_horizon:  #{url}"
     send = url + params + sell_asset_type + "&selling_asset_code=" + sell_asset + "&selling_asset_issuer=" + sell_issuer + "&buying_asset_type=" + buy_asset_type + "&buying_asset_code=" + buy_asset + "&buying_asset_issuer=" + buy_issuer
-    puts "sending:  #{send}"
+    #puts "sending:  #{send}"
     begin
       postdata = RestClient.get send
     rescue => e

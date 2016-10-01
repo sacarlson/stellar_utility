@@ -37,11 +37,15 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
 
 
   params = {}
-  params["trade_pairs"] = [["USD","THB",10],["BTC","XLM",0.01],["USD","XLM",10]]
-  #params["trade_pairs"] = [["BTC","XLM",0.01]]
+  params["trade_pairs"] = [["USD","THB",10],["BTC","XLM",0.002],["BTC","USD",0.001],["USD","XLM",10]]
+  #params["trade_pairs"] = [["BTC","XLM",0.004]]
+  params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
+    #GBROAGZJGZSSQWJIIH2OHOPQUI4ZDZL4MOH7CSWLQBDGWBYDCDQT7CU4
   params["trader_account"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account"])
-  params["trader_account_sell"] = params["trader_account"]
-  params["trader_account_buy"] = params["trader_account"]
+    #GBROAGZJGZSSQWJIIH2OHOPQUI4ZDZL4MOH7CSWLQBDGWBYDCDQT7CU4
+  params["trader_account_sell"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account_sell"])
+    #GDD77HP4NP2CSPOYZLAI2MNTX2H7QCTS3CIIDFKHZGDYMOBJG5NQK662
+  params["trader_account_buy"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account_buy"])
   params["sell_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
   params["sell_currency"] = "FUNT"
   params["buy_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
@@ -58,13 +62,18 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
   params["trade_single_side_pair"] = false
   params["tx_mode"] = true
   params["disable_trade"] = false
-  params["disable_record_ticker"] = true
-  params["disable_record_feed"] = true
+  params["disable_record_ticker"] = false
+  params["disable_record_feed"] = false
   params["disable_delete_offers"] = true
+  params["disable_trade_peg"] = false
+  params["dual_trader"] = true
+  params["trade_on_sell_side"] = true
+  params["trade_on_buy_side"] = true
 
 #trade_pairs and the amount to trade this pair, this array controls what order sets the bot will setup in a group of orders on each loop
 # first currency code is sell_currency also known as the base currency code, second is the currency to buy or counter asset or currency
 # normally with default params["trade_single_side_pair"] = false it trades both sides with two orders of buy and sell on the currency set
+#[base_code,currency_code,amount]
 # params["trade_pairs"] = [["USD","THB",100],["BTC","XLM",1]]
 
 # max_diff is the max difference bettween two currency api feeds that are compared to verify that data is acurate within reason 
@@ -174,7 +183,7 @@ def trade_offer_set(params)
   #params["tx_mode"] = true  ; don't perform the transaction just return a set to tx in an array [tx1,tx2], default is false
     # this is so we can collect all the tx and then perform a single transaction on all of them (much faster)
   #params["market_ask_price"] if not nil? will use this value instead of values from get_any_exchangerate
-
+    #begin
   trader_account = params["trader_account"]
   sell_issuer = params["sell_issuer"]
   sell_currency = params["sell_currency"]
@@ -189,31 +198,32 @@ def trade_offer_set(params)
  
   if params["market_ask_price"].nil? 
     market_ask_price = get_any_exchangerate(currency_code, base_code, params)
-  else 
+  else
+    puts " params[market_ask_price]  is not nil will use: #{params["market_ask_price"]}"
     market_ask_price = params["market_ask_price"]
   end
   #$last_rate = market_ask_price
   puts "market_ask_price: #{market_ask_price}"
 
-  sell_price = sprintf('%.7f',(market_ask_price + (market_ask_price * (profit_margin.to_f/100.0))))
-  buy_price = sprintf('%.7f',(1/market_ask_price) + ((1/market_ask_price) * (profit_margin.to_f/100.0)))
-  amount_sell = sprintf('%.7f',amount.to_f)
-  amount_buy = sprintf('%.7f',amount_sell.to_f / sell_price.to_f)
+  sell_price = sprintf('%.8f',(market_ask_price + (market_ask_price * (profit_margin.to_f/100.0))))
+  buy_price = sprintf('%.8f',(1/market_ask_price) + ((1/market_ask_price) * (profit_margin.to_f/100.0)))
+  amount_sell = sprintf('%.8f',amount.to_f)
+  amount_buy = sprintf('%.8f',amount_sell.to_f * sell_price.to_f)
   
   puts "trader_account: #{trader_account.address}"
   puts "profit margin percent: #{profit_margin.to_f}"
   puts "profit margin dec: #{profit_margin.to_f/100.0}"
   puts ""
-  puts "market_ask_price: #{market_ask_price.to_f}"
-  puts "margin difference: #{(market_ask_price.to_f * (profit_margin.to_f/100.0))}"
+  puts "market_ask_price: #{sprintf('%.8f',market_ask_price.to_f)}"
+  puts "margin difference: #{sprintf('%.8f',(market_ask_price.to_f * (profit_margin.to_f/100.0)))}"
   puts "sell_currency: #{sell_currency}"
   puts "sell_issuer: #{sell_issuer}"
   puts "sell_price.to_s: #{sell_price.to_s}"
-  puts "sell_priceR: #{1.0/sell_price.to_f}"
+  puts "sell_priceR: #{sprintf('%.8f',(1.0/sell_price.to_f))}"
   puts "amount_sell.to_s: #{amount_sell.to_s}"
   puts ""
-  puts "market_ask_price_R: #{1.0/market_ask_price.to_f}"
-  puts "margin difference: #{((1.0/market_ask_price.to_f) * (profit_margin.to_f/100.0))}"    
+  puts "market_ask_price_R: #{sprintf('%.8f',(1.0/market_ask_price.to_f))}"
+  puts "margin difference: #{sprintf('%.8f',(1.0/market_ask_price.to_f) * (profit_margin.to_f/100.0))}"    
   puts "buy_currency: #{buy_currency}"
   puts "buy_issuer: #{buy_issuer}"
   puts "buy_price.to_s: #{buy_price.to_s}"
@@ -224,11 +234,32 @@ def trade_offer_set(params)
     puts "disable_trade set true,  will not be trading"
     return
   end
+
+  if params["dual_trader"] == true
+    trader_account_sell = params["trader_account_sell"]
+    trader_account_buy = params["trader_account_buy"]
+  else
+    trader_account_sell = params["trader_account"]
+    trader_account_buy = params["trader_account"]
+  end
   if params["tx_mode"] == "true" || params["tx_mode"] == true
-     tx1 = send_offer_tx(trader_account, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s)
-     tx2 = send_offer_tx(trader_account, buy_issuer, buy_currency, sell_issuer, sell_currency, amount_buy.to_s, buy_price.to_s)
-     params["tx_array_in"].push(tx1)
-     params["tx_array_in"].push(tx2)
+     if params["trade_on_sell_side"] == true
+       tx1 = send_offer_tx(trader_account_sell, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s)
+       #params["tx_array_in"].push(tx1)
+       if params["dual_trader"] == true
+         params["tx_sell_array_in"].push(tx1)
+       else
+         params["tx_array_in"].push(tx1)
+       end
+     end
+     if params["trade_on_buy_side"] == true
+       tx2 = send_offer_tx(trader_account_buy, buy_issuer, buy_currency, sell_issuer, sell_currency, amount_buy.to_s, buy_price.to_s)
+       if params["dual_trader"] == true
+         params["tx_buy_array_in"].push(tx2)
+       else
+         params["tx_array_in"].push(tx2)
+       end     
+     end     
      return params["tx_array_in"]
   else
     send_offer(trader_account, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s)
@@ -238,9 +269,14 @@ def trade_offer_set(params)
     send_offer(trader_account, buy_issuer, buy_currency, sell_issuer, sell_currency, amount_buy.to_s, buy_price.to_s)
   end
 
+  #rescue 
+   # puts "trade_offer_set failed better luck next loop"
+  #end
+
 end
 
 def trade_peg(params)
+  puts "trade_peg started"
   #this will trade a peged valued asset. It will sell_currency based on the value of a peg_base_asset * peg_multiple
   # this value will then be used to setup a trade set with a buy_currency with bid and ask above and bellow our peg value by profit_margin amount
   # example FUNT will be valued at 40 Baht or 40 THB and traded with XLM, we will trade 10 FUNTS with trade of profit .5%
@@ -270,7 +306,12 @@ def trade_peg(params)
   #params["feed_poloniex"] = ["BTC","XLM","USDT","USD"]
   #params["feed_other"] = ["THB","USD"]
   #params["disable_record_feed"] = true
+  #begin 
 
+  if params["disable_trade_peg"] == true
+    puts "disable_trade_get set true will not be trading here"
+    return
+  end
   peg_base_rate_usd = get_any_exchangerate(params["peg_base_asset"], "USD",params) 
   buy_currency_rate_usd = get_any_exchangerate(params["buy_currency"], "USD",params)
   puts "peg_base_rate_usd: #{peg_base_rate_usd}" 
@@ -287,9 +328,22 @@ def trade_peg(params)
   puts "amount_sell: #{amount_sell}"
 
   params["market_ask_price"] = peg_rate_sell
-  tx_array = trade_offer_set(params)
-  send_tx_array(params,tx_array)
-  return tx_array
+  trade_offer_set(params)
+  if params["dual_trader"] == true
+    params["trader_account"] = params["trader_account_sell"]
+    send_tx_array(params,params["tx_sell_array_in"])
+    params["trader_account"] = params["trader_account_buy"]
+    send_tx_array(params,params["tx_buy_array_in"])
+    params["trader_account"] = params["trader_account_sell"]                 
+  else
+    send_tx_array(params)
+  end
+
+  return 
+
+  #rescue
+  #  puts "trade_peg failed, better luck next loop"
+  #end
 end
 
 def check_feedable(currency,base,feed_array)
@@ -318,6 +372,11 @@ def check_feedable(currency,base,feed_array)
 end
 
 def get_any_exchangerate(currency_code, base_code,params)
+  puts "get_any_exchangerate started"
+  if currency_code == base_code
+    puts "currency_code and base_code are the same, will return 1"
+    return 1
+  end
   #return the rate of currency_code exchange with base_code 
   # will auto pick needed feed determined by lists in params["feed_poloniex"] and params["feed_other"]
   $disable_record_feed = params["disable_record_feed"]
@@ -353,10 +412,10 @@ def get_exchangerate(currency_code,base_code,key="")
   # set to default exchange rate feed source
   data_1 = get_openexchangerates(currency_code,base_code,key)
   data_1["diff"] = "0.0"
-  puts "get_exch record_feed: #{data_1}"
+  #puts "get_exch record_feed: #{data_1}"
   record_feed(data_1)
   data_2 = get_yahoo_finance_exchangerate(currency_code,base_code)
-  puts "data_2: #{data_2}"
+  #puts "data_2: #{data_2}"
   rat = data_1["rate"].to_f/data_2["rate"].to_f
   if rat > 1
     diff = (rat -1)
@@ -364,7 +423,7 @@ def get_exchangerate(currency_code,base_code,key="")
     diff = (1 - rat)
   end
   
-  puts "diff: " + diff.to_s
+  #puts "diff: " + diff.to_s
   data_2["diff"] = diff
   #data_2["status"] = "pass"
   record_feed(data_2)
@@ -389,15 +448,15 @@ def get_yahoo_finance_exchangerate(currency_code,base_code)
     # with just a single currency
     url_start = "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.xchange%20where%20pair%20in%20(%22"
     url_end = "%22)&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
-    puts " currency_code: #{currency_code}"
-    puts " base_code: #{base_code}"
+    #puts " currency_code: #{currency_code}"
+    #puts " base_code: #{base_code}"
     send = url_start + base_code + currency_code + url_end
     #send = url_start_b +'(%22' + base_code + currency_code + '%22)' +  url_end_b
     # to lookup more than one currency at the same time
     #send = url_start_b +'(%22USDEUR%22,%20%22USDJPY%22)' +  url_end_b
     #puts "sending:  #{send}"
     begin
-    postdata = RestClient.get send
+      postdata = RestClient.get send
     rescue => e
       return  e.response
     end
@@ -427,14 +486,14 @@ def get_currencylayer_exchangerate(currency_code,key)
   url_end = "&format=1"
   send = url_start + key + "&currencies=" + currency_code +  url_end
   #send = "https://www.funtracker.site/map.html"
-    puts "sending:  #{send}"
+    #puts "sending:  #{send}"
     begin
       #postdata = RestClient.get send , :user_agent => "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:47.0) Gecko/20100101 Firefox/47.0"
       postdata = RestClient.get send , { :Accept => '*/*', 'accept-encoding' => "gzip, deflate", :user_agent => "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:47.0) Gecko/20100101 Firefox/47.0"}
     rescue => e
       return  e.response
     end
-    puts "postdata: " + postdata
+    #puts "postdata: " + postdata
     data = JSON.parse(postdata)
     data["service"] = "currencylayer"
     return data
@@ -462,13 +521,16 @@ def get_poloniex_exchangerate(currency_code,base_code)
   if base_code == "USD" 
     base_code_send = "USDT"
   end
-   
+  if base_code_send == currency_code_send
+    puts "base_code_send == currency_code_send will return 1"
+    return 1
+  end
   #url_start = "https://poloniex.com/public?command=returnOrderBook&currencyPair="
   url_start = "https://poloniex.com/public?command=returnTicker"
   url_end = ""
   #send = url_start + base_code_send + "_" + currency_code_send 
   send = url_start 
-  puts "sending:  #{send}"
+  #puts "sending:  #{send}"
   begin
     postdata = RestClient.get send , { :Accept => '*/*', 'accept-encoding' => "gzip, deflate", :user_agent => "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:47.0) Gecko/20100101 Firefox/47.0"}
   rescue => e
@@ -478,18 +540,26 @@ def get_poloniex_exchangerate(currency_code,base_code)
   data = JSON.parse(postdata)
   #puts "data: #{data}"
   data_ret = {}
-  if base_code_send == "BTC" || base_code_send == "USDT" 
-    obj_key = base_code_send + "_" + currency_code_send
-    puts "obj_key: #{obj_key}"
-    data_ret["rate"] = sprintf('%.7f',1.0/data[obj_key]["last"].to_f)
-    data_ret["ask"] = sprintf('%.7f',1.0/data[obj_key]["highestBid"].to_f)
-    data_ret["bid"] = sprintf('%.7f',1.0/data[obj_key]["lowestAsk"].to_f)
+  if base_code_send == "BTC" || base_code_send == "USDT"
+    if base_code_send == "BTC" && currency_code_send == "USDT"
+       obj_key = currency_code_send + "_" + base_code_send
+       puts "obj_key: #{obj_key}"
+       data_ret["rate"] = sprintf('%.8f',data[obj_key]["last"].to_f)
+       data_ret["ask"] = sprintf('%.8f',data[obj_key]["lowestAsk"].to_f)
+       data_ret["bid"] = sprintf('%.8f',data[obj_key]["highestBid"].to_f)
+    else 
+      obj_key = base_code_send + "_" + currency_code_send
+      puts "obj_key: #{obj_key}"
+      data_ret["rate"] = sprintf('%.8f',1.0/data[obj_key]["last"].to_f)
+      data_ret["ask"] = sprintf('%.8f',1.0/data[obj_key]["highestBid"].to_f)
+      data_ret["bid"] = sprintf('%.8f',1.0/data[obj_key]["lowestAsk"].to_f)
+    end
   else
     obj_key = currency_code_send + "_" + base_code_send
     puts "obj_key: #{obj_key}"
-    data_ret["rate"] = sprintf('%.7f',data[obj_key]["last"].to_f)
-    data_ret["ask"] = sprintf('%.7f',data[obj_key]["lowestAsk"].to_f)
-    data_ret["bid"] = sprintf('%.7f',data[obj_key]["highestBid"].to_f)
+    data_ret["rate"] = sprintf('%.8f',data[obj_key]["last"].to_f)
+    data_ret["ask"] = sprintf('%.8f',data[obj_key]["lowestAsk"].to_f)
+    data_ret["bid"] = sprintf('%.8f',data[obj_key]["highestBid"].to_f)
   end
   data_ret["service"] = "poloniex.com"
   data_ret["base"] = base_code
@@ -518,7 +588,7 @@ def get_poloniex_exchangerate_orderbook(currency_code,base_code)
   url_end = ""
   send = url_start + base_code_send + "_" + currency_code_send 
   #send = url_start + currency_code_send + "_" + base_code_send
-  puts "sending:  #{send}"
+  #puts "sending:  #{send}"
   begin
     postdata = RestClient.get send , { :Accept => '*/*', 'accept-encoding' => "gzip, deflate", :user_agent => "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:47.0) Gecko/20100101 Firefox/47.0"}
   rescue => e
@@ -660,7 +730,7 @@ def convert_polo_to_liquid(data_hash_in, min_liquid_shares)
   #  get_poloniex_exchange_liquid("STR","BTC",300000)
   #  
   #
-  puts "convert_polo data_hash_in: #{data_hash_in}" 
+  #puts "convert_polo data_hash_in: #{data_hash_in}" 
   result = data_hash_in
   out_result = {}
   out_result["ask"] = {}
@@ -749,7 +819,7 @@ def get_poloniex_exchange_liquid(currency_code,base_code,min_liquid)
   to_record_feed["service"] = "poloniex.com"
   #to_record_feed["timestamp"] = Time.now.to_i
   to_record_feed["datetime"] = Time.now.to_s
-  puts "to_record_feed: #{to_record_feed}"
+  #puts "to_record_feed: #{to_record_feed}"
   record_feed(to_record_feed)
   return to_record_feed
 end 
@@ -771,23 +841,23 @@ def delete_offers(account,asset_code = "")
   #if asset_code left blank or nil it will delete all open orders on this account
   result = Utils.get_account_offers_horizon(account)
   #puts "results: #{result["_embedded"]["records"][0]["id"]}"
-  puts "results: #{result["_embedded"]["records"]}"
+  #puts "results: #{result["_embedded"]["records"]}"
   if (result["_embedded"]["records"][0].nil?)
     puts "no offers to delete, nothing done"
     return
   end
   tx_array = []
   result["_embedded"]["records"].each{ |row|
-    puts "id: #{row["id"]}"
-    puts "selling"
-    puts "asset_issuer: #{row["selling"]["asset_issuer"]}"
-    puts "asset_code: #{row["selling"]["asset_code"]}"
-    puts "buying"
-    puts "asset_issuer: #{row["buying"]["asset_issuer"]}"
-    puts "asset_code: #{row["buying"]["asset_code"]}"
-    puts "amount: #{row["amount"].to_s}"
-    puts "price: #{row["price"].to_s}"
-    puts ""
+    puts "delete id: #{row["id"]}"
+    #puts "selling"
+    #puts "asset_issuer: #{row["selling"]["asset_issuer"]}"
+    #puts "asset_code: #{row["selling"]["asset_code"]}"
+    #puts "buying"
+    #puts "asset_issuer: #{row["buying"]["asset_issuer"]}"
+    #puts "asset_code: #{row["buying"]["asset_code"]}"
+    #puts "amount: #{row["amount"].to_s}"
+    #puts "price: #{row["price"].to_s}"
+    #puts ""
     if row["selling"]["asset_type"] == "native"
       row["selling"]["asset_code"] = "XLM"
     end
@@ -892,8 +962,8 @@ def read_ticker()
       end
     end
 
-    puts "timestamp_start: #{timestamp_start}"
-    puts "timestamp_end:  #{timestamp_end}"
+    #puts "timestamp_start: #{timestamp_start}"
+    #puts "timestamp_end:  #{timestamp_end}"
   
     con = Mysql.new(Utils.configs["mysql_host"], Utils.configs["mysql_user"],Utils.configs["mysql_password"], Utils.configs["mysql_db"])
  
@@ -907,24 +977,24 @@ def read_ticker()
       else
         query_string = "SELECT * FROM ticker WHERE `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ")"
       end
-      puts "query_string: #{query_string}" 
+      #puts "query_string: #{query_string}" 
       rs = con.query(query_string)
     end
 
     n_rows = rs.num_rows    
-    puts "There are #{n_rows} rows in the result set"
+    #puts "There are #{n_rows} rows in the result set"
 
     array = []
     n_rows.times do
         #puts rs.fetch_row.join("\s")
         #puts "fetch_row: #{rs.fetch_hash}"
         row["timestamp"] = row["timestamp"].to_time.to_i.to_s
-        puts "row[timestamp]: #{row["timestamp"].to_time.to_i}"
+        #puts "row[timestamp]: #{row["timestamp"].to_time.to_i}"
         array.push(row)
         #array.push(rs.fetch_hash)
     end
 
-    puts "array: #{array}"
+    #puts "array: #{array}"
  
   rescue Mysql::Error => e
     puts e.errno
@@ -958,7 +1028,8 @@ def record_ticker(data)
   # or can be read with read_ticker() function.
   #data = {"ask"=>{"price"=>"35.66433570", "volume"=>"0.0", "avg_price"=>"35.60209427", "offer_count"=>2, "total_volume"=>0, "total_avg_price"=>"35.60209427", "total_offers"=>2}, "bid"=>{"price"=>"34.27944600", "volume"=>"100.00000000", "avg_price"=>"34.27944600", "offer_count"=>1, "total_volume"=>"200.00000000", "total_avg_price"=>"34.21972575", "total_offers"=>2}, "base"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"USD", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "counter"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"THB", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "array"=>[1,2,3,4]}
 
-  puts "data: #{data.keys}"
+  puts "record_ticker start"
+  #puts "data: #{data.keys}"
 
   if $disable_record
     puts "$disable_record set true so no data saved to mysql for record_ticker data."
@@ -1051,6 +1122,7 @@ def record_feed(data)
   # or can be read with the read_feed() function.
   #data = {"ask"=>{"price"=>"35.66433570", "volume"=>"0.0", "avg_price"=>"35.60209427", "offer_count"=>2, "total_volume"=>0, "total_avg_price"=>"35.60209427", "total_offers"=>2}, "bid"=>{"price"=>"34.27944600", "volume"=>"100.00000000", "avg_price"=>"34.27944600", "offer_count"=>1, "total_volume"=>"200.00000000", "total_avg_price"=>"34.21972575", "total_offers"=>2}, "base"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"USD", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "counter"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"THB", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "array"=>[1,2,3,4]}
 
+  puts "record_feed start"
   #puts "data: #{data.keys}"
    
   begin
@@ -1112,13 +1184,13 @@ def record_feed(data)
       end    
     end
     create_table_string = create_table_string + ")"
-    puts "field_string: #{field_string}"
-    puts "value_string: #{value_string}"
-    puts "prep_value: #{prep_value}"
-    puts "create_table_string:  #{create_table_string}"
+    #puts "field_string: #{field_string}"
+    #puts "value_string: #{value_string}"
+    #puts "prep_value: #{prep_value}"
+    #puts "create_table_string:  #{create_table_string}"
    
     sql = start_sql + field_string + mid_sql + prep_value + end_sql
-    puts " sql: #{sql}"
+    #puts " sql: #{sql}"
     if $disable_record_feed
       puts "$disable_record_feed set true so no data saved to mysql for record_feed data."
       return
@@ -1150,25 +1222,26 @@ def record_order_book(params)
   #params["buy_asset"] = "THB"
   #params["buy_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
   #params["min_liquid"] = 0
-  puts "book_horizon params: #{params}"
+  #puts "book_horizon params: #{params}"
   result = Utils.get_order_book_horizon(params)
-  puts "input to record_order_book: #{result}"
+  #puts "input to record_order_book: #{result}"
   result2 = orderbook_convert_str_to_polo(result)
   #puts "result2: #{result2}"
   result3 = convert_polo_to_liquid(result2,params["min_liquid"])
-  puts "recorded to mysql db: #{result3}"
+  #puts "recorded to mysql db: #{result3}"
   record_ticker(result3)
 end
 
 def record_order_book_set(params)
+  puts "record_order_book_set start"
   params_rec = {}
   params_rec["min_liquid"] = params["min_liquid"]
   params_rec["sell_asset"] =   params["sell_currency"]
   params_rec["sell_issuer"] =  params["sell_issuer"]
   params_rec["buy_asset"] =   params["buy_currency"]
   params_rec["buy_issuer"] =  params["buy_issuer"]
-  puts "params A: #{params_rec}"
-  puts "record data"
+  #puts "params A: #{params_rec}"
+  #puts "record data"
   begin
     record_order_book(params_rec)
   rescue
@@ -1179,8 +1252,8 @@ def record_order_book_set(params)
   params_rec["sell_issuer"] =  params["buy_issuer"]
   params_rec["buy_asset"] =   params["sell_currency"]
   params_rec["buy_issuer"] =  params["sell_issuer"]
-  puts "params B: #{params_rec}"
-  puts "record data"
+  #puts "params B: #{params_rec}"
+  #puts "record data"
   begin
     record_order_book(params_rec)
   rescue
@@ -1217,6 +1290,8 @@ end
   #params["sell_currency"] = "USD"
   #params["buy_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
   #params["buy_currency"] = "THB"
+  #params["peg_base_asset"] = "THB"
+  #params["peg_multiple"] = 40
   #params["amount"] = 100
   #params["profit_margin"] = 0.5
   #params["exchange_feed_key"] = Utils.configs["openexchangerates_key"]  
@@ -1227,6 +1302,11 @@ end
   #params["trade_single_side_pair"] = false  ; not supported yet
   #params["tx_mode"] = true  ; is set true will run all transactions pairs as a single transaction , default is false
     # if this works it should be better and faster
+  #params["disable_trade"] = true
+  #params["disable_record_ticker"] = true
+  #params["disable_record_feed"] = true
+  #params["disable_delete_offers"] = true
+  #params["disable_trade_peg"] = true  
 
 puts "started infinite loop on auto trader, hit ctl-c to exit"
 puts "trade_pairs: #{params["trade_pairs"]}"
@@ -1240,50 +1320,67 @@ puts "amount: #{params["amount"]}"
 puts "min_liquid: #{params["min_liquid"]}"
 
 
-#delete_offers(params["trader_account"],asset_code = "")
-#puts "delete all offers completed"
-
-  #params["tx_array_in"] = []
-  #params["buy_currency"] = "XLM"
-  #trade_peg(params)
-  #params["tx_array_in"] = []
-  #params["buy_currency"] = "THB"
-  #trade_peg(params)
-  #exit 
-
-
-
 
 while true  do
   puts "top of loop"
-  delete_offers(params["trader_account"],asset_code = "")
+  if params["dual_trader"] == true
+    delete_offers(params["trader_account_buy"], "")
+    delete_offers(params["trader_account_sell"], "")
+  else
+    delete_offers(params["trader_account"], "")
+  end
   puts "delete all offers completed"
 
     params["tx_array_in"] = []
+    params["tx_buy_array_in"] = []
+    params["tx_sell_array_in"] = []
     params["sell_currency"] = "FUNT"
     params["buy_currency"] = "XLM"
+    # trade FUNT and XLM set
     trade_peg(params)
     params["tx_array_in"] = []
+    params["tx_buy_array_in"] = []
+    params["tx_sell_array_in"] = []
     params["buy_currency"] = "THB"
+    # trade FUNT and THB set
     trade_peg(params)
     params["tx_array_in"] = []
+    params["tx_buy_array_in"] = []
+    params["tx_sell_array_in"] = []
+    params["sell_currency"] = "mBTC"
+    params["buy_currency"] = "USD"
+    params["peg_base_asset"] = "BTC"
+    params["peg_multiple"] = 0.001 
+    # trade mBTC and USD set   
+    trade_peg(params)
+    params["tx_array_in"] = []
+    params["tx_buy_array_in"] = []
+    params["tx_sell_array_in"] = []
+    params["market_ask_price"] = nil
 
   if params["trade_pairs"].nil?
-    puts " trade_pairs nil will trade params[sell_currency] instead"
+    puts " trade_pairs nil will trade params[sell_currency] #{trade params[sell_currency]} instead"
     trade_offer_set(params)
     record_order_book_set(params)
   else
     if params["disable_delete_offers"] != true
       params["trade_pairs"].each { |pair|
-        puts "pair: #{pair}"
-        params["sell_currency"] = pair[0]
-        params["buy_currency"] = pair[1]
-        params["amount"] = pair[2]
+        puts "delete order pair: #{pair}"
+        #params["sell_currency"] = pair[0]
+        #params["buy_currency"] = pair[1]
+        #params["amount"] = pair[2]
         #puts "params: #{params}"
-        delete_offers(params["trader_account"],asset_code = params["sell_currency"])
+        if params["dual_trader"] == true
+          delete_offers(params["trader_account_sell"],params["sell_currency"])
+          delete_offers(params["trader_account_buy"], params["sell_currency"])
+        else
+          delete_offers(params["trader_account"], params["sell_currency"])
+        end
       }
     end
     params["tx_array_in"] = []
+    params["tx_buy_array_in"] = []
+    params["tx_sell_array_in"] = []
     params["trade_pairs"].each { |pair|
       puts "pair: #{pair}"
       params["sell_currency"] = pair[0]
@@ -1294,13 +1391,21 @@ while true  do
     }
     if params["tx_mode"] == true
       #puts"tx_array_in: #{params["tx_array_in"]}"
-      send_tx_array(params)
+      if params["dual_trader"] == true
+        params["trader_account"] = params["trader_account_sell"]
+        send_tx_array(params,params["tx_sell_array_in"])
+        params["trader_account"] = params["trader_account_buy"]
+        send_tx_array(params,params["tx_buy_array_in"])
+        params["trader_account"] = params["trader_account_sell"]                 
+      else
+        send_tx_array(params)
+      end
     end
-    params["trade_pairs"].each { |pair|
+    params["order_book_pairs"].each { |pair|
       puts "pair: #{pair}"
       params["sell_currency"] = pair[0]
       params["buy_currency"] = pair[1]
-      params["amount"] = pair[2]
+      #params["amount"] = pair[2]
       #puts "params: #{params}"
       record_order_book_set(params)
     }

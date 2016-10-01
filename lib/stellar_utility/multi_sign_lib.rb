@@ -613,9 +613,9 @@ def read_ticker(params)
     else
       desc_asc = ""
     end
-    if timestamp_end == 0
-      rs = con.query("SELECT * FROM ticker ORDER BY timestamp " + desc_asc + " LIMIT " + limit.to_s )
-    else
+    #if timestamp_end == 0
+    #  rs = con.query("SELECT * FROM ticker ORDER BY timestamp " + desc_asc + " LIMIT " + limit.to_s )
+    #else
       if (!asset_code.nil? && !base_asset_code.nil?)
         puts "got here"
         #order acending
@@ -629,11 +629,11 @@ def read_ticker(params)
       end
       puts "query_string: #{query_string}" 
       rs = con.query(query_string)
-    end
-
+    #end
+   
     n_rows = rs.num_rows    
     puts "There are #{n_rows} rows in the result set"
-
+    #puts "query_string: #{query_string}" 
     array = []
     if mode == "0"
        n_rows.times do
