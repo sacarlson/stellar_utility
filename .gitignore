@@ -1,0 +1,17 @@
+/vendor/*
+/stellar-live/*
+/stellar-db-opencore/*
+/stellar-db-testnet/*
+/stellar-db_fred/*
+/stellar-db/*
+/stellar-db-standalone/*
+/stellar-db-testnet_postgres/*
+/*.yml
+/examples/*.yml
+/examples/*.cfg
+/examples/secretes2/*
+/examples/last_secretes/*
+/multi-sign-server/vendor/*
+/multi-sign-server/*.yml
+
+
