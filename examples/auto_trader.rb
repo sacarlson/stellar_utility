@@ -40,18 +40,25 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
 
   params = {}
   params["trade_pairs"] = [["USD","THB",10],["BTC","XLM",0.002],["BTC","USD",0.001],["USD","XLM",10]]
-  #params["trade_pairs"] = [["BTC","XLM",0.004]]
+  #params["trade_pairs"] = [["USD","XLM",1],["USD","THB",1]]
   params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
+  #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
   params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
+
+    #this will have to wait for live net
+  #params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"]]
+
     #GBROAGZJGZSSQWJIIH2OHOPQUI4ZDZL4MOH7CSWLQBDGWBYDCDQT7CU4
   params["trader_account"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account"])
     #GBROAGZJGZSSQWJIIH2OHOPQUI4ZDZL4MOH7CSWLQBDGWBYDCDQT7CU4
   params["trader_account_sell"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account_sell"])
     #GDD77HP4NP2CSPOYZLAI2MNTX2H7QCTS3CIIDFKHZGDYMOBJG5NQK662
   params["trader_account_buy"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account_buy"])
-  params["sell_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
+  #params["sell_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
+  params["sell_issuer"] = "GBEK5BFCXBYPZ5JAP2XUWM637PYBQNTL5Y2MVZYV2NBRH6OYS4HCWTWO"
   params["sell_currency"] = "FUNT"
-  params["buy_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
+  #params["buy_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
+  params["buy_issuer"] = "GBEK5BFCXBYPZ5JAP2XUWM637PYBQNTL5Y2MVZYV2NBRH6OYS4HCWTWO"
   params["buy_currency"] = "XLM"
   params["peg_base_asset"] = "THB"
   params["peg_multiple"] = 40
@@ -73,6 +80,7 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
   params["dual_trader"] = true
   params["trade_on_sell_side"] = true
   params["trade_on_buy_side"] = true
+  params["min_diff_trade_pct"] = 0.005
 
 #trade_pairs and the amount to trade this pair, this array controls what order sets the bot will setup in a group of orders on each loop
 # first currency code is sell_currency also known as the base currency code, second is the currency to buy or counter asset or currency
@@ -133,6 +141,10 @@ $disable_record_feed = params["disable_record_feed"]
 #infinite loop time in seconds with 3600 being 1 hour that is as often as we can get free feeds from openexchangerates.org and most others.
 #loop_time_sec = 3600
 
+#params["min_diff_trade_pct"] is the minimum percent difference bettween what was last recorded as traded on the stellar network 
+# and what is now seen on the feed channel that are used to trade from. this is presently used in trade_offer_set(params)
+# if set to zero this value is ignored
+
 #  config settings
 #buy_currency = "THB"
 #buy_currency = "USD"
@@ -177,7 +189,11 @@ $disable_record_feed = params["disable_record_feed"]
 #puts "Utils version: #{Utils.version}"
 #puts "configs: #{Utils.configs}"
 
-
+def percent_diff(x,y)
+  #return percent difference between two numbers
+  # number will always return positive or zero
+  return (100*(y.to_f - x.to_f) / x.to_f).abs
+end
 
 
 def trade_offer_set(params)
@@ -226,11 +242,22 @@ def trade_offer_set(params)
   end
   #$last_rate = market_ask_price
   puts "market_ask_price: #{market_ask_price}"
+  #params["min_dif_trade_pct"]
+
+  last_rate = get_funtracker_exchangerate_min(currency_code,base_code)
+  puts "last_rate: #{last_rate}"
+  puts "percent_diff: #{percent_diff(last_rate,market_ask_price)}"
+
+  if params["min_diff_trade_pct"].to_f > percent_diff(last_rate,market_ask_price) && params["min_diff_trade_pct"].to_f > 0 && last_rate > 0
+    puts " params[min_diff_trade_pct] > last_rate for this currency pair so will skip trading them on this loop"
+    return
+  end
 
   sell_price = sprintf('%.8f',(market_ask_price + (market_ask_price * (profit_margin.to_f/100.0))))
   buy_price = sprintf('%.8f',(1/market_ask_price) + ((1/market_ask_price) * (profit_margin.to_f/100.0)))
   amount_sell = sprintf('%.8f',amount.to_f)
   amount_buy = sprintf('%.8f',amount_sell.to_f * sell_price.to_f)
+  #amount_buy = sprintf('%.8f',amount_sell.to_f * buy_price.to_f)
   
   puts "trader_account: #{trader_account.address}"
   puts "profit margin percent: #{profit_margin.to_f}"
@@ -336,10 +363,14 @@ def trade_peg(params)
   end
   peg_base_rate_usd = get_any_exchangerate(params["peg_base_asset"], "USD",params) 
   buy_currency_rate_usd = get_any_exchangerate(params["buy_currency"], "USD",params)
-  puts "peg_base_rate_usd: #{peg_base_rate_usd}" 
+  if peg_base_rate_usd == 0 || buy_currency_rate_usd == 0
+    puts "bad data from get_any_exchangerate,  will not trade this"
+    return
+  end
+  puts "peg_base_rate_usd: #{peg_base_rate_usd}"
+  puts "buy_currency_rate_usd: #{buy_currency_rate_usd}" 
   peg_rate_usd = params["peg_multiple"].to_f / peg_base_rate_usd.to_f  
   puts "peg_rate_usd: #{peg_rate_usd}"
-  puts "buy_currency_rate_usd: #{buy_currency_rate_usd}"
   peg_rate_buy =  buy_currency_rate_usd * peg_rate_usd 
   puts "peg_rate_buy: #{peg_rate_buy}"
   amount_buy = params["amount"].to_f * peg_rate_buy
@@ -352,11 +383,10 @@ def trade_peg(params)
   params["market_ask_price"] = peg_rate_sell
   trade_offer_set(params)
   if params["dual_trader"] == true
-    params["trader_account"] = params["trader_account_sell"]
-    send_tx_array(params,params["tx_sell_array_in"])
     params["trader_account"] = params["trader_account_buy"]
     send_tx_array(params,params["tx_buy_array_in"])
-    params["trader_account"] = params["trader_account_sell"]                 
+    params["trader_account"] = params["trader_account_sell"]
+    send_tx_array(params,params["tx_sell_array_in"])              
   else
     send_tx_array(params)
   end
@@ -422,7 +452,7 @@ def get_any_exchangerate(currency_code, base_code,params)
   puts "get_exchangerate result: #{result}"
   if result["status"] == "fail"
      puts "get_exchangerate status fail,  will not trade this data in auto_trade_offer_set"
-     return 
+     return 0
   else
     puts "get_exchangerate status OK,  will trade"
   end
@@ -431,6 +461,8 @@ def get_any_exchangerate(currency_code, base_code,params)
 end
 
 def get_exchangerate(currency_code,base_code,key="")
+  # this is used to get fiat currency rates from two sources, checks to verify they are close match with returned status
+  # this is not used for crypto price lookups
   # set to default exchange rate feed source
   data_1 = get_openexchangerates(currency_code,base_code,key)
   data_1["diff"] = "0.0"
@@ -480,7 +512,11 @@ def get_yahoo_finance_exchangerate(currency_code,base_code)
     begin
       postdata = RestClient.get send
     rescue => e
-      return  e.response
+      puts "fail in get_yahoo_finance_exchangerate at RestClient.get  error: #{e}"
+      data_out = {}
+      data_out["service"] = "yahoo"
+      data_out["status"] = "fail"
+      return  data_out
     end
     #puts "postdata: " + postdata
     data = JSON.parse(postdata)
@@ -513,13 +549,51 @@ def get_currencylayer_exchangerate(currency_code,key)
       #postdata = RestClient.get send , :user_agent => "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:47.0) Gecko/20100101 Firefox/47.0"
       postdata = RestClient.get send , { :Accept => '*/*', 'accept-encoding' => "gzip, deflate", :user_agent => "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:47.0) Gecko/20100101 Firefox/47.0"}
     rescue => e
-      return  e.response
+      puts "fail in get_poloniex_exchangerate at RestClient.get  error: #{e}"
+      data_out = {}
+      data_out["service"] = "currencylayer"
+      data_out["status"] = "fail"
+      return  data_out
     end
     #puts "postdata: " + postdata
     data = JSON.parse(postdata)
+    data["status"] = "pass"
     data["service"] = "currencylayer"
     return data
 end
+
+def get_funtracker_exchangerate(currency_code,base_code)
+  #this gets the stellar.org exchange rate feed from funtracker.sites mss-server
+  #{"action":"get_ticker_list","asset_pair":"THB_USD"}
+  #curl -X POST b.funtracker.site:9495 -d '{"action":"get_ticker_list","asset_pair":"THB_USD"}'
+  #RestClient.post 'http://b.funtracker.site:9495', '{"action":"get_ticker_list","asset_pair":"THB_USD"}'
+  send = "http://b.funtracker.site:9495"
+  post_package = '{"action":"get_ticker_list","asset_pair":"' + currency_code + "_" + base_code + '"}'
+    puts "sending:  #{send}"
+    begin
+      postdata = RestClient.post send , post_package
+    rescue => e
+      puts "fail in get_funtracker_exchangerate at RestClient.get  error: #{e}"
+      data_out = {}
+      data_out["service"] = "funtracker.site"
+      data_out["status"] = "fail"
+      return  data_out
+    end
+    puts "postdata: " + postdata
+    data = JSON.parse(postdata)
+    data["status"] = "pass"
+    data["service"] = "funtracker.site"
+    return data
+end
+
+  def get_funtracker_exchangerate_min(currency_code,base_code)
+    result = get_funtracker_exchangerate(currency_code,base_code)
+    if result["status"] == "fail"
+     return 0
+    else
+     return result["asset_pairs"][4]
+    end 
+  end
 
 def get_poloniex_exchangerate(currency_code,base_code)
   #https://poloniex.com/public?command=returnOrderBook&currencyPair=BTC_STR
@@ -556,12 +630,17 @@ def get_poloniex_exchangerate(currency_code,base_code)
   begin
     postdata = RestClient.get send , { :Accept => '*/*', 'accept-encoding' => "gzip, deflate", :user_agent => "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:47.0) Gecko/20100101 Firefox/47.0"}
   rescue => e
-    return  e.response
+    puts "fail in get_poloniex_exchangerate at RestClient.get  error: #{e}"
+    data_out = {}
+    data_out["service"] = "poloniex.com"
+    data_out["status"] = "fail"
+    return  data_out
   end
   #puts "postdata: " + postdata
   data = JSON.parse(postdata)
   #puts "data: #{data}"
   data_ret = {}
+  data_ret["status"] = "pass"
   if base_code_send == "BTC" || base_code_send == "USDT"
     if base_code_send == "BTC" && currency_code_send == "USDT"
        obj_key = currency_code_send + "_" + base_code_send
@@ -614,10 +693,15 @@ def get_poloniex_exchangerate_orderbook(currency_code,base_code)
   begin
     postdata = RestClient.get send , { :Accept => '*/*', 'accept-encoding' => "gzip, deflate", :user_agent => "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:47.0) Gecko/20100101 Firefox/47.0"}
   rescue => e
-    return  e.response
+    puts "fail in get_openexchangerate at RestClient.get  error: #{e}"
+    data_out = {}
+    data_out["service"] = "openexchangerates.org"
+    data_out["status"] = "fail"
+    return  data_out
   end
   #puts "postdata: " + postdata
   data = JSON.parse(postdata)
+  data_out["status"] = "pass"
   data["service"] = "poloniex.com"
   data["base"] = base_code
   data["currency_code"] = currency_code
@@ -662,11 +746,16 @@ def get_openexchangerates(currency_code,base_code,key)
     #postdata = RestClient.get send , { :Accept => '*/*', 'accept-encoding' => "gzip, deflate", :user_agent => "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:47.0) Gecko/20100101 Firefox/47.0"}
     postdata = RestClient.get send , { :Accept => '*/*', 'accept-encoding' => "gzip, deflate"}
   rescue => e
-    return  e.response
+    puts "fail in get_openexchangerate at RestClient.get  error: #{e}"
+    data_out = {}
+    data_out["service"] = "openexchangerates.org"
+    data_out["status"] = "fail"
+    return  data_out
   end
   #puts "postdata: " + postdata
   data = JSON.parse(postdata)
   data_out = {}
+  data_out["status"] = "pass"
   if (base_code == "USD")
     #defaults to USD
     data_out["currency_code"] = currency_code
@@ -1057,6 +1146,11 @@ def record_ticker(data)
     puts "$disable_record set true so no data saved to mysql for record_ticker data."
     return
   end
+
+  if data["ask"]["price"].to_f == 0 && data["bid"]["price"].to_f == 0 
+    puts "seems ask bid price are zero so must be bad data feed, will not record"
+    return
+  end
  
   begin
     con = Mysql.new(Utils.configs["mysql_host"], Utils.configs["mysql_user"],Utils.configs["mysql_password"], Utils.configs["mysql_db"])
@@ -1349,6 +1443,8 @@ puts "profit_margin: #{ params["profit_margin"]}"
 puts "amount: #{params["amount"]}"
 puts "min_liquid: #{params["min_liquid"]}"
 
+
+
 backup_params = params.clone
 
 while true  do
@@ -1359,8 +1455,8 @@ while true  do
   else
     delete_offers(params["trader_account"], "")
   end
-  
-#params["trade_peg_pairs"] = [["FUNT","THB",40,"XLM",10],["FUNT","THB",40,"THB",10],["mBTC","BTC",0.001,"USD",10]]
+  #exit
+  #params["trade_peg_pairs"] = [["FUNT","THB",40,"XLM",10],["FUNT","THB",40,"THB",10],["mBTC","BTC",0.001,"USD",10]]
 
   if params["disable_trade_peg"] != true
     params["trade_peg_pairs"].each { |pair|
@@ -1413,9 +1509,13 @@ while true  do
       params["amount"] = pair[2]
       if !pair[3].nil?    
         params["sell_issuer"] = pair[3]
+      else
+        params["sell_issuer"] = backup_params["sell_issuer"].clone
       end
       if !pair[4].nil?
         params["buy_issuer"] = pair[4]
+      else 
+        params["buy_issuer"] = backup_params["buy_issuer"].clone
       end
       #puts "params: #{params}"
       trade_offer_set(params)

@@ -50,7 +50,14 @@ EM.run {
         begin
           results = mult_sig.read_ticker(request_payload)
         rescue
-          results = {"action"=>"get_ticker","status"=>"error" ,"error"=>"bad input"}
+          results = {"action"=>"get_ticker","status"=>"error" ,"error"=>"bad input post"}
+        end
+          results.to_json
+      when "get_ticker_list"
+        begin
+          results = mult_sig.read_ticker_list(request_payload)
+        rescue
+          results = {"action"=>"get_ticker_list","status"=>"error" ,"error"=>"bad input post"}
         end
           results.to_json
       when "create_keys"
@@ -242,7 +249,14 @@ EM.run {
         begin
           results = mult_sig.read_ticker(request_payload)
         rescue
-          results = {"action"=>"get_ticker","status"=>"error" ,"error"=>"bad input"}
+          results = {"action"=>"get_ticker","status"=>"error" ,"error"=>"bad input socket"}
+        end
+          ws.send results.to_json
+      when "get_ticker_list"
+        begin
+          results = mult_sig.read_ticker_list(request_payload)
+        rescue
+         # results = {"action"=>"get_ticker_list","status"=>"error" ,"error"=>"bad input socket"}
         end
           ws.send results.to_json
       when "create_keys"
