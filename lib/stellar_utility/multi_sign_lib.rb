@@ -468,10 +468,10 @@ class Multi_sign
 def read_ticker_list(params)
   # return a list of all assets sets presently listed on ticker table database with last ask price
   # each listed asset array contains: [asset_code,asset_code_issuer, base_code, base_code_issuer, last_ask_price]
-#{"action":"get_ticker","mode":"0","asset_code":"BTC","base_asset_code":"USD"}
-  # output: {"action":"get_ticker_list","asset_pairs":{"USD_THB":["USD","GDDX...","THB","GDDX...",123.2],"USD_BTC":["USD","GDDX...","BTC","GDDX...",456.5] }
-  #asset_pairs = {"USD_THB"=>["USD","THB",123.2],"USD_BTC"=>["USD","BTC",345.5]}
-
+  #{"action":"get_ticker_list","asset_pair":"THB_USD"}
+  #{"action":"get_ticker_list","status":"success","asset_pairs":["THB","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","USD","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","0.029"]}
+  # array format: [asset_code,asset_issuer,base_code,base_issuer,last_ask_price]
+  # asset_pair format:  THB_USD  THB = base_code  USD = asset_code,  USD_THB would return value of about 34.68 also seen as USD/THB
   con = Mysql.new(@configs["mysql_host"], @configs["mysql_user"], @configs["mysql_password"], @configs["mysql_db"]) 
     
   #rs = con.query("SELECT * FROM ticker ORDER BY timestamp DESC" )
@@ -491,8 +491,10 @@ def read_ticker_list(params)
         if row["base_asset_type"] == "native"
           row["base_asset_code"] = "XLM"
         end
-        asset_pair = row["asset_code"] + "_" + row["base_asset_code"]
-        asset_pairs[asset_pair] = [row["asset_code"],row["asset_issuer"],row["base_asset_code"],row["base_asset_issuer"],row["ask_price"]]
+        #asset_pair = row["asset_code"] + "_" + row["base_asset_code"]
+        # at this time it seems my database has asset_code and base_asset_code reversed, not sure where to fix this yet for now here
+        asset_pair = row["base_asset_code"] + "_" + row["asset_code"]
+        asset_pairs[asset_pair] = [row["asset_code"],row["asset_issuer"],row["base_asset_code"],row["base_asset_issuer"],row["ask_price"],row["bid_price"]]
       end
     hash = {}
   
@@ -610,11 +612,11 @@ def read_ticker(params)
         in_array = []
         row = rs.fetch_hash  
         in_array[0] = ((Time.parse(row["timestamp"]).to_i) * 1000)
-        in_array[1] = row["ask_price"].to_f # open
-        in_array[2] = row["ask_price"].to_f # high
-        in_array[3] = row["ask_price"].to_f # low
-        in_array[4] = row["ask_price"].to_f # close
-        in_array[5] = row["ask_total_volume"].to_f # trade volume
+        in_array[1] = row["bid_price"].to_f # open
+        in_array[2] = row["bid_price"].to_f # high
+        in_array[3] = row["bid_price"].to_f # low
+        in_array[4] = row["bid_price"].to_f # close
+        in_array[5] = row["bid_total_volume"].to_f # trade volume
         array.push(in_array)
       end      
     else
@@ -622,11 +624,11 @@ def read_ticker(params)
         in_array = []
         row = rs.fetch_hash  
         in_array[0] = ((Time.parse(row["timestamp"]).to_i) * 1000)
-        in_array[1] = row["ask_price"].to_f # open
+        in_array[1] = row["bid_price"].to_f # open
         in_array[2] = row["ask_price"].to_f # high
         in_array[3] = row["bid_price"].to_f # low
-        in_array[4] = row["ask_price"].to_f # close
-        in_array[5] = row["ask_total_volume"].to_f # trade volume
+        in_array[4] = row["bid_price"].to_f # close
+        in_array[5] = row["bid_total_volume"].to_f # trade volume
         array.push(in_array)
       end
     end

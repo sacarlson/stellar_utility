@@ -1,5 +1,6 @@
 /vendor/*
 /stellar-live/*
+/stellar-live/*.cfg
 /stellar-db-opencore/*
 /stellar-db-testnet/*
 /stellar-db_fred/*
@@ -11,7 +12,13 @@
 /examples/*.cfg
 /examples/secretes2/*
 /examples/last_secretes/*
+/examples/*.log
 /multi-sign-server/vendor/*
 /multi-sign-server/*.yml
+/multi-sign-server/*-shm
+/multi-sign-server/*-wal
+/multi-sign-server/*.db
+/*.log
+/*.cfg
 
 

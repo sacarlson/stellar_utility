@@ -39,10 +39,10 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
 
 
   params = {}
-  params["trade_pairs"] = [["USD","THB",10],["BTC","XLM",0.002],["BTC","USD",0.001],["USD","XLM",10]]
-  #params["trade_pairs"] = [["USD","XLM",1],["USD","THB",1]]
+  params["trade_pairs"] = [["THB","USD",340],["BTC","USD",0.001],["XLM","USD",1000]]
+  #params["trade_pairs"] = [["THB","USD",1]]
   params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
-  #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
+  #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10]]
   params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
 
     #this will have to wait for live net
@@ -56,7 +56,7 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
   params["trader_account_buy"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account_buy"])
   #params["sell_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
   params["sell_issuer"] = "GBEK5BFCXBYPZ5JAP2XUWM637PYBQNTL5Y2MVZYV2NBRH6OYS4HCWTWO"
-  params["sell_currency"] = "FUNT"
+  #params["sell_currency"] = "FUNT"
   #params["buy_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
   params["buy_issuer"] = "GBEK5BFCXBYPZ5JAP2XUWM637PYBQNTL5Y2MVZYV2NBRH6OYS4HCWTWO"
   params["buy_currency"] = "XLM"
@@ -70,21 +70,20 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
   #params["loop_time_sec"] = 5
   params["feed_poloniex"] = ["BTC","XLM","USDT","USD"]
   params["feed_other"] = ["THB","USD"]
-  params["trade_single_side_pair"] = false
   params["tx_mode"] = true
   params["disable_trade"] = false
   params["disable_record_ticker"] = false
   params["disable_record_feed"] = false
   params["disable_delete_offers"] = true
   params["disable_trade_peg"] = false
-  params["dual_trader"] = true
+  params["dual_trader"] = false
   params["trade_on_sell_side"] = true
   params["trade_on_buy_side"] = true
-  params["min_diff_trade_pct"] = 0.005
+  #params["min_diff_trade_pct"] = 0.005
+  params["min_diff_trade_pct"] = 0 # disable due to we need to figure out how to handle not deleting original order first
 
 #trade_pairs and the amount to trade this pair, this array controls what order sets the bot will setup in a group of orders on each loop
 # first currency code is sell_currency also known as the base currency code, second is the currency to buy or counter asset or currency
-# normally with default params["trade_single_side_pair"] = false it trades both sides with two orders of buy and sell on the currency set
 #[base_code,currency_code,amount]
 # params["trade_pairs"] = [["USD","THB",100],["BTC","XLM",1]]
 # added options now added in array for changing  params["sell_issuer"] and params["buy_issuer"]:  [sell_asset,buy_asset,amount,sell_issuer,buy_issuer]
@@ -255,6 +254,8 @@ def trade_offer_set(params)
 
   sell_price = sprintf('%.8f',(market_ask_price + (market_ask_price * (profit_margin.to_f/100.0))))
   buy_price = sprintf('%.8f',(1/market_ask_price) + ((1/market_ask_price) * (profit_margin.to_f/100.0)))
+  #sell_price = sprintf('%.8f',(market_ask_price - (market_ask_price * (profit_margin.to_f/100.0))))
+  #buy_price = sprintf('%.8f',(1/market_ask_price) - ((1/market_ask_price) * (profit_margin.to_f/100.0)))
   amount_sell = sprintf('%.8f',amount.to_f)
   amount_buy = sprintf('%.8f',amount_sell.to_f * sell_price.to_f)
   #amount_buy = sprintf('%.8f',amount_sell.to_f * buy_price.to_f)
@@ -371,12 +372,12 @@ def trade_peg(params)
   puts "buy_currency_rate_usd: #{buy_currency_rate_usd}" 
   peg_rate_usd = params["peg_multiple"].to_f / peg_base_rate_usd.to_f  
   puts "peg_rate_usd: #{peg_rate_usd}"
-  peg_rate_buy =  buy_currency_rate_usd * peg_rate_usd 
-  puts "peg_rate_buy: #{peg_rate_buy}"
-  amount_buy = params["amount"].to_f * peg_rate_buy
-  puts "amount_buy: #{amount_buy}"   
-  peg_rate_sell = 1.0 / peg_rate_buy
+  peg_rate_sell =  buy_currency_rate_usd * peg_rate_usd 
   puts "peg_rate_sell: #{peg_rate_sell}"
+  amount_buy = params["amount"].to_f * peg_rate_sell
+  puts "amount_buy: #{amount_buy}"   
+  peg_rate_buy = 1.0 / peg_rate_sell
+  puts "peg_rate_buy: #{peg_rate_buy}"
   amount_sell = params["amount"].to_f 
   puts "amount_sell: #{amount_sell}"
 
@@ -464,11 +465,13 @@ def get_exchangerate(currency_code,base_code,key="")
   # this is used to get fiat currency rates from two sources, checks to verify they are close match with returned status
   # this is not used for crypto price lookups
   # set to default exchange rate feed source
-  data_1 = get_openexchangerates(currency_code,base_code,key)
+  data_1 = get_yahoo_finance_exchangerate(currency_code,base_code)
+  #data_1 = get_openexchangerates(currency_code,base_code,key)
   data_1["diff"] = "0.0"
   #puts "get_exch record_feed: #{data_1}"
   record_feed(data_1)
-  data_2 = get_yahoo_finance_exchangerate(currency_code,base_code)
+  data_2 = get_openexchangerates(currency_code,base_code,key)
+  #data_2 = get_yahoo_finance_exchangerate(currency_code,base_code)
   #puts "data_2: #{data_2}"
   rat = data_1["rate"].to_f/data_2["rate"].to_f
   if rat > 1
@@ -567,8 +570,9 @@ def get_funtracker_exchangerate(currency_code,base_code)
   #{"action":"get_ticker_list","asset_pair":"THB_USD"}
   #curl -X POST b.funtracker.site:9495 -d '{"action":"get_ticker_list","asset_pair":"THB_USD"}'
   #RestClient.post 'http://b.funtracker.site:9495', '{"action":"get_ticker_list","asset_pair":"THB_USD"}'
+  #{"action":"get_ticker_list","status":"success","asset_pairs":["THB","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","USD","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","34.80315"]}
   send = "http://b.funtracker.site:9495"
-  post_package = '{"action":"get_ticker_list","asset_pair":"' + currency_code + "_" + base_code + '"}'
+  post_package = '{"action":"get_ticker_list","asset_pair":"' + base_code + "_" +currency_code + '"}'
     puts "sending:  #{send}"
     begin
       postdata = RestClient.post send , post_package
@@ -581,14 +585,14 @@ def get_funtracker_exchangerate(currency_code,base_code)
     end
     puts "postdata: " + postdata
     data = JSON.parse(postdata)
-    data["status"] = "pass"
+    #data["status"] = "pass"
     data["service"] = "funtracker.site"
     return data
 end
 
   def get_funtracker_exchangerate_min(currency_code,base_code)
     result = get_funtracker_exchangerate(currency_code,base_code)
-    if result["status"] == "fail"
+    if result["status"] == "error" || result["status"] == "fail" || result["asset_pairs"].nil?
      return 0
     else
      return result["asset_pairs"][4]
@@ -737,7 +741,7 @@ def get_openexchangerates(currency_code,base_code,key)
   #   example if 1 USD is selling for 34.46 THB then rate will return 34.46 for base USD
   #   example#2 if 1 USD is selling for 101.19 KES then rate will return 101.19 for base of USD
   #   example#3 with the same values above  1 THB is selling for 2.901 KES so rate will return 2.901 for base of KES  
-
+  puts "get_openexchangerates started"
   url_start = "https://openexchangerates.org/api/latest.json?app_id="
   url_end = ""
   send = url_start + key
@@ -766,19 +770,24 @@ def get_openexchangerates(currency_code,base_code,key)
     data_out["ask"] = data_out["rate"]
     data_out["bid"] = data_out["rate"]
     data_out["service"] = "openexchangerates.org"
+    puts "data_out: #{data_out}"
     return data_out
   end
-  
+  puts "here??"
   usd_base_rate = data["rates"][currency_code]
   base_rate = data["rates"][base_code]
   rate = base_rate / usd_base_rate
   data_out["currency_code"] = currency_code
-  data_out["rate"] = rate.to_s
-  data_out["ask"] = data_out["rate"]
-  data_out["bid"] = data_out["rate"]
+  #data_out["rate"] = rate.to_s
+  #data_out["ask"] = data_out["rate"]
+  #data_out["bid"] = data_out["rate"]
+  data_out["rate"] = (1.0 / rate.to_f)
+  data_out["ask"] = data_out["rate"].to_f
+  data_out["bid"] = data_out["rate"].to_f
   data_out["base"] = base_code
   data_out["datetime"] = Time.at(data["timestamp"]).to_datetime.to_s
   data_out["service"] = "openexchangerates.org"
+  puts "data_out: #{data_out}"
   return data_out
 end
 
@@ -958,6 +967,7 @@ def delete_offers(account,asset_code = "")
     return
   end
   tx_array = []
+  puts "found: #{result["_embedded"]["records"].length} tx to delete"
   result["_embedded"]["records"].each{ |row|
     puts "delete id: #{row["id"]}"
     #puts "selling"
@@ -1378,6 +1388,7 @@ def record_order_book_set(params)
 end
 
 def send_tx_array(params,array=nil)
+  puts "send_tx_array"
   begin
   if params["disable_trade"] == "true" || params["disable_trade"] == true
     puts "disable_trade is set true will not be trading b"
@@ -1479,10 +1490,12 @@ while true  do
     params = backup_params.clone
   end
 
-  if params["trade_pairs"].nil?
-    puts " trade_pairs nil will trade params[sell_currency] #{trade params[sell_currency]} instead"
-    trade_offer_set(params)
-    record_order_book_set(params)
+  if params["trade_pairs"].nil? 
+    puts " trade_pairs nil will trade params[sell_currency]  instead (if not also nil)"
+    if !params["sell_currency"].nil?
+      trade_offer_set(params)
+      record_order_book_set(params)
+    end
   else
     if params["disable_delete_offers"] != true
       params["trade_pairs"].each { |pair|
