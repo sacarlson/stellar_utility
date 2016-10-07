@@ -15,8 +15,8 @@ else
   exit -1
 end
 
-witness_keypair = YAML.load(File.open("./secret_keypair_GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX.yml"))
- puts "witness account: #{witness_keypair.address}"
+#witness_keypair = YAML.load(File.open("./secret_keypair_GCYSIZB4Q6ISTHFDXQMBBUPI4BVY7KW6QKCIZKTXAQBDXQYGRRIUTYSX.yml"))
+# puts "witness account: #{witness_keypair.address}"
 
 EM.run {
   
@@ -58,6 +58,13 @@ EM.run {
           results = mult_sig.read_ticker_list(request_payload)
         rescue
           results = {"action"=>"get_ticker_list","status"=>"error" ,"error"=>"bad input post"}
+        end
+          results.to_json
+      when "get_feed_list"
+        begin
+          results = mult_sig.read_feed_list(request_payload)
+        rescue
+          results = {"action"=>"get_feed_list","status"=>"error" ,"error"=>"bad input post"}
         end
           results.to_json
       when "create_keys"
@@ -256,7 +263,14 @@ EM.run {
         begin
           results = mult_sig.read_ticker_list(request_payload)
         rescue
-         # results = {"action"=>"get_ticker_list","status"=>"error" ,"error"=>"bad input socket"}
+          results = {"action"=>"get_ticker_list","status"=>"error" ,"error"=>"bad input socket"}
+        end
+          ws.send results.to_json
+      when "get_feed_list"
+        begin
+          results = mult_sig.read_feed_list(request_payload)
+        rescue
+          results = {"action"=>"get_feed_list","status"=>"error" ,"error"=>"bad input socket"}
         end
           ws.send results.to_json
       when "create_keys"
@@ -392,10 +406,10 @@ EM.run {
         results = mult_sig.Utils.get_account_txhistory(request_payload["account"],request_payload["offset"])
         ws.send results.to_json
       when "make_witness"
-        results = mult_sig.Utils.make_witness_hash(witness_keypair,request_payload["account"],request_payload["asset"],request_payload["issuer"])
+        results = mult_sig.Utils.make_witness_hash(Stellar::KeyPair.from_seed(mult_sig.Utils.configs["witness_keypair"]),request_payload["account"],request_payload["asset"],request_payload["issuer"])
         ws.send results.to_json
       when "make_witness_unlock"
-        results = mult_sig.make_witness_unlock(witness_keypair,request_payload["account"],request_payload["timebound"],request_payload["asset"],request_payload["issuer"])
+        results = mult_sig.make_witness_unlock(Stellar::KeyPair.from_seed(mult_sig.Utils.configs["witness_keypair"]),request_payload["account"],request_payload["timebound"],request_payload["asset"],request_payload["issuer"])
         ws.send results.to_json
       when "core_status"
         results = mult_sig.Utils.get_stellar_core_status(true)

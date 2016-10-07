@@ -43,7 +43,7 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
   #params["trade_pairs"] = [["THB","USD",1]]
   params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10]]
-  params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
+  params["order_book_pairs"] = [["USD","THB"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
 
     #this will have to wait for live net
   #params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"]]
@@ -81,6 +81,10 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
   params["trade_on_buy_side"] = true
   #params["min_diff_trade_pct"] = 0.005
   params["min_diff_trade_pct"] = 0 # disable due to we need to figure out how to handle not deleting original order first
+  #params["mss_server_url"] = "http://www.funtracker.site:9495"
+  params["mss_server_url"] = "http://b.funtracker.site:9495"
+
+
 
 #trade_pairs and the amount to trade this pair, this array controls what order sets the bot will setup in a group of orders on each loop
 # first currency code is sell_currency also known as the base currency code, second is the currency to buy or counter asset or currency
@@ -104,6 +108,9 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
 #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
 #added options now added in array for changing  params["sell_issuer"] and params["buy_issuer"]:
 # [sell_asset,peg_asset,peg_asset_multiple,buy_asset,sell_amount,sell_issuer,buy_issuer]
+
+#$mss_server_url is the mss-server we use to get stellar ticker data from at this time
+$mss_server_url = params["mss_server_url"]
 
 # max_diff is the max difference bettween two currency api feeds that are compared to verify that data is acurate within reason 
 $max_diff = 0.003
@@ -356,7 +363,7 @@ def trade_peg(params)
   #params["feed_poloniex"] = ["BTC","XLM","USDT","USD"]
   #params["feed_other"] = ["THB","USD"]
   #params["disable_record_feed"] = true
-  #begin 
+  begin 
 
   if params["disable_trade_peg"] == true
     puts "disable_trade_get set true will not be trading here"
@@ -394,9 +401,9 @@ def trade_peg(params)
 
   return 
 
-  #rescue
-  #  puts "trade_peg failed, better luck next loop"
-  #end
+  rescue
+    puts "trade_peg failed, better luck next loop"
+  end
 end
 
 def check_feedable(currency,base,feed_array)
@@ -429,6 +436,13 @@ def get_any_exchangerate(currency_code, base_code,params)
   if currency_code == base_code
     puts "currency_code and base_code are the same, will return 1"
     return 1
+  end
+  timestamp = (Time.now.to_i - 60).to_s
+  puts "timestamp: #{timestamp}"
+  # check to see if we already collected this data within the last 60 sec, if so give us that
+  result = get_mss_server_feed_exchangerate_min(currency_code,base_code,timestamp )
+  if result.to_f > 0
+    return result.to_f
   end
   #return the rate of currency_code exchange with base_code 
   # will auto pick needed feed determined by lists in params["feed_poloniex"] and params["feed_other"]
@@ -473,6 +487,10 @@ def get_exchangerate(currency_code,base_code,key="")
   data_2 = get_openexchangerates(currency_code,base_code,key)
   #data_2 = get_yahoo_finance_exchangerate(currency_code,base_code)
   #puts "data_2: #{data_2}"
+  if data_1["status"] == "fail"
+    data_2["status"] = "pass1"
+    return data_2
+  end
   rat = data_1["rate"].to_f/data_2["rate"].to_f
   if rat > 1
     diff = (rat -1)
@@ -489,6 +507,17 @@ def get_exchangerate(currency_code,base_code,key="")
   else
     data_2["status"] = "pass"
   end 
+  return data_2
+end
+
+def get_exchangerate2(currency_code,base_code,key="")
+  # this is used to get fiat currency rates from two sources, checks to verify they are close match with returned status
+  # this is not used for crypto price lookups
+  # set to default exchange rate feed source
+  #  this disables yahoo feed as it seems to be broken at the moment
+  data_2 = get_openexchangerates(currency_code,base_code,key)
+  record_feed(data_2)
+  data_2["status"] = "pass"
   return data_2
 end
 
@@ -511,7 +540,7 @@ def get_yahoo_finance_exchangerate(currency_code,base_code)
     #send = url_start_b +'(%22' + base_code + currency_code + '%22)' +  url_end_b
     # to lookup more than one currency at the same time
     #send = url_start_b +'(%22USDEUR%22,%20%22USDJPY%22)' +  url_end_b
-    #puts "sending:  #{send}"
+    puts "yahoo sending:  #{send}"
     begin
       postdata = RestClient.get send
     rescue => e
@@ -571,7 +600,8 @@ def get_funtracker_exchangerate(currency_code,base_code)
   #curl -X POST b.funtracker.site:9495 -d '{"action":"get_ticker_list","asset_pair":"THB_USD"}'
   #RestClient.post 'http://b.funtracker.site:9495', '{"action":"get_ticker_list","asset_pair":"THB_USD"}'
   #{"action":"get_ticker_list","status":"success","asset_pairs":["THB","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","USD","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","34.80315"]}
-  send = "http://b.funtracker.site:9495"
+  #send = "http://b.funtracker.site:9495"
+  send = $mss_server_url
   post_package = '{"action":"get_ticker_list","asset_pair":"' + base_code + "_" +currency_code + '"}'
     puts "sending:  #{send}"
     begin
@@ -588,6 +618,53 @@ def get_funtracker_exchangerate(currency_code,base_code)
     #data["status"] = "pass"
     data["service"] = "funtracker.site"
     return data
+end
+
+def get_mss_server_feed_exchangerate(currency_code,base_code,before_timestamp = 0)
+  #this gets the exchange rate feed data that was last recorded on the mss_server_url
+  # with this we can reduce lookups on our feed services if we need the feed data more than one time in each loop.
+  # with before_timestamp set to value other than 0 will return 0 if no marked data stamped before that time
+  #  wtih this we can enter before_timestamp = (Time.now.to_i - 60).to_s that will return a value of >0 if we have new data less than 60 sec old
+  #{"action":"get_feed_list","asset_pair":"THB_USD"}
+  #curl -X POST b.funtracker.site:9495 -d '{"action":"get_feed_list","asset_pair":"THB_USD"}'
+  #RestClient.post 'http://b.funtracker.site:9495', '{"action":"get_feed_list","asset_pair":"THB_USD"}'
+  #{"action":"get_feed_list","status":"success","asset_pairs":["USD","THB","1475788307","0.028704898146409908","0.028704898146409908"]}
+  #send = "http://b.funtracker.site:9495"
+  send = $mss_server_url
+  
+    post_package = '{"action":"get_feed_list","asset_pair":"' + base_code + "_" +currency_code + '"}'
+
+    puts "sending:  #{send}"
+    begin
+      postdata = RestClient.post send , post_package
+    rescue => e
+      puts "fail in get_funtracker_exchangerate at RestClient.get  error: #{e}"
+      data_out = {}
+      data_out["service"] = "mss_server"
+      data_out["status"] = "fail"
+      return  data_out
+    end
+    #puts "postdata: " + postdata
+    data = JSON.parse(postdata)
+    if data["asset_pairs"][2].to_i < before_timestamp.to_i && before_timestamp.to_i > 0
+     data["status"] = "fail"
+     data["asset_pairs"][3] = 0
+     data["asset_pairs"][4] = 0
+     return data
+   end
+    #data["status"] = "pass"
+    data["service"] = "mss_server"
+    return data
+end
+
+def get_mss_server_feed_exchangerate_min(currency_code,base_code,before_timestamp = 0)
+  #min returns just last bid price,  if bad data status returns 0
+  result = get_mss_server_feed_exchangerate(currency_code,base_code,before_timestamp)
+  if result["status"] == "error" || result["status"] == "fail" || result["asset_pairs"].nil?
+   return 0
+  else
+   return result["asset_pairs"][4]
+  end 
 end
 
   def get_funtracker_exchangerate_min(currency_code,base_code)
@@ -1453,7 +1530,6 @@ puts "buy_issuer:  #{params["buy_issuer"]}"
 puts "profit_margin: #{ params["profit_margin"]}"
 puts "amount: #{params["amount"]}"
 puts "min_liquid: #{params["min_liquid"]}"
-
 
 
 backup_params = params.clone

@@ -731,7 +731,7 @@ or if working:
     * asset_pair:  format example "THB_USD" that is in assetcode_basecode format, if none provided (optional) full list will be sent
 
   * Values returned 
-    * action: "get_ticker" is returned to verify this is the return for this function
+    * action: "get_ticker_list" is returned to verify this is the return for this function
     * status: "success" or "fail" status of returned data
     * asset_pairs: hash of asset pairs with an array for each with info and last_ask_price
       * hash key THB_USD is asset_code_base_code
@@ -743,6 +743,25 @@ or if working:
   * example2: with {"action":"get_ticker_list","asset_pair":"THB_USD"}
    {"action":"get_ticker_list","status":"success","asset_pairs":["THB","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","USD","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","34.80315","34.55"]}
  
+
+## get_feed_list:  Get a list of asset pairs that are in the feed historic price records
+  * Values send: 
+    * asset_pair:  format example "THB_USD" that is in assetcode_basecode format, if none provided (optional) full list of last price records will be sent
+    * timestamp:  time stamp format integer example "1475788307" that returned data must be older than.  default no timestamp is time now.
+
+  * Values returned 
+    * action: "get_feed_list" is returned to verify this is the return for this function
+    * status: "success" or "fail" status of returned data
+    * asset_pairs: hash of asset pairs with an array for each with info and last_ask_price
+      * hash key THB_USD is asset_code_base_code
+      * hash array format: ["THB","USD","1475788307","34.80315","34.55"] is [asset_code,base_code,timestamp,last_ask_price,last_bid_price]
+
+examples: with: {"action":"get_feed_list","asset_pair":"THB_USD"}
+  {"action":"get_feed_list","status":"success","asset_pairs":["USD","THB","1475788307","0.028704898146409908","0.028704898146409908"]}
+          with: {"action":"get_feed_list","asset_pair":"THB_USD","timestamp":"1475784563"}
+  {"action":"get_feed_list","status":"success","asset_pairs":["USD","THB","1475739390","0.02871361840979387","0.02871361840979387"]}
+          with: {"action":"get_feed_list"}
+   {"action":"get_feed_list","status":"success","asset_pairs":{"THB_USD":["USD","THB","1475788307","0.028704898146409908","0.028704898146409908"],"USD_THB":["THB","USD","1475788265","34.83726","34.83726"],"USD_XLM":["XLM","USD","1475788265","434.04284871","413.05416379"]}
 
 ##broadcast: send a custom json packet to all that are presently connected to this mss-server 
   * Values sent:
