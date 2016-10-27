@@ -471,28 +471,40 @@ def read_feed_list(params)
   #{"action":"get_feed_list","status":"success","asset_pairs":["THB","USD","234556677","0.029","0.029"]}
   # array format: [asset_code,base_code,timestamp,last_ask_price]
   # asset_pair format:  USD_THB  THB = currency_code  USD = base,  USD_THB would return value of about 34.68 also seen as USD/THB like on google
-  con = Mysql.new(@configs["mysql_host"], @configs["mysql_user"], @configs["mysql_password"], @configs["mysql_db"]) 
+  puts "start read_feed_list"
+  begin
+    con = Mysql.new(@configs["mysql_host"], @configs["mysql_user"], @configs["mysql_password"], @configs["mysql_db"]) 
   
-  if params["timestamp"].nil? 
-    query_string = "SELECT * FROM feed ORDER BY timestamp" 
-    rs = con.query("SELECT * FROM feed ORDER BY timestamp" )
-  else
-    query_string = "SELECT * FROM feed WHERE timestamp < FROM_UNIXTIME(" + params["timestamp"] + ") ORDER BY timestamp"
-    rs = con.query("SELECT * FROM feed WHERE timestamp < FROM_UNIXTIME(" + params["timestamp"] + ") ORDER BY timestamp" )
-  end
-  n_rows = rs.num_rows    
-  puts "There are #{n_rows} rows in the result set"
-  puts "query_string: #{query_string}" 
-      asset_pairs = {}
-      n_rows.times do
-        row = rs.fetch_hash
-        #asset_pair = row["asset_code"] + "_" + row["base_asset_code"]
-        # at this time it seems my database has asset_code and base_asset_code reversed, not sure where to fix this yet for now here
-        asset_pair = row["base"].gsub("'","") + "_" + row["currency_code"].gsub("'","")
-        asset_pairs[asset_pair] = [row["currency_code"].gsub("'",""),row["base"].gsub("'",""),Time.parse(row["timestamp"]).to_i.to_s,row["ask"],row["bid"]]
-      end
+    if params["timestamp"].nil? 
+      query_string = "SELECT * FROM feed ORDER BY timestamp" 
+      rs = con.query("SELECT * FROM feed ORDER BY timestamp" )
+    else
+      query_string = "SELECT * FROM feed WHERE timestamp < FROM_UNIXTIME(" + params["timestamp"] + ") ORDER BY timestamp"
+      rs = con.query("SELECT * FROM feed WHERE timestamp < FROM_UNIXTIME(" + params["timestamp"] + ") ORDER BY timestamp" )
+    end
+    n_rows = rs.num_rows    
+    puts "There are #{n_rows} rows in the result set"
+    puts "query_string: #{query_string}" 
+  rescue Mysql::Error => e
+    puts "error in mysql in start_feed_list: #{e}"
+    #puts e.errno
+    #puts e.error 
     hash = {}
-  
+    hash["action"] = "get_feed_list"
+    hash["status"] = "fail"
+    return hash   
+  end
+    asset_pairs = {}
+    n_rows.times do
+      row = rs.fetch_hash
+      #puts "row: #{row}"
+      #asset_pair = row["asset_code"] + "_" + row["base_asset_code"]
+      # at this time it seems my database has asset_code and base_asset_code reversed, not sure where to fix this yet for now here
+      asset_pair = row["base"].gsub("'","") + "_" + row["currency_code"].gsub("'","")
+      asset_pairs[asset_pair] = [row["currency_code"].gsub("'",""),row["base"].gsub("'",""),Time.parse(row["timestamp"]).to_i.to_s,row["ask"],row["bid"]]
+    end
+    #puts "asset_pairs: #{asset_pairs}"
+    hash = {}  
     hash["action"] = "get_feed_list"
     hash["status"] = "success"
     if params["asset_pair"].nil?
@@ -500,6 +512,7 @@ def read_feed_list(params)
     else
       hash["asset_pairs"] = asset_pairs[params["asset_pair"]]
     end
+    puts"read_feed_list return: #{hash}"
     return hash  
 end
 

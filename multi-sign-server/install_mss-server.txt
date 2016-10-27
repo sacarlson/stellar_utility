@@ -1,0 +1,71 @@
+install mss-server on ubuntu
+
+# we will be using rbenv so will setup rbenv deps
+sudo apt-get install git-core curl zlib1g-dev build-essential libssl-dev libreadline-dev libyaml-dev libsqlite3-dev sqlite3 libxml2-dev libxslt1-dev libcurl4-openssl-dev python-software-properties libffi-dev
+
+# deps needed for mysql
+sudo apt-get install ruby-mysql libmysqlclient-dev mysql-server mysql-client mysql-common
+
+# deps needed for pg
+apt-get install libpq-dev
+
+login to planed user in my case sacarlson:  sudo su sacarlson
+ #note not sure when .bash_profile or .bashrc are used in ubuntu, can do both to be safe
+    cd
+    git clone git://github.com/sstephenson/rbenv.git .rbenv
+    #echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bash_profile
+    echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
+    #echo 'eval "$(rbenv init -)"' >> ~/.bash_profile
+    echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+
+    git clone git://github.com/sstephenson/ruby-build.git ~/.rbenv/plugins/ruby-build
+    #echo 'export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH"' >> ~/.bash_profile
+    echo 'export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH"' >> ~/.bashrc
+    #source ~/.bash_profile
+    source ~/.bashrc
+
+  # this one requires compile time so be sure to select version what you really need started about 8:57am completed 9:07 about 10 min
+    rbenv install -v 2.2.3
+
+    rbenv global 2.2.3
+
+   echo "gem: --no-document" > ~/.gemrc
+
+   gem install bundler
+
+   rbenv rehash
+
+   git clone https://github.com/sacarlson/stellar_utility.git
+  
+   cd ./stellar_utility/multi-sign-server
+ 
+   bundle install  
+
+  at this point you will need to point stellar_utilities.cfg to desired config file like stellar_utilities_live.cfg or stellar_utilities_testnet.cfg
+  and make needed config changes if needed
+  rm ./stellar_utilities.cfg
+  ln -s ./stellar_utilities_testnet.cfg stellar_utilities.cfg
+
+  You will now have to setup accounts on your mysql server if you plan to use the features in mss-server that access it
+  for this I use phpmyadmin
+  example of what's needed in mysql: db = ticker_record the user and password setup must match that you setup in your stellar_utilities.cfg file.
+
+  ./start.sh # starts the server running 
+
+sacarlson@b ~/github/stellar/stellar_utility/multi-sign-server $ ./start.sh
+configs: {"db_file_path"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-db-testnet/stellar.db", "db_file_path_live"=>"/home/sacarlson/github/stellar/stellar_utility/stellar-live/stellar.db", "url_horizon"=>"https://horizon-testnet.stellar.org", "url_horizon_live"=>"https://horizon-testnet.stellar.org", "url_stellar_core"=>"http://localhost:8080", "url_mss_server"=>"localhost:9494", "mode"=>"horizon",..........
+== Sinatra (v1.4.7) has taken the stage on 9495 for development with backup from Thin
+Thin web server (v1.7.0 codename Dunder Mifflin)
+Maximum connections set to 1024
+Listening on 0.0.0.0:9495, CTRL+C to stop
+
+note: to stop seems you have to CTRL+z then killall -9 ruby
+
+note: if upgradeing to new system make sure to not copy or delete the directory ./vendor before you bundle install
+
+
+
+
+
+   
+

@@ -1608,7 +1608,7 @@ def offer(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,pri
   return b64
 end
 
-def offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price,offerid)
+def offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price,offerid,next_seq = 0)
   #get_set_stellar_core_network()
   puts "offer_tx offerid #{offerid}"
   if !sell_issuer.nil? && sell_issuer.length > 10
@@ -1633,10 +1633,12 @@ def offer_tx(account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,
   #puts "amount.to_s: #{amount.to_s}"
   #puts "price.to_s: #{price.to_s}"
   #puts "offerid.to_i: #{offerid.to_i}"
-  
+  if next_seq == 0
+    next_seq = next_sequence(account)
+  end
   tx = Stellar::Transaction.manage_offer({
     account:    account,
-    sequence:   next_sequence(account),
+    sequence:   next_seq,
     selling:    selling,
     buying:     buying,
     amount:     amount.to_s,

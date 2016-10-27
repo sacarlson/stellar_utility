@@ -34,31 +34,30 @@
 require '../lib/stellar_utility/stellar_utility.rb'
 require "mysql"
 
-Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
+Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
 
 
 
   params = {}
-  params["trade_pairs"] = [["THB","USD",340],["BTC","USD",0.001],["XLM","USD",1000]]
-  #params["trade_pairs"] = [["THB","USD",1]]
-  params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
-  #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10]]
-  params["order_book_pairs"] = [["USD","THB"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
+  #params["trade_pairs"] = [["THB","USD",340],["BTC","USD",0.001],["XLM","USD",1000]]
+  params["trade_pairs"] = [["THB","USD",340],["XLM","USD",4000]]
+  #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
+  params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
+  #params["order_book_pairs"] = [["USD","THB"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
+  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"]]
 
     #this will have to wait for live net
   #params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"]]
 
-    #GBROAGZJGZSSQWJIIH2OHOPQUI4ZDZL4MOH7CSWLQBDGWBYDCDQT7CU4
+    #GBURK32BMC7XORYES62HDKY7VTA5MO7JYBDH7KTML4EPN4BV2MIRQOVR
   params["trader_account"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account"])
-    #GBROAGZJGZSSQWJIIH2OHOPQUI4ZDZL4MOH7CSWLQBDGWBYDCDQT7CU4
+    #GBURK32BMC7XORYES62HDKY7VTA5MO7JYBDH7KTML4EPN4BV2MIRQOVR
   params["trader_account_sell"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account_sell"])
-    #GDD77HP4NP2CSPOYZLAI2MNTX2H7QCTS3CIIDFKHZGDYMOBJG5NQK662
+    #GBURK32BMC7XORYES62HDKY7VTA5MO7JYBDH7KTML4EPN4BV2MIRQOVR
   params["trader_account_buy"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account_buy"])
-  #params["sell_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
-  params["sell_issuer"] = "GBEK5BFCXBYPZ5JAP2XUWM637PYBQNTL5Y2MVZYV2NBRH6OYS4HCWTWO"
-  #params["sell_currency"] = "FUNT"
-  #params["buy_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
-  params["buy_issuer"] = "GBEK5BFCXBYPZ5JAP2XUWM637PYBQNTL5Y2MVZYV2NBRH6OYS4HCWTWO"
+  params["sell_issuer"] = "GBUYUAI75XXWDZEKLY66CFYKQPET5JR4EENXZBUZ3YXZ7DS56Z4OKOFU"
+  params["buy_issuer"] = params["sell_issuer"]
+
   params["buy_currency"] = "XLM"
   params["peg_base_asset"] = "THB"
   params["peg_multiple"] = 40
@@ -85,12 +84,14 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
   params["dual_trader"] = false
   params["trade_on_sell_side"] = true
   params["trade_on_buy_side"] = true
-  #params["min_diff_trade_pct"] = 0.005
-  params["min_diff_trade_pct"] = 0 # disable due to we need to figure out how to handle not deleting original order first
+  params["min_diff_trade_pct"] = 0.10
+  #params["min_diff_trade_pct"] = 0.0
+  params["min_diff_margin_mult_trade"] = 0.25
   #params["mss_server_url"] = "http://www.funtracker.site:9495"
   params["mss_server_url"] = "http://b.funtracker.site:9495"
 
-
+# max_diff is the max difference bettween two currency api feeds that are compared to verify that data is acurate within reason 
+$max_diff = 0.008
 
 #trade_pairs and the amount to trade this pair, this array controls what order sets the bot will setup in a group of orders on each loop
 # first currency code is sell_currency also known as the base currency code, second is the currency to buy or counter asset or currency
@@ -117,9 +118,6 @@ Utils = Stellar_utility::Utils.new("./testnet_read_ticker.cfg")
 
 #$mss_server_url is the mss-server we use to get stellar ticker data from at this time
 $mss_server_url = params["mss_server_url"]
-
-# max_diff is the max difference bettween two currency api feeds that are compared to verify that data is acurate within reason 
-$max_diff = 0.003
 
 # all recorders and trading are now active
 #disable setting up trade orders and canceling/deleting them on stellar.org network for test
@@ -156,6 +154,13 @@ $disable_record_feed = params["disable_record_feed"]
 #params["min_diff_trade_pct"] is the minimum percent difference bettween what was last recorded as traded on the stellar network 
 # and what is now seen on the feed channel that are used to trade from. this is presently used in trade_offer_set(params)
 # if set to zero this value is ignored
+# this now absolete, we now use params["min_diff_margin_mult_trade"]
+
+#params["min_diff_margin_mult_trade"]
+# this replaced above to set allow trade depending on minimum difference between last traded price with what is now market price to this value
+# multiplied by the margin setting on this currency pair trade.  see params["profit_margin"]["XLM_USD"] for example
+# default value was 0.25 so the value seen from a feed must change by 0.25 * profit_magin by what is presently seen on the order book
+# before a trade is done. set to zero we will trade on all
 
 #  config settings
 #buy_currency = "THB"
@@ -266,16 +271,24 @@ def trade_offer_set(params)
     puts "market_ask_price is zero so must have problem with feed or ??,  will not trade this"
     return
   end
-
-  last_rate = get_funtracker_exchangerate_min(currency_code,base_code)
+  # this returns what the last ask price was set on stellar.org network 
+  # this already had profit margin added so must remove profit margit to compare to present market_ask_price
+  last_rate = get_funtracker_exchangerate_min(currency_code,base_code).to_f
+  #last_real_rate = last_rate - (last_rate * (profit_margin.to_f/100.0)) #no longer needed with mod in get_funt...
+  min_diff = params["min_diff_margin_mult_trade"].to_f * profit_margin.to_f
+ 
+  puts "asset_pair: #{asset_pair}"
+  puts "profit_margin: #{profit_margin}"
   puts "last_rate: #{last_rate}"
+  puts "min_diff_margin_mult: #{params["min_diff_margin_mult_trade"]}"
+  puts "min_diff: #{min_diff}"
   puts "percent_diff: #{percent_diff(last_rate,market_ask_price)}"
 
-  if params["min_diff_trade_pct"].to_f > percent_diff(last_rate,market_ask_price) && params["min_diff_trade_pct"].to_f > 0 && last_rate > 0
-    puts " params[min_diff_trade_pct] > last_rate for this currency pair so will skip trading them on this loop"
+  if min_diff > percent_diff(last_rate,market_ask_price).to_f && min_diff > 0 && last_rate.to_f > 0
+    puts " min_diff > percient_diff so will skip trading this set on this loop"
     return
   end
-
+  params["traded"].push([currency_code,base_code])
   sell_price = sprintf('%.8f',(market_ask_price + (market_ask_price * (profit_margin.to_f/100.0))))
   buy_price = sprintf('%.8f',(1/market_ask_price) + ((1/market_ask_price) * (profit_margin.to_f/100.0)))
   #sell_price = sprintf('%.8f',(market_ask_price - (market_ask_price * (profit_margin.to_f/100.0))))
@@ -318,16 +331,17 @@ def trade_offer_set(params)
   end
   if params["tx_mode"] == "true" || params["tx_mode"] == true
      if params["trade_on_sell_side"] == true
-       tx1 = send_offer_tx(trader_account_sell, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s)
+       tx1 = send_offer_tx(trader_account_sell, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s,"",params["next_seq"])
        #params["tx_array_in"].push(tx1)
        if params["dual_trader"] == true
          params["tx_sell_array_in"].push(tx1)
        else
+         puts "push to tx_array_in"
          params["tx_array_in"].push(tx1)
        end
      end
      if params["trade_on_buy_side"] == true
-       tx2 = send_offer_tx(trader_account_buy, buy_issuer, buy_currency, sell_issuer, sell_currency, amount_buy.to_s, buy_price.to_s)
+       tx2 = send_offer_tx(trader_account_buy, buy_issuer, buy_currency, sell_issuer, sell_currency, amount_buy.to_s, buy_price.to_s,"",params["next_seq"])
        if params["dual_trader"] == true
          params["tx_buy_array_in"].push(tx2)
        else
@@ -407,13 +421,19 @@ def trade_peg(params)
 
   params["market_ask_price"] = peg_rate_sell
   trade_offer_set(params)
+
+  if params["tx_mode"] == "true" || params["tx_mode"] == true
+    return
+  end
+  puts "continued after tx_mode check"
+
   if params["dual_trader"] == true
     params["trader_account"] = params["trader_account_buy"]
     send_tx_array(params,params["tx_buy_array_in"])
     params["trader_account"] = params["trader_account_sell"]
     send_tx_array(params,params["tx_sell_array_in"])              
   else
-    send_tx_array(params)
+    #send_tx_array(params)
   end
 
   return 
@@ -691,7 +711,10 @@ end
     if result["status"] == "error" || result["status"] == "fail" || result["asset_pairs"].nil?
      return 0
     else
-     return result["asset_pairs"][4]
+     #averge bid ask price to return center bettween them
+     avg =  (result["asset_pairs"][4].to_f + result["asset_pairs"][5].to_f)/2.0
+     #return result["asset_pairs"][4] ; was just returning ask
+     return avg
     end 
   end
 
@@ -901,12 +924,14 @@ def send_offer(sellers_account,sell_issuer,sell_currency, buy_issuer, buy_curren
   #puts "send_tx result #{result}"
 end
 
-def send_offer_tx(sellers_account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price,offerid="")
+def send_offer_tx(sellers_account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price,offerid="",next_seq=0)
   if $disable_trade
     puts " $disable_trade active disable send_offer"
     return
   end
-
+  if next_seq == 0
+    next_seq = Utils.next_sequence(sellers_account)
+  end
   if sell_currency == "XLM"
     sell_currency = "native"
     sell_issuer = ""
@@ -915,7 +940,7 @@ def send_offer_tx(sellers_account,sell_issuer,sell_currency, buy_issuer, buy_cur
     buy_currency = "native"
     buy_issuer = ""
   end
-  tx = Utils.offer_tx(sellers_account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price,offerid)
+  tx = Utils.offer_tx(sellers_account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price,offerid,next_seq)
   return tx
 end
 
@@ -1053,19 +1078,26 @@ def get_stellar_exchange_liquid(params,min_liquid_shares)
 end
 
 
-def delete_offers(account,asset_code = "")
+def delete_offers(account,delete_sets = "all")
   #if asset_code left blank or nil it will delete all open orders on this account
   result = Utils.get_account_offers_horizon(account)
   #puts "results: #{result["_embedded"]["records"][0]["id"]}"
   #puts "results: #{result["_embedded"]["records"]}"
+  puts "delete_sets: #{delete_sets}"
   if (result["_embedded"]["records"][0].nil?)
     puts "no offers to delete, nothing done"
     return
   end
+  if delete_sets.length == 0
+    puts "no delete_set pairs in delete_sets, nothing to be done"
+    return
+  end
+  next_seq = Utils.next_sequence(account)
+  #puts "next_seq: #{next_seq}"
   tx_array = []
   puts "found: #{result["_embedded"]["records"].length} tx to delete"
   result["_embedded"]["records"].each{ |row|
-    puts "delete id: #{row["id"]}"
+    #puts "delete id: #{row["id"]}"
     #puts "selling"
     #puts "asset_issuer: #{row["selling"]["asset_issuer"]}"
     #puts "asset_code: #{row["selling"]["asset_code"]}"
@@ -1081,14 +1113,36 @@ def delete_offers(account,asset_code = "")
     if row["buying"]["asset_type"] == "native"
       row["buying"]["asset_code"] = "XLM"
     end
-    if (asset_code == row["selling"]["asset_code"] || asset_code == row["buying"]["asset_code"] || asset_code == "")
-      tx = Utils.offer_tx(account,row["selling"]["asset_issuer"],row["selling"]["asset_code"],row["buying"]["asset_issuer"], row["buying"]["asset_code"],"0",row["price"],row["id"])
+    need_delete = false
+    if delete_sets.to_s == "all"
+      puts "delete all set"
+      need_delete = true
+    else
+      delete_sets.each{ |set|
+        #puts "set: #{set}"
+        if set[0] == row["buying"]["asset_code"] && set[1] == row["selling"]["asset_code"]
+          need_delete = true
+        end
+        if set[1] == row["buying"]["asset_code"] && set[0] == row["selling"]["asset_code"]
+          need_delete = true
+        end
+      }
+    end
+    #puts "need_delete: #{need_delete}"
+    if need_delete
+    #if (asset_code == row["selling"]["asset_code"] || asset_code == row["buying"]["asset_code"] || asset_code == "")
+      tx = Utils.offer_tx(account,row["selling"]["asset_issuer"],row["selling"]["asset_code"],row["buying"]["asset_issuer"], row["buying"]["asset_code"],"0",row["price"],row["id"],next_seq)
       tx_array.push(tx)
+      puts "deleting id: #{row["id"]}"
     end
   }
 
   tx_all =  Utils.tx_merge(tx_array)
   b64 = tx_all.to_envelope(account).to_xdr(:base64)
+  #if params["disable_trade"] == "true" || params["disable_trade"] == true
+  #  puts "disable_trade is set true will not be trading b"
+  #  return
+  #end
   result = Utils.send_tx(b64)
   return result
 end
@@ -1246,14 +1300,18 @@ def record_ticker(data)
   #data = {"ask"=>{"price"=>"35.66433570", "volume"=>"0.0", "avg_price"=>"35.60209427", "offer_count"=>2, "total_volume"=>0, "total_avg_price"=>"35.60209427", "total_offers"=>2}, "bid"=>{"price"=>"34.27944600", "volume"=>"100.00000000", "avg_price"=>"34.27944600", "offer_count"=>1, "total_volume"=>"200.00000000", "total_avg_price"=>"34.21972575", "total_offers"=>2}, "base"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"USD", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "counter"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"THB", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "array"=>[1,2,3,4]}
 
   puts "record_ticker start"
-  #puts "data: #{data.keys}"
+  #puts "data keys: #{data.keys}"
+  #puts "data: #{data}"
 
   if $disable_record
     puts "$disable_record set true so no data saved to mysql for record_ticker data."
     return
   end
-
-  if data["ask"]["price"].to_f == 0 && data["bid"]["price"].to_f == 0 
+  if data["ask"]["price"].nil? || data["bid"]["price"].nil?
+    puts "ask or bid is nill so must be bad data?"
+    return
+  end
+  if data["ask"]["price"].to_f == 0  && data["bid"]["price"].to_f == 0 
     puts "seems ask bid price are zero so must be bad data feed, will not record"
     return
   end
@@ -1464,11 +1522,11 @@ def record_order_book_set(params)
   params_rec["buy_issuer"] =  params["buy_issuer"]
   #puts "params A: #{params_rec}"
   #puts "record data"
-  begin
+  #begin
     record_order_book(params_rec)
-  rescue
-    puts " record_order_book failed not sure why, check mysql user and passwords"
-  end
+  #rescue
+   # puts " record_order_book failed not sure why, check mysql user and passwords"
+  #end
 
   params_rec["sell_asset"] =   params["buy_currency"]
   params_rec["sell_issuer"] =  params["buy_issuer"]
@@ -1476,31 +1534,39 @@ def record_order_book_set(params)
   params_rec["buy_issuer"] =  params["sell_issuer"]
   #puts "params B: #{params_rec}"
   #puts "record data"
-  begin
+  #begin
     record_order_book(params_rec)
-  rescue
-    puts " record_order_book failed not sure why, check mysql user and passwords"
-  end
+  #rescue
+   # puts " record_order_book failed not sure why, check mysql user and passwords"
+  #end
 end
 
 def send_tx_array(params,array=nil)
   puts "send_tx_array"
-  begin
+  #begin
   if params["disable_trade"] == "true" || params["disable_trade"] == true
     puts "disable_trade is set true will not be trading b"
     return
   end
   if array.nil?
+    if params["tx_array_in"].length == 0
+       puts "tx_array length 0, nothing to send, nothing done"
+       return
+    end
     tx_all =  Utils.tx_merge(params["tx_array_in"])
   else
+    if array.length == 0
+       puts "tx_array length 0, nothing to send, nothing done"
+       return
+    end
     tx_all =  Utils.tx_merge(array)
   end
   b64 = tx_all.to_envelope(params["trader_account"]).to_xdr(:base64)
   puts "sending batch of tx"
   result = Utils.send_tx(b64)
-  rescue
-    puts "send_tx_array failed,  try again next loop"
-  end
+  #rescue
+  #  puts "send_tx_array failed,  try again next loop"
+  #end
 end
 
 
@@ -1552,19 +1618,35 @@ puts "min_liquid: #{params["min_liquid"]}"
 
 
 backup_params = params.clone
+#delete_offers(params["trader_account"],"all")
+#delete_offers(params["trader_account"], [["XLM", "FUNT"], ["USD", "XLM"]])
+#exit
 
 while true  do
-  puts "top of loop"  
-  if params["dual_trader"] == true
-    delete_offers(params["trader_account_buy"], "")
-    delete_offers(params["trader_account_sell"], "")
-  else
-    delete_offers(params["trader_account"], "")
-  end
+  puts "top of loop"
+ #begin  
+  
   #exit
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"XLM",10],["FUNT","THB",40,"THB",10],["mBTC","BTC",0.001,"USD",10]]
+  
+  
+  
+  params["next_seq"] = Utils.next_sequence(params["trader_account"])
+
+  result = Utils.get_account_offers_horizon(params["trader_account"])
+  if (result["_embedded"]["records"][0].nil?)
+    puts "no offers to delete, so won't add one to next_seq"
+  else
+    # need next_seq + 1 since we are going to delete before we transact these so delete tx will need the number before this
+    params["next_seq"] = params["next_seq"] + 1
+  end
+
+  params["traded"] = []
 
   if params["disable_trade_peg"] != true
+    params["tx_array_in"] = []
+    params["tx_buy_array_in"] = []
+    params["tx_sell_array_in"] = []
     params["trade_peg_pairs"].each { |pair|
       params["sell_currency"] = pair[0]
       params["peg_base_asset"] = pair[1]
@@ -1577,12 +1659,13 @@ while true  do
       if !pair[6].nil?
         params["buy_issuer"] = pair[6]
       end    
-      params["tx_array_in"] = []
-      params["tx_buy_array_in"] = []
-      params["tx_sell_array_in"] = []
+      
       trade_peg(params)
     }
-    params = backup_params.clone
+    puts "tx_array_in length #{params["tx_array_in"].length}"
+    puts "tx_array_in[0]: #{params["tx_array_in"][0]}"
+    #puts "params: #{params}"
+    #params = backup_params.clone
   end
 
   if params["trade_pairs"].nil? 
@@ -1592,22 +1675,11 @@ while true  do
       record_order_book_set(params)
     end
   else
-    if params["disable_delete_offers"] != true
-      params["trade_pairs"].each { |pair|
-        puts "delete order pair: #{pair}"
-        params["sell_currency"] = pair[0]
-        if params["dual_trader"] == true
-          delete_offers(params["trader_account_sell"],params["sell_currency"])
-          delete_offers(params["trader_account_buy"], params["sell_currency"])
-        else
-          delete_offers(params["trader_account"], params["sell_currency"])
-        end
-      }
-    end
-    params = backup_params.clone
-    params["tx_array_in"] = []
-    params["tx_buy_array_in"] = []
-    params["tx_sell_array_in"] = []
+    
+    #params = backup_params.clone
+    #params["tx_array_in"] = []
+    #params["tx_buy_array_in"] = []
+    #params["tx_sell_array_in"] = []
     params["market_ask_price"] = nil
 
     params["trade_pairs"].each { |pair|
@@ -1628,14 +1700,21 @@ while true  do
       #puts "params: #{params}"
       trade_offer_set(params)
     }
+
+    puts "traded: #{params["traded"]}"
+
     if params["tx_mode"] == true
-      #puts"tx_array_in: #{params["tx_array_in"]}"
+      puts "tx_array_in length #{params["tx_array_in"].length}"
+      puts "tx_array_in[0]: #{params["tx_array_in"][0]}"
       if params["dual_trader"] == true
+        delete_offers(params["trader_account_buy"], params["traded"])
+        delete_offers(params["trader_account_sell"], params["traded"])
         params["trader_account"] = params["trader_account_sell"]
         send_tx_array(params,params["tx_sell_array_in"])
         params["trader_account"] = params["trader_account_buy"]
         send_tx_array(params,params["tx_buy_array_in"])               
       else
+        delete_offers(params["trader_account"], params["traded"])
         send_tx_array(params)
       end
     end
@@ -1656,6 +1735,11 @@ while true  do
     }
     params = backup_params.clone
   end
+  
+ #rescue
+  #puts "something failed on this loop, will delete all orders and will try again later"
+  #delete_offers(params["trader_account"],"all")
+ #end
   puts "Time.now: " + Time.now.to_s
   puts "next loop run in: " + params["loop_time_sec"].to_s + " secounds or " + (params["loop_time_sec"]/60/60).to_s + " hour"
   sleep params["loop_time_sec"]
