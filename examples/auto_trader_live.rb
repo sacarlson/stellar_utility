@@ -44,7 +44,7 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
   params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
   #params["order_book_pairs"] = [["USD","THB"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
-  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"]]
+  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["EQD","XLM","GAZTZ2T322AFOONMXBN5P3MILKX7QS5BPKHZZVPUXZLCQ6JPBWMDGH5P"]]
 
     #this will have to wait for live net
   #params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"]]
@@ -87,6 +87,7 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
   params["min_diff_trade_pct"] = 0.10
   #params["min_diff_trade_pct"] = 0.0
   params["min_diff_margin_mult_trade"] = 0.25
+  #params["min_diff_margin_mult_trade"] = 0.0
   #params["mss_server_url"] = "http://www.funtracker.site:9495"
   params["mss_server_url"] = "http://b.funtracker.site:9495"
 
@@ -232,7 +233,6 @@ def trade_offer_set(params)
   #params["exchange_feed_key"]
   #params["feed_poloniex"]
   #params["feed_other"]
-  #params["trade_single_side_pair"]  #not supported yet but soon
   #params["min_liquid"]
   #params["tx_array_in"]  ; an empty array or an array of other tx we will add to and return with added tx from this run
   #params["tx_mode"] = true  ; don't perform the transaction just return a set to tx in an array [tx1,tx2], default is false
@@ -331,7 +331,9 @@ def trade_offer_set(params)
   end
   if params["tx_mode"] == "true" || params["tx_mode"] == true
      if params["trade_on_sell_side"] == true
-       tx1 = send_offer_tx(trader_account_sell, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s,"",params["next_seq"])
+       #offer_id = get_offer_id(sell_issuer,sell_currency, buy_issuer, buy_currency,offers = nil,sellers_account = nil)
+       offer_id = get_offer_id(sell_issuer,sell_currency, buy_issuer, buy_currency,params["offers"])
+       tx1 = send_offer_tx(trader_account_sell, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s,offer_id,params["next_seq"])
        #params["tx_array_in"].push(tx1)
        if params["dual_trader"] == true
          params["tx_sell_array_in"].push(tx1)
@@ -340,8 +342,9 @@ def trade_offer_set(params)
          params["tx_array_in"].push(tx1)
        end
      end
-     if params["trade_on_buy_side"] == true
-       tx2 = send_offer_tx(trader_account_buy, buy_issuer, buy_currency, sell_issuer, sell_currency, amount_buy.to_s, buy_price.to_s,"",params["next_seq"])
+     if params["trade_on_buy_side"] == true       
+       offer_id = get_offer_id(buy_issuer, buy_currency, sell_issuer, sell_currency,params["offers"])
+       tx2 = send_offer_tx(trader_account_buy, buy_issuer, buy_currency, sell_issuer, sell_currency, amount_buy.to_s, buy_price.to_s,offer_id,params["next_seq"])
        if params["dual_trader"] == true
          params["tx_buy_array_in"].push(tx2)
        else
@@ -361,6 +364,60 @@ def trade_offer_set(params)
    # puts "trade_offer_set failed better luck next loop"
   #end
 
+end
+
+def get_offer_id(sell_issuer,sell_currency, buy_issuer, buy_currency,offers = nil,sellers_account = nil)
+  if offers.nil?
+    result = Utils.get_account_offers_horizon(sellers_account)
+    offers = result["_embedded"]["records"]
+  end
+  #puts "offers: #{offers}"
+  #puts ""
+  #puts "sell_currency #{sell_currency}"
+  #puts "sell_issuer #{sell_issuer}"
+  #puts "buy_currency #{buy_currency}"
+  #puts "buy_issuer #{buy_issuer}"
+  #puts ""
+  offers.each{ |row|
+    tf = true  
+    if row["selling"]["asset_type"] != "native"     
+       if row["selling"]["asset_issuer"] != sell_issuer
+         #puts "a false"
+         tf = false
+       end
+       if row["selling"]["asset_code"] != sell_currency
+         #puts "c false"
+         tf = false
+       end
+    else
+      if sell_currency != "XLM"
+        #puts "g false"
+        tf = false
+      end
+    end
+    if row["buying"]["asset_type"] != "native"
+      if row["buying"]["asset_issuer"] != buy_issuer
+        #puts "b false"
+        tf = false
+      end
+      if row["buying"]["asset_code"] != buy_currency
+        #puts "d false"
+        tf = false
+      end  
+    else
+      if buy_currency != "XLM"
+        #puts "e false"
+        tf = false
+      end
+    end
+
+    if tf == true
+      puts "get_offer_id: #{row["id"]}"
+      return row["id"]
+    end
+  }
+  puts "get_offer_id: not found"
+  return ""
 end
 
 def trade_peg(params)
@@ -1080,6 +1137,7 @@ end
 
 def delete_offers(account,delete_sets = "all")
   #if asset_code left blank or nil it will delete all open orders on this account
+  
   result = Utils.get_account_offers_horizon(account)
   #puts "results: #{result["_embedded"]["records"][0]["id"]}"
   #puts "results: #{result["_embedded"]["records"]}"
@@ -1315,7 +1373,13 @@ def record_ticker(data)
     puts "seems ask bid price are zero so must be bad data feed, will not record"
     return
   end
- 
+  if data["base"]["asset_code"] == "XLM" || data["base"]["asset_code"] == "native" || data["base"]["asset_type"] == "native"
+    data["base"]["asset_issuer"] = "..."
+  end
+  if data["counter"]["asset_code"] == "XLM" || data["base"]["asset_code"] == "native" || data["counter"]["asset_type"] == "native"
+    data["counter"]["asset_issuer"] = "..."
+  end
+  puts "data: #{data}"
   begin
     con = Mysql.new(Utils.configs["mysql_host"], Utils.configs["mysql_user"],Utils.configs["mysql_password"], Utils.configs["mysql_db"])
     field_string = 'datetime'
@@ -1362,10 +1426,11 @@ def record_ticker(data)
     #puts "create_table_string:  #{create_table_string}"
    
     sql = start_sql + field_string + mid_sql + prep_value + end_sql
-    #puts " sql: #{sql}"
+    puts " sql: #{sql}"
     con.query(create_table_string)
     pst = con.prepare(sql)
     array_execute = value_string.split(',')
+    puts "array_execute: #{array_execute}"
     pst.execute(*array_execute)
        
   rescue Mysql::Error => e
@@ -1504,7 +1569,11 @@ def record_order_book(params)
   #params["min_liquid"] = 0
   #puts "book_horizon params: #{params}"
   result = Utils.get_order_book_horizon(params)
-  #puts "input to record_order_book: #{result}"
+  if result["bids"].nil? && result["asks"].nil?
+    puts "no bids asks for asset, will not record"
+    return nil
+  end
+  puts "input to record_order_book: #{result}"
   result2 = orderbook_convert_str_to_polo(result)
   #puts "result2: #{result2}"
   result3 = convert_polo_to_liquid(result2,params["min_liquid"])
@@ -1539,6 +1608,24 @@ def record_order_book_set(params)
   #rescue
    # puts " record_order_book failed not sure why, check mysql user and passwords"
   #end
+end
+
+def record_order_book_list(params)
+   params["order_book_pairs"].each { |pair|
+      puts "pair: #{pair}"
+      params["sell_currency"] = pair[0]
+      params["buy_currency"] = pair[1]
+      if !pair[2].nil?    
+        params["sell_issuer"] = pair[2]
+        params["buy_issuer"] = pair[2]
+      end
+      if !pair[3].nil?
+        params["buy_issuer"] = pair[3]
+      end
+      #params["amount"] = pair[2]
+      #puts "params: #{params}"
+      record_order_book_set(params)
+    }
 end
 
 def send_tx_array(params,array=nil)
@@ -1618,6 +1705,7 @@ puts "min_liquid: #{params["min_liquid"]}"
 
 
 backup_params = params.clone
+#record_order_book_list(params)
 #delete_offers(params["trader_account"],"all")
 #delete_offers(params["trader_account"], [["XLM", "FUNT"], ["USD", "XLM"]])
 #exit
@@ -1634,11 +1722,15 @@ while true  do
   params["next_seq"] = Utils.next_sequence(params["trader_account"])
 
   result = Utils.get_account_offers_horizon(params["trader_account"])
-  if (result["_embedded"]["records"][0].nil?)
-    puts "no offers to delete, so won't add one to next_seq"
-  else
-    # need next_seq + 1 since we are going to delete before we transact these so delete tx will need the number before this
-    params["next_seq"] = params["next_seq"] + 1
+  params["offers"] = result["_embedded"]["records"]
+
+  if params["disable_delete_offers"] != true
+    if (result["_embedded"]["records"][0].nil?)
+      puts "no offers to delete, so won't add one to next_seq"
+    else
+      # need next_seq + 1 since we are going to delete before we transact these so delete tx will need the number before this
+      params["next_seq"] = params["next_seq"] + 1
+    end
   end
 
   params["traded"] = []
@@ -1707,32 +1799,25 @@ while true  do
       puts "tx_array_in length #{params["tx_array_in"].length}"
       puts "tx_array_in[0]: #{params["tx_array_in"][0]}"
       if params["dual_trader"] == true
-        delete_offers(params["trader_account_buy"], params["traded"])
-        delete_offers(params["trader_account_sell"], params["traded"])
+        if params["disable_delete_offers"] != true
+          puts "delete_offers disabled, nothing done"
+          delete_offers(params["trader_account_buy"], params["traded"])
+          delete_offers(params["trader_account_sell"], params["traded"])
+        end 
         params["trader_account"] = params["trader_account_sell"]
         send_tx_array(params,params["tx_sell_array_in"])
         params["trader_account"] = params["trader_account_buy"]
         send_tx_array(params,params["tx_buy_array_in"])               
       else
-        delete_offers(params["trader_account"], params["traded"])
+        if params["disable_delete_offers"] != true
+          puts "delete_offers disabled, nothing done"
+          delete_offers(params["trader_account"], params["traded"])
+        end        
         send_tx_array(params)
       end
     end
     params = backup_params.clone
-    params["order_book_pairs"].each { |pair|
-      puts "pair: #{pair}"
-      params["sell_currency"] = pair[0]
-      params["buy_currency"] = pair[1]
-      if !pair[2].nil?    
-        params["sell_issuer"] = pair[2]
-      end
-      if !pair[3].nil?
-        params["buy_issuer"] = pair[3]
-      end
-      #params["amount"] = pair[2]
-      #puts "params: #{params}"
-      record_order_book_set(params)
-    }
+    record_order_book_list(params)
     params = backup_params.clone
   end
   

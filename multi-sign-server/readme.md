@@ -734,7 +734,7 @@ or if working:
     * action: "get_ticker_list" is returned to verify this is the return for this function
     * status: "success" or "fail" status of returned data
     * asset_pairs: hash of asset pairs with an array for each with info and last_ask_price
-      * hash key THB_USD is asset_code_base_code
+      * hash key THB_USD is asset_code_base_code ; asset_code = selling_asset ,  base_code = buying_asset in trade
       * hash array format: ["THB","GAX4C...","USD","GAX4C...","34.80315","34.55"] is [asset_code,asset_issuer,base_code,base_issuer,last_ask_price,last_bid_price]
 
   * example output: with with {"action":"get_ticker_list"}

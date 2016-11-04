@@ -1,0 +1,21 @@
+problems with upgrade:
+
+sacarlson@sacarlson-desktop ~/github/stellar/stellar_utility/examples $ ./start_auto_trade.sh
+/home/sacarlson/github/stellar/stellar_utility/vendor/cache/ruby/2.2.0/gems/backports-3.6.8/lib/backports/std_lib.rb:9:in `require': libmysqlclient.so.18: cannot open shared object file: No such file or directory - /home/sacarlson/github/stellar/stellar_utility/vendor/cache/ruby/2.2.0/extensions/x86_64-linux/2.2.0-static/mysql-2.9.1/mysql/mysql_api.so (LoadError)
+	from /home/sacarlson/github/stellar/stellar_utility/vendor/cache/ruby/2.2.0/gems/backports-3.6.8/lib/backports/std_lib.rb:9:in `require_with_backports'
+	from /home/sacarlson/github/stellar/stellar_utility/vendor/cache/ruby/2.2.0/gems/mysql-2.9.1/lib/mysql.rb:6:in `rescue in <top (required)>'
+	from /home/sacarlson/github/stellar/stellar_utility/vendor/cache/ruby/2.2.0/gems/mysql-2.9.1/lib/mysql.rb:2:in `<top (required)>'
+	from /home/sacarlson/github/stellar/stellar_utility/vendor/cache/ruby/2.2.0/gems/backports-3.6.8/lib/backports/std_lib.rb:9:in `require'
+	from /home/sacarlson/github/stellar/stellar_utility/vendor/cache/ruby/2.2.0/gems/backports-3.6.8/lib/backports/std_lib.rb:9:in `require_with_backports'
+	from ./auto_trader.rb:35:in `<main>'
+
+cd /home/sacarlson/github/stellar/stellar_utility
+bundle-update  ;didn't fix it
+
+cd /home/sacarlson/github/stellar/stellar_utility
+must delete directory ./vendor
+and reinstall dependencies:  bundle install
+this was caused by direct copy of entire directory stellar_utility from old system so it didn't recompile to new.
+
+
+
