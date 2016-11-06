@@ -729,6 +729,9 @@ or if working:
 ## get_ticker_list:  Get a list of asset pairs that are in the historic price records
   * Values send: 
     * asset_pair:  format example "THB_USD" that is in assetcode_basecode format, if none provided (optional) full list will be sent
+    * max_last_record: if asset_pair last recorded order time in the past is more than max_last_record hours ago, it will not be listed
+      an asset_pair is not recorded if there are no offers on both bid and ask (must have both)
+      if max_last_record is nil, return all asset_pair last dates recorded
 
   * Values returned 
     * action: "get_ticker_list" is returned to verify this is the return for this function
@@ -744,6 +747,7 @@ or if working:
    {"action":"get_ticker_list","status":"success","asset_pairs":["THB","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","USD","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","34.80315","34.55"]}
  
 
+  * example3: with {"action":"get_ticker_list", "max_last_record":"24"} ;return asset_pair that have had orders recorded within the last 24 hours
 ## get_feed_list:  Get a list of asset pairs that are in the feed historic price records
   * Values send: 
     * asset_pair:  format example "THB_USD" that is in assetcode_basecode format, if none provided (optional) full list of last price records will be sent

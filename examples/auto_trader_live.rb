@@ -39,12 +39,13 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
 
 
   params = {}
-  #params["trade_pairs"] = [["THB","USD",340],["BTC","USD",0.001],["XLM","USD",1000]]
+  #params["trade_pairs"] = [["THB","USD",340],["XLM","USD",1000],["XLM","BTC",2000],["BTC","USD",0.001]]
   params["trade_pairs"] = [["THB","USD",340],["XLM","USD",4000]]
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
-  params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
+  params["trade_peg_pairs"] = [["mBTC","BTC",0.001,"XLM",5],["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
+  #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
   #params["order_book_pairs"] = [["USD","THB"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
-  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["EQD","XLM","GAZTZ2T322AFOONMXBN5P3MILKX7QS5BPKHZZVPUXZLCQ6JPBWMDGH5P"]]
+  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["XLM","mBTC"],["EQD","XLM","GCGEQJR3E5BVMQYSNCHPO6NPP3KOT4VVZHIOLSRSNLE2GFY7EWVSLLTN"]]
 
     #this will have to wait for live net
   #params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"]]
@@ -65,14 +66,15 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
   #params["profit_margin"] = 0.5
   params["profit_margin"] = {}
   params["profit_margin"]["default"] = 0.5
-  params["profit_margin"]["XLM_USD"] = 5.0
-  params["profit_margin"]["FUNT_XLM"] = 5.0
-  params["profit_margin"]["BTC_USD"] = 2.0
-  params["profit_margin"]["mBTC_USD"] = 2.0
+  params["profit_margin"]["XLM_USD"] = 2.5
+  params["profit_margin"]["FUNT_XLM"] = 2.5
+  params["profit_margin"]["BTC_USD"] = 2.5
+  params["profit_margin"]["mBTC_USD"] = 2.5
+  params["profit_margin"]["mBTC_XLM"] = 2.5
   params["exchange_feed_key"] = Utils.configs["openexchangerates_key"]  
   params["min_liquid"] = 0
   params["loop_time_sec"] = 3600
-  #params["loop_time_sec"] = 5
+  #params["loop_time_sec"] = 12
   params["feed_poloniex"] = ["BTC","XLM","USDT","USD"]
   params["feed_other"] = ["THB","USD"]
   params["tx_mode"] = true
@@ -91,7 +93,8 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
   #params["mss_server_url"] = "http://www.funtracker.site:9495"
   params["mss_server_url"] = "http://b.funtracker.site:9495"
 
-# max_diff is the max difference bettween two currency api feeds that are compared to verify that data is acurate within reason 
+# max_diff is the max difference bettween two currency api feeds that are compared to verify that data is acurate within reason
+# presently compares yahoo and openexchange 
 $max_diff = 0.008
 
 #trade_pairs and the amount to trade this pair, this array controls what order sets the bot will setup in a group of orders on each loop
@@ -740,8 +743,16 @@ def get_mss_server_feed_exchangerate(currency_code,base_code,before_timestamp = 
       data_out["status"] = "fail"
       return  data_out
     end
-    #puts "postdata: " + postdata
+    puts "postdata: " + postdata
     data = JSON.parse(postdata)
+    if data["asset_pairs"].nil?
+      data["asset_pairs"] = []
+      data["status"] = "fail"
+      data["asset_pairs"][3] = 0
+      data["asset_pairs"][4] = 0
+      return data
+    end
+    puts "json: #{data}"
     if data["asset_pairs"][2].to_i < before_timestamp.to_i && before_timestamp.to_i > 0
      data["status"] = "fail"
      data["asset_pairs"][3] = 0
@@ -1379,7 +1390,7 @@ def record_ticker(data)
   if data["counter"]["asset_code"] == "XLM" || data["base"]["asset_code"] == "native" || data["counter"]["asset_type"] == "native"
     data["counter"]["asset_issuer"] = "..."
   end
-  puts "data: #{data}"
+  #puts "data: #{data}"
   begin
     con = Mysql.new(Utils.configs["mysql_host"], Utils.configs["mysql_user"],Utils.configs["mysql_password"], Utils.configs["mysql_db"])
     field_string = 'datetime'
@@ -1426,11 +1437,11 @@ def record_ticker(data)
     #puts "create_table_string:  #{create_table_string}"
    
     sql = start_sql + field_string + mid_sql + prep_value + end_sql
-    puts " sql: #{sql}"
+    #puts " sql: #{sql}"
     con.query(create_table_string)
     pst = con.prepare(sql)
     array_execute = value_string.split(',')
-    puts "array_execute: #{array_execute}"
+    # puts "array_execute: #{array_execute}"
     pst.execute(*array_execute)
        
   rescue Mysql::Error => e
@@ -1573,7 +1584,7 @@ def record_order_book(params)
     puts "no bids asks for asset, will not record"
     return nil
   end
-  puts "input to record_order_book: #{result}"
+  #puts "input to record_order_book: #{result}"
   result2 = orderbook_convert_str_to_polo(result)
   #puts "result2: #{result2}"
   result3 = convert_polo_to_liquid(result2,params["min_liquid"])
@@ -1706,7 +1717,7 @@ puts "min_liquid: #{params["min_liquid"]}"
 
 backup_params = params.clone
 #record_order_book_list(params)
-#delete_offers(params["trader_account"],"all")
+delete_offers(params["trader_account"],"all")
 #delete_offers(params["trader_account"], [["XLM", "FUNT"], ["USD", "XLM"]])
 #exit
 

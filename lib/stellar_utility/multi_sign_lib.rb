@@ -523,10 +523,20 @@ def read_ticker_list(params)
   #{"action":"get_ticker_list","status":"success","asset_pairs":["THB","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","USD","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","0.029"]}
   # array format: [asset_code,asset_issuer,base_code,base_issuer,last_ask_price]
   # asset_pair format:  THB_USD  THB = base_code  USD = asset_code,  USD_THB would return value of about 34.68 also seen as USD/THB
+  # {"action":"get_ticker_list", "max_last_record":"24.5"} ;return asset_pair that have had orders recorded within the last 24 hours
   con = Mysql.new(@configs["mysql_host"], @configs["mysql_user"], @configs["mysql_password"], @configs["mysql_db"]) 
-    
-  #rs = con.query("SELECT * FROM ticker ORDER BY timestamp DESC" )
-  rs = con.query("SELECT * FROM ticker ORDER BY timestamp" )
+  
+  if !params["max_last_record"].nil?
+    time_past = Time.now.to_i - (params["max_last_record"].to_f * 60 * 60).to_i
+    query = "SELECT * FROM ticker WHERE `timestamp` > FROM_UNIXTIME(" + time_past.to_s + ") ORDER BY timestamp"
+    puts "time_past: #{time_past}"
+    puts "time now: #{Time.now.to_i}"
+    puts "query: #{query}"
+    rs = con.query(query)
+  else
+    #rs = con.query("SELECT * FROM ticker ORDER BY timestamp DESC" )
+    rs = con.query("SELECT * FROM ticker ORDER BY timestamp" )
+  end
   n_rows = rs.num_rows    
   puts "There are #{n_rows} rows in the result set"
   #puts "query_string: #{query_string}" 
@@ -545,7 +555,7 @@ def read_ticker_list(params)
         #asset_pair = row["asset_code"] + "_" + row["base_asset_code"]
         # at this time it seems my database has asset_code and base_asset_code reversed, not sure where to fix this yet for now here
         asset_pair = row["base_asset_code"] + "_" + row["asset_code"]
-        asset_pairs[asset_pair] = [row["asset_code"],row["asset_issuer"],row["base_asset_code"],row["base_asset_issuer"],row["ask_price"],row["bid_price"]]
+        asset_pairs[asset_pair] = [row["asset_code"],row["asset_issuer"],row["base_asset_code"],row["base_asset_issuer"],row["ask_price"],row["bid_price"],row["datetime"],Time.parse(row["datetime"]).to_i]      
       end
     hash = {}
   
