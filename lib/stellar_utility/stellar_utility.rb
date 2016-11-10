@@ -2300,7 +2300,8 @@ def decode_txmeta_b64(b64)
    #example output:  res:  #<Stellar::TransactionMeta:0x00000002c821f0 @switch=0, @arm=:v0, @value=#<Stellar::TransactionMeta::V0:0x00000002c74aa0 @attributes={:changes=>[#<Stellar::LedgerEntryChange:0x00000002c773e0 @switch=Stellar::LedgerEntryChangeType.ledger_entry_updated(1), @arm=:updated, @value=#<Stellar::LedgerEntry:0x00000002c74730 @attributes={:last_modified_ledger_seq=>164045, :data=>#<Stellar::LedgerEntry::Data:0x00000002c77638 @switch=Stellar::LedgerEntryType.account(0), @arm=:account, @value=#<Stellar::AccountEntry:0x00000002c74410 @attributes={:account_id=>#<Stellar::PublicKey:0x00000002c741e0 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value="e\xCD\x84\xBA\xE1\x1A\xD9mO\x00\xA9\x9A\xA9Z\xAE\x1E\xEC\xD40v\x84\x89\e?\xFF\xE3\x839\xF8\x16\x8B?">, :balance=>82874009994550, :seq_num=>141733921313, :num_sub_entries=>0, :inflation_dest=>nil, :flags=>0, :home_domain=>"", :thresholds=>"\x01\x00\x00\x00", :signers=>[], :ext=>#<Stellar::AccountEntry::Ext:0x00000002c77700 @switch=0, @arm=nil, @value=:void>}>>, :ext=>#<Stellar::LedgerEntry::Ext:0x00000002c77408 @switch=0, @arm=nil, @value=:void>}>>], :operations=>[#<Stellar::OperationMeta:0x00000002c77200 @attributes={:changes=>[#<Stellar::LedgerEntryChange:0x00000002c7c890 @switch=Stellar::LedgerEntryChangeType.ledger_entry_created(0), @arm=:created, @value=#<Stellar::LedgerEntry:0x00000002c76f08 @attributes={:last_modified_ledger_seq=>164045, :data=>#<Stellar::LedgerEntry::Data:0x00000002c7cae8 @switch=Stellar::LedgerEntryType.account(0), @arm=:account, @value=#<Stellar::AccountEntry:0x00000002c7e8e8 @attributes={:account_id=>#<Stellar::PublicKey:0x00000002c7e398 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value="B\xCF\x05Yy\x0Fl;d\xDE\x15\x12\r\xF0\xBB%\xCA\xAB}\xC2\xDBO\xB4\xA1\x8A5\xE8\x81\xBF2:\xF7">, :balance=>100000000000, :seq_num=>704567910072320, :num_sub_entries=>0, :inflation_dest=>nil, :flags=>0, :home_domain=>"", :thresholds=>"\x01\x00\x00\x00", :signers=>[], :ext=>#<Stellar::AccountEntry::Ext:0x00000002c7cb88 @switch=0, @arm=nil, @value=:void>}>>, :ext=>#<Stellar::LedgerEntry::Ext:0x00000002c7c8e0 @switch=0, @arm=nil, @value=:void>}>>, #<Stellar::LedgerEntryChange:0x00000002c82358 @switch=Stellar::LedgerEntryChangeType.ledger_entry_updated(1), @arm=:updated, @value=#<Stellar::LedgerEntry:0x00000002c7c6b0 @attributes={:last_modified_ledger_seq=>164045, :data=>#<Stellar::LedgerEntry::Data:0x00000002c82650 @switch=Stellar::LedgerEntryType.account(0), @arm=:account, @value=#<Stellar::AccountEntry:0x00000002c7c098 @attributes={:account_id=>#<Stellar::PublicKey:0x00000002c7bcd8 @switch=Stellar::CryptoKeyType.key_type_ed25519(0), @arm=:ed25519, @value="e\xCD\x84\xBA\xE1\x1A\xD9mO\x00\xA9\x9A\xA9Z\xAE\x1E\xEC\xD40v\x84\x89\e?\xFF\xE3\x839\xF8\x16\x8B?">, :balance=>82774009994550, :seq_num=>141733921313, :num_sub_entries=>0, :inflation_dest=>nil, :flags=>0, :home_domain=>"", :thresholds=>"\x01\x00\x00\x00", :signers=>[], :ext=>#<Stellar::AccountEntry::Ext:0x00000002c826a0 @switch=0, @arm=nil, @value=:void>}>>, :ext=>#<Stellar::LedgerEntry::Ext:0x00000002c823a8 @switch=0, @arm=nil, @value=:void>}>>]}>]}>>
 
   result = Stellar::TransactionMeta.from_xdr Stellar::Convert.from_base64 b64
-  puts "res:  #{result.inspect}"
+  #puts "res:  #{result.inspect}"  ; this seems to be broken for unknown reasoons now, new version of ruby or stellar-base?
+  #puts "res: #{result.to_yaml}" ; this still puts out some human readable results
   return result
 end
 
@@ -2370,6 +2371,123 @@ def check_witness_hash(hash)
   verify_signed_msg(json_string, hash["witness_account"], sig_hash)
 end
 
+def txresult_to_hash(b64,transaction_id = 0)
+  #only works for manager offer transactions at this time, b64 is txresult from stellar-core db that is in base64 format that is decoded into a hash as seen bellow
+  # transaction_id can be added to track operation id that should at some point be used to compare results with horizon db
+
+  #{"txid"=>"6a963ab95bb279940940bda34dbdc7188243c682483c6b1eab3a84a862cba330", "fee_charged"=>100, "operations"=>[{"op_id"=>1, "offers_claimed"=>[{"seller_id"=>"GDQFOGI6KZGQLSYXRVYNW74HQ5O7PVK6SJNW4W3CHQOYTHTLDMTIW3W5", "offer_id"=>741, "sold_asset_code"=>"BTC\x00", "sold_issuer"=>"GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH", "amount_sold"=>75200, "bought_asset_code"=>"XLM", "amount_bought"=>2000.0}, {"seller_id"=>"GDQFOGI6KZGQLSYXRVYNW74HQ5O7PVK6SJNW4W3CHQOYTHTLDMTIW3W5", "offer_id"=>742, "sold_asset_code"=>"BTC\x00", "sold_issuer"=>"GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH", "amount_sold"=>37000, "bought_asset_code"=>"XLM", "amount_bought"=>1000.0}], "seller_id"=>"GBN2KFK7FI3BXY7U3SV3JIQBAEAUXLNFKUFXKXR5HQ3DFXUU7YR6UWTZ", "offer_id"=>1581, "selling_asset_code"=>"XLM", "buying_asset_code"=>"BTC\x00", "buying_issuer"=>"GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH", "amount"=>297000.0, "price_n"=>1, "price_d"=>300000, "price"=>0}]}
+
+  hash = {}
+  bytes = Stellar::Convert.from_base64 b64
+  tranPair = Stellar::TransactionResultPair.from_xdr bytes
+  #puts "tranPair.inspect:  #{tranPair.inspect}"
+  #puts ""
+  #puts "x: #{tranPair.result.result.value[0].to_yaml}"
+  #puts "y: #{tranPair.result.result.value[0].value.arm}"
+  #puts "txid: #{Stellar::Convert.to_hex(tranPair.transaction_hash)}"
+  hash["txid"] = Stellar::Convert.to_hex(tranPair.transaction_hash)
+  #puts "fee_charged: #{tranPair.result.fee_charged}"
+  hash["fee_charged"] = tranPair.result.fee_charged
+  idx = 0
+  hash["operations"] = []
+  tranPair.result.result.value.each do |op|
+    if op.value.arm.to_s != "manage_offer_result"
+      #puts "operation not manage_offer_result  next"
+      next
+    end
+    #puts "op: #{op.to_yaml}"
+    #puts "success?: #{op.value.value.arm}"
+    if op.value.value.arm.to_s != "success"
+      puts "op was not success next"
+      next
+    end
+    hash["operations"][idx] = {}
+    hash["operations"][idx]["op_id"] = transaction_id + idx + 1
+    hash["operations"][idx]["offers_claimed"] = []
+    idx2 = 0
+    op.value.value.value.offers_claimed.each do |op2| 
+      hash["operations"][idx]["offers_claimed"][idx2] = {}
+      hash["operations"][idx]["offers_claimed"][idx2]["op_id"] = idx2 + 1 + transaction_id  
+      #puts "seller_id: #{Stellar::Util::StrKey.check_encode(:account_id,op2.seller_id.value)}"
+      hash["operations"][idx]["offers_claimed"][idx2]["seller_id"] = Stellar::Util::StrKey.check_encode(:account_id,op2.seller_id.value)
+      #puts "offer_id: #{op2.offer_id}"
+      hash["operations"][idx]["offers_claimed"][idx2]["offer_id"] = op2.offer_id
+      #puts "test: #{op2.asset_sold.to_s}"
+      if op2.asset_sold.to_s == "native"
+        hash["operations"][idx]["offers_claimed"][idx2]["sold_asset_code"] = "XLM"
+      else
+        #puts "asset_sold_asset_code: #{op2.asset_sold.value.asset_code}"
+        hash["operations"][idx]["offers_claimed"][idx2]["sold_asset_code"] = op2.asset_sold.value.asset_code.sub("\x00","")
+        #puts "asset_sold_issuer: #{public_key_to_address(op2.asset_sold.value.issuer)}"
+        hash["operations"][idx]["offers_claimed"][idx2]["sold_issuer"] = public_key_to_address(op2.asset_sold.value.issuer)
+      end
+      #puts "amount_sold: #{op2.amount_sold}"
+      hash["operations"][idx]["offers_claimed"][idx2]["amount_sold"] = op2.amount_sold
+      #puts "asset_bought: #{op2.asset_bought}"
+      #hash["operations"][idx]["offers_claimed"]
+      if op2.asset_bought.to_s == "native"
+        #puts "bought_asset_code: native"
+        hash["operations"][idx]["offers_claimed"][idx2]["bought_asset_code"] = "XLM"
+      else
+        #puts "bought_asset_code: #{op2.asset_bought.value.asset_code}"
+        hash["operations"][idx]["offers_claimed"][idx2]["bought_asset_code"] = op2.asset_bought.value.asset_code.sub("\x00","")
+        #puts "bought_issuer: #{public_key_to_address(op2.asset_bought.value.issuer)}"
+        hash["operations"][idx]["offers_claimed"][idx2]["bought_issuer"] = public_key_to_address(op2.asset_bought.value.issuer)
+      end
+      #puts "amount_bought: #{op2.amount_bought / 10000000.0}"
+      hash["operations"][idx]["offers_claimed"][idx2]["amount_bought"] = op2.amount_bought / 10000000.0
+      idx2 = idx2 + 1
+    end 
+    #puts "check: #{op.value.value.value.offer.to_yaml}"
+    #puts "xx: #{op.value.value.value.offer.arm}"
+    if op.value.value.value.offer.arm.to_s != "offer"
+      #puts "no offer seen next"
+      next
+    end
+    #puts "seller_id: #{Stellar::Util::StrKey.check_encode(:account_id, op.value.value.value.offer.value.seller_id.value)}"
+    hash["operations"][idx]["seller_id"] = Stellar::Util::StrKey.check_encode(:account_id, op.value.value.value.offer.value.seller_id.value)
+    #puts "offer_id: #{op.value.value.value.offer.value.offer_id}"
+    hash["operations"][idx]["offer_id"] = op.value.value.value.offer.value.offer_id
+    #puts "offer_id: #{tranPair.result.result.value[0].value.value.value.offer.value.offer_id}"
+    #puts "selling: #{op.value.value.value.offer.value.selling}"
+    #hash["operations"][idx]["selling"]
+    if op.value.value.value.offer.value.selling.to_s == "native"
+      #puts "selling_asset_code: XLM"
+      hash["operations"][idx]["selling_asset_code"] = "XLM"
+      #hash["operations"][idx]["asset_code"] = "native"
+    else
+      #puts "selling_type: #{op.value.value.value.offer.value.selling.value}"
+      #puts "selling_asset_code: #{op.value.value.value.offer.value.selling.value.asset_code}"
+      hash["operations"][idx]["selling_asset_code"] = op.value.value.value.offer.value.selling.value.asset_code.sub("\x00","")
+      #puts "selling_issuer: #{public_key_to_address(op.value.value.value.offer.value.selling.value.issuer)}"
+      hash["operations"][idx]["selling_issuer"] = public_key_to_address(op.value.value.value.offer.value.selling.value.issuer)
+    end
+  
+    #puts "buying: #{op.value.value.value.offer.value.buying}"
+    if op.value.value.value.offer.value.buying.to_s == "native"
+      #puts "buying_asset_code: XLM"
+      hash["operations"][idx]["buying_asset_code"] = "XLM"
+    else
+      #puts "buying_type: #{op.value.value.value.offer.value.buying.value}"
+      #puts "buying_asset_code: #{op.value.value.value.offer.value.buying.value.asset_code}"
+      hash["operations"][idx]["buying_asset_code"] = op.value.value.value.offer.value.buying.value.asset_code.sub("\x00","")
+      #puts "buying_issuer: #{public_key_to_address(op.value.value.value.offer.value.buying.value.issuer)}"
+      hash["operations"][idx]["buying_issuer"] = public_key_to_address(op.value.value.value.offer.value.buying.value.issuer)
+    end
+    #puts "amount:  #{op.value.value.value.offer.value.amount / 10000000.0}"
+    hash["operations"][idx]["amount"] = op.value.value.value.offer.value.amount / 10000000.0
+    #puts "price_n: #{op.value.value.value.offer.value.price.n}"
+    #puts "price_d: #{op.value.value.value.offer.value.price.d}"
+    #puts "price: #{op.value.value.value.offer.value.price.n / op.value.value.value.offer.value.price.d}"
+    hash["operations"][idx]["price_n"] = op.value.value.value.offer.value.price.n
+    hash["operations"][idx]["price_d"] = op.value.value.value.offer.value.price.d
+    hash["operations"][idx]["price"] = op.value.value.value.offer.value.price.n.to_f / op.value.value.value.offer.value.price.d.to_f
+    idx = idx + 1
+  end
+  #puts "hash: #{hash.inspect}"
+  return hash
+end
+
 
 def envelope_to_hash(envelope_b64)
   #envelope_b64 can be base64 format or stellar::envelope structure
@@ -2387,7 +2505,7 @@ def envelope_to_hash(envelope_b64)
     return hash = {"status"=>"error", "error"=>"bad_envelope"}
   end
   pk = tx.source_account
-  hash["source_address"] = public_key_to_address(pk)
+  hash["source_account"] = public_key_to_address(pk)
   hash["fee"] = tx.fee
   hash["seq_num"] = tx.seq_num
   #hash["time_bounds"] = tx.time_bounds
@@ -2421,16 +2539,17 @@ def envelope_to_hash(envelope_b64)
   hash["op_length"] = tx.operations.length
   opnum = 0
   hash["operations"] = []
-  tx.operations.each do |op|
+  tx.operations.each do |op|    
     hash["operations"][opnum] = {}
+    hash["operations"][opnum]["op_id"] = opnum + 1 + hash["seq_num"]
     hash["operations"][opnum]["operation"] = op.body.arm
     case op.body.arm
     when :payment_op   
-      hash["operations"][opnum]["destination_address"] = public_key_to_address(op.body.value.destination)
+      hash["operations"][opnum]["destination_account"] = public_key_to_address(op.body.value.destination)
       if op.body.value.asset.to_s == "native"   
-        hash["operations"][opnum]["asset"] = "native"
+        hash["operations"][opnum]["asset_code"] = "XLM"
       else
-        hash["operations"][opnum]["asset"] = op.body.value.asset.code
+        hash["operations"][opnum]["asset_code"] = op.body.value.asset.code.sub("\x00","")
         hash["operations"][opnum]["issuer"] = public_key_to_address(op.body.value.asset.issuer)
       end
       hash["operations"][opnum]["amount"] = (op.body.value.amount)/1e7
@@ -2455,23 +2574,26 @@ def envelope_to_hash(envelope_b64)
       hash["operations"][opnum]["starting_balance"] = (op.body.value.starting_balance)/1e7
     when :manage_offer_op
       if op.body.value.selling.to_s == "native"
-        hash["operations"][opnum]["selling.asset"] = "native"
+        hash["operations"][opnum]["selling_asset_code"] = "XLM"
       else
-        hash["operations"][opnum]["selling.asset"] = op.body.value.selling.code
-        hash["operations"][opnum]["selling.issuer"] = public_key_to_address(op.body.value.selling.issuer)
+        hash["operations"][opnum]["selling_asset_code"] = op.body.value.selling.code.sub("\x00","")
+        hash["operations"][opnum]["selling_issuer"] = public_key_to_address(op.body.value.selling.issuer)
       end
       if op.body.value.buying.to_s == "native"
-        hash["operations"][opnum]["buying.asset"] = "native"
+        hash["operations"][opnum]["buying_asset_code"] = "XLM"
       else
         begin
-          hash["operations"][opnum]["buying.asset"] = op.body.value.buying.code
-          hash["operations"][opnum]["buying.issuer"] = public_key_to_address(op.body.value.buying.issuer)
+          hash["operations"][opnum]["buying_asset_code"] = op.body.value.buying.code.sub("\x00","")
+          hash["operations"][opnum]["buying_issuer"] = public_key_to_address(op.body.value.buying.issuer)
         rescue
-          hash["operations"][opnum]["buying.asset"] = "error"
+          hash["operations"][opnum]["buying_asset_code"] = "error"
         end
       end
       hash["operations"][opnum]["amount"] = (op.body.value.amount)/1e7
-      hash["operations"][opnum]["price"] = op.body.value.price
+      #hash["operations"][opnum]["price"] = op.body.value.price
+      hash["operations"][opnum]["price_n"] = op.body.value.price.n
+      hash["operations"][opnum]["price_d"] = op.body.value.price.d
+      hash["operations"][opnum]["price"] = op.body.value.price.n.to_f / op.body.value.price.d.to_f
       hash["operations"][opnum]["offer_id"] = op.body.value.offer_id   
     else 
       puts "operation not recognized #{op.body.arm}"

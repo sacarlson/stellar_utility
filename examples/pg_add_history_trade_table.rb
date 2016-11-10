@@ -1,8 +1,9 @@
 require '../lib/stellar_utility/stellar_utility.rb'
 #require "mysql"
 #require 'pg'
+
 #bundler exec ruby ./pg_horizon_add.rb
-#PGconn.new(host, port, options, tty, dbname, login, password) ->  PGconn
+
 # worked ok
 
 #pg_hostaddr: 127.0.0.1
@@ -14,8 +15,29 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
 
 #puts "tx_env decoded: #{Utils.decode_txbody_b64(row["tx_envelope"])}"
 #Utils.configs["pg_password"]
-def open_pg()
-  return PGconn.connect("localhost", 5432, '', '', "horizon", Utils.configs["pg_user"], Utils.configs["pg_password"])
+def open_pg(db="horizon")
+  return PGconn.connect("localhost", 5432, '', '', db, Utils.configs["pg_user"], Utils.configs["pg_password"])
+end
+
+def open_core_pg()
+  return PGconn.connect("localhost", 5432, '', '', "core", Utils.configs["pg_user"], Utils.configs["pg_password"])
+end
+
+def ledgerseq_to_closetime(ledgerseq)
+  begin
+    conn = open_core_pg()   
+    res  = conn.exec("SELECT * FROM ledgerheaders WHERE ledgerseq = '" + ledgerseq.to_s + "' LIMIT 1;")  
+  rescue
+    conn.close if conn
+    puts "ledgerseq not found with error, return 0"
+    return 0
+  end
+  conn.close if conn
+  if res.cmd_tuples == 0
+    puts "legerseq not found, return 0"
+    return 0
+  end
+  return res[0]["closetime"]
 end
 
 #{"action":"get_ticker","status":"success","data":[{"id"
@@ -110,6 +132,116 @@ def fill_history_offers(limit=3000)
   end
   conn.close if conn
   
+end
+
+def fill_history_trade(limit=600)
+  #buying_asset_code = base_code, selling_asset_code = asset_code  asset_code_base_code = THB_USD
+  #last_seq = last_update_ledgerseq() 
+  #conn = open_pg("core")
+  conn = open_core_pg()
+  #if last_seq.to_i > 0
+    #puts "last_seq > 0"
+    #res  = conn.exec('SELECT * FROM history_operations WHERE type = 3 AND ledgerseq > ' + last_seq.to_s + ' ORDER BY ledgerseq DESC LIMIT ' + limit.to_s + ";")
+  #else
+    res  = conn.exec('SELECT * FROM txhistory ORDER BY ledgerseq DESC LIMIT ' + limit.to_s + ";")
+  #end
+  asset_pairs = {}
+  res.each do |row|
+    #puts "row: #{row}"
+    hash = {}
+    puts "txid: #{row["txid"]}"
+    #hash["txid"] = row["txid"]
+    puts "ledgerseq: #{row["ledgerseq"]}"
+    #hash["ledgerseq"] = row["ledgerseq"]        
+    #hash["closetime"] = ledgerseq_to_closetime(row["ledgerseq"])
+    closetime = ledgerseq_to_closetime(row["ledgerseq"])
+    puts "closetime: #{closetime}"
+    txb = Utils.envelope_to_hash(row["txbody"])
+    puts "txb: #{txb}"
+    txb["operations"].each do |opb|
+      if txb["operation"].to_s == "manage_offer_op"
+        if opb["amount"] == 0.0
+          hash[opb["op_id"]] = {}
+          hash[opb["op_id"]]["offer_id"] = opb["offer_id"]
+          hash[opb["op_id"]]["amount"] = opb["amount"]
+          hash[opb["op_id"]]["selling_asset_code"] = opb["selling_asset_code"]
+          hash[opb["op_id"]]["buying_asset_code"] = opb["buying_asset_code"]
+          hash[opb["op_id"]]["selling_asset_issuer"] = opb["selling_issuer"]
+          hash[opb["op_id"]]["buying_asset_issuer"] = opb["buing_issuer"]
+        end
+      end
+    end
+    #puts "seqnum: #{txb["seq_num"]}"
+    puts "source_account: #{txb["source_account"]}"
+    txr = Utils.txresult_to_hash(row["txresult"],txb["seq_num"])
+    puts "txr: #{txr}"
+    txr["operations"].each do |opr|
+      puts "txr op_id: #{opr["op_id"]}"
+      opr["offers_claimed"].each do |opc|
+        puts "offer_claim op_id: #{opc["op_id"]}" 
+        puts "seller_id: #{opc["seller_id"]}"
+        if hash[opr["op_id"]].nil?
+          hash[opr["op_id"]] = {}
+        end
+        hash[opc["op_id"]]["seller_id"] = opc["seller_id"]
+        puts "offer_id: #{opc["offer_id"]}"
+        hash[opc["op_id"]]["offer_id"] = opc["offer_id"]
+        puts "sold_asset_code: #{opc["sold_asset_code"]}"
+        hash[opc["op_id"]]["sold_asset_code"] = opc["sold_asset_code"]
+        puts "sold_issuer: #{opc["sold_issuer"]}"
+        hash[opc["op_id"]]["sold_asset_issuer"] = opc["sold_issuer"]
+        puts "amount_sold: #{opc["amount_sold"]}"
+        hash[opc["op_id"]]["amount_sold"] = opc["amount_sold"]
+        puts "bought_asset_code: #{opc["bought_asset_code"]}"
+        hash[opc["op_id"]]["bought_asset_code"] = opc["bought_asset_code"]
+        hash[opc["op_id"]]["asset_pair"] = opc["sold_asset_code"] + "_" + opc["bought_asset_code"]
+        puts "bought_issuer: #{opc["bought_issuer"]}"
+        hash[opc["op_id"]]["bought_asset_issuer"] = opc["bought_issuer"]
+        puts "amount_bought: #{opc["amount_bought"]}"
+        hash[opc["op_id"]]["amount_bought"] = opc["amount_bought"]
+      end 
+      puts "seller_id: #{opr["seller_id"]}"
+      if opr["seller_id"].nil?
+        next
+      end
+      if hash[opr["op_id"]].nil?
+        hash[opr["op_id"]] = {}
+      end
+      hash[opr["op_id"]]["seller_id"] = opr["seller_id"]
+      puts "offer_id: #{opr["offer_id"]}"
+      hash[opr["op_id"]]["offer_id"] = opr["offer_id"]
+      puts "selling_asset_code: #{opr["selling_asset_code"]}"
+      hash[opr["op_id"]]["selling_asset_code"] = opr["selling_asset_code"]
+      puts "selling_issuer: #{opr["selling_issuer"]}"
+      hash[opr["op_id"]]["selling_asset_issuer"] = opr["selling_issuer"]
+      puts "buying_asset_code: #{opr["buying_asset_code"]}"
+      hash[opr["op_id"]]["buying_asset_code"] = opr["buying_asset_code"]
+      hash[opr["op_id"]]["asset_pair"] = opr["selling_asset_code"] + "_" + opr["buying_asset_code"]
+      puts "buying_issuer: #{opr["buying_issuer"]}"
+      hash[opr["op_id"]]["buying_asset_issuer"] = opr["buying_issuer"]
+      puts "amount: #{opr["amount"]}"
+      hash[opr["op_id"]]["amount"] = opr["amount"]
+      puts "price_n: #{opr["price_n"]}"
+      hash[opr["op_id"]]["price_n"] = opr["price_n"]
+      puts "price_d: #{opr["price_d"]}"
+      hash[opr["op_id"]]["price_d"] = opr["price_d"]
+      puts "price: #{opr["price"]}"
+      hash[opr["op_id"]]["price"] = opr["price"]      
+    end    
+    
+    #puts "hash: #{hash}"
+    hash.each do |key, val|
+      #puts "key: #{key}"      
+      val["op_id"] = key
+      val["txid"] = row["txid"]
+      val["ledgerseq"] = row["ledgerseq"]
+      val["source_account"] = txb["source_account"]
+      val["created_at"] = closetime
+      puts "value: #{val}"
+      write_pg("core","history_trade", val)
+    end
+  end
+  conn.close if conn  
 end
 
 def fill_history_sold(limit=3000)
@@ -324,14 +456,6 @@ def op_id_info(tx_id)
   return hash
 end
 
-def write_pg2()
-  conn = open_pg() 
-  conn.exec "INSERT INTO ticker (ask_price, bid_price) VALUES(1.1,2.2)"
-  #con.exec "INSERT INTO films SELECT * FROM tmp_films WHERE date_prod < '2004-05-07';"
-  #con.exec "INSERT INTO films (code, title, did, date_prod, kind) VALUES ('T_601', 'Yojimbo', 106, '1961-06-16', 'Drama');"
-  conn.close if conn
-end
-
 def write_pg_history_offers(hash)
   hash.each do |key, value|
     if value.nil?
@@ -351,7 +475,7 @@ def write_pg_history_offers(hash)
   conn.close if conn
 end
 
-def write_pg(table, hash)
+def write_pg(db,table, hash)
   hash.each do |key, value|
     if value.nil?
       hash[key] = "0"
@@ -365,52 +489,9 @@ def write_pg(table, hash)
   
   query = 'INSERT INTO ' + table + " (" + hash.keys.join(',') + ") VALUES( '" + hash.values.join("','") + "');"
   #puts "query: #{query}"
-  conn = open_pg() 
+  conn = open_pg(db) 
   conn.exec(query)
   conn.close if conn
-end
-
-def find_within(input, marker_start, marker_leader,marker_end="\n")
-  #out = input[/#{marker_start}(.*?)#{marker_lead}/m, 1]
-  out = input.split(marker_start)[-1]
-  out2 = out[/#{marker_leader}(.*?)#{marker_end}/m, 1]
-  puts "out: #{out2}"
-  return out
-end
-
-def split_line(input,marker_start,marker_end="\n")
-  return input[/#{marker_start}(.*?)#{marker_end}/m, 1]
-end
-
-def split_operations(tr) 
- # we had to use this method until we figure out the right way to parse tr_result data
- # some day we should have all the data available to use when done correctly
- # output is an array of hashs that contain broken out tr_results of each transaction (only parts at this point)
- yml = tr.result.to_yaml
- hash = []
- marker = "- !ruby/object:Stellar::OperationResult"
- array = yml.split(marker)
- #puts "array1: #{array[1]}"
- first = true
- position = 0
- array.each do |op|
-   if first
-     #skip first element in array that is not an operation
-     first = false
-   else
-     hash[position] = {}    
-     #offers_claimed = split_line(op,":offers_claimed: ")
-     hash[position]["offer_id"] = split_line(op,":offer_id: ")
-     hash[position]["amount_sold"] = (split_line(op,":amount_sold: ")).to_f/10000000.0
-     hash[position]["amount_bought"] = (split_line(op,":amount_bought: ")).to_f/10000000.0
-     hash[position]["amount"] = (split_line(op,":amount: ")).to_f/10000000.0
-     #hash["price_n"] = find_within(op, ":price: !ruby/object:Stellar::Price", ":n: ")
-     #hash["price_d"] = find_within(op, ":price: !ruby/object:Stellar::Price", ":d: ")
-     position = position + 1
-   end
- end
- puts "op results: #{hash}"
- return hash
 end
 
 def decode_tx_result(b64)
@@ -430,6 +511,8 @@ def create_table_history_offers()
   idx SERIAL,
   timestamp				timestamp	NOT NULL DEFAULT now(),
   asset_pair			TEXT	DEFAULT NULL,
+  price_n				TEXT	DEFAULT NULL,
+  price_d				TEXT	DEFAULT NULL,
   price					TEXT	DEFAULT NULL,
   amount				TEXT	DEFAULT NULL,
   sold_amount			TEXT	DEFAULT NULL,
@@ -447,6 +530,43 @@ def create_table_history_offers()
   buying_asset_code		TEXT	DEFAULT NULL,
   buying_asset_type		TEXT	DEFAULT NULL,
   buying_asset_issuer	TEXT	DEFAULT NULL,
+  updated_at			TEXT	DEFAULT NULL,
+  created_at			TEXT	DEFAULT NULL
+  );'
+end
+
+def create_table_history_trade()
+  #conn = open_pg()
+  conn = open_core_pg()
+  conn.exec 'CREATE TABLE IF NOT EXISTS history_trade(
+  idx SERIAL,
+  timestamp				timestamp	NOT NULL DEFAULT now(),  
+  asset_pair			TEXT	DEFAULT NULL,
+  price_n				TEXT	DEFAULT NULL,
+  price_d				TEXT	DEFAULT NULL,
+  price					TEXT	DEFAULT NULL,
+  amount				TEXT	DEFAULT NULL,
+  selling_asset_code	TEXT	DEFAULT NULL,
+  selling_asset_type	TEXT	DEFAULT NULL,
+  selling_asset_issuer	TEXT	DEFAULT NULL,    
+  buying_asset_code		TEXT	DEFAULT NULL,
+  buying_asset_type		TEXT	DEFAULT NULL,
+  buying_asset_issuer	TEXT	DEFAULT NULL,
+  source_account		TEXT	DEFAULT NULL,
+  ledgerseq				TEXT	DEFAULT NULL,
+  offer_id				TEXT	DEFAULT NULL,
+  transaction_id		TEXT	DEFAULT NULL,
+  txid					TEXT	DEFAULT NULL,
+  op_id					TEXT	DEFAULT NULL,
+  amount_sold			TEXT	DEFAULT NULL,
+  amount_bought			TEXT	DEFAULT NULL, 
+  seller_id 			TEXT	DEFAULT NULL, 
+  sold_asset_code		TEXT	DEFAULT NULL,
+  sold_asset_type		TEXT	DEFAULT NULL,
+  sold_asset_issuer		TEXT	DEFAULT NULL,    
+  bought_asset_code		TEXT	DEFAULT NULL,
+  bought_asset_type		TEXT	DEFAULT NULL,
+  bought_asset_issuer	TEXT	DEFAULT NULL,
   updated_at			TEXT	DEFAULT NULL,
   created_at			TEXT	DEFAULT NULL
   );'
@@ -502,6 +622,10 @@ def create_table()
    conn.close if conn
 end
 
+create_table_history_trade()
+fill_history_trade()
+#puts "closetime: #{ledgerseq_to_closetime(7393451)}"
+exit
 #create_table()
 #write_pg()
 #write_pg_history_offers({"test"=>"this","one"=>"two"})
