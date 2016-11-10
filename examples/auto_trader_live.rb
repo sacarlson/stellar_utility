@@ -40,12 +40,12 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
 
   params = {}
   #params["trade_pairs"] = [["THB","USD",340],["XLM","USD",1000],["XLM","BTC",2000],["BTC","USD",0.001]]
-  params["trade_pairs"] = [["THB","USD",340],["XLM","USD",4000]]
+  params["trade_pairs"] = [["THB","USD",340],["XLM","USD",4000],["BTC","USD",0.001]]
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
   params["trade_peg_pairs"] = [["mBTC","BTC",0.001,"XLM",5],["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
   #params["order_book_pairs"] = [["USD","THB"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
-  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["XLM","mBTC"],["EQD","XLM","GCGEQJR3E5BVMQYSNCHPO6NPP3KOT4VVZHIOLSRSNLE2GFY7EWVSLLTN"]]
+  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["XLM","mBTC"],["BTC","USD"],["EQD","XLM","GCGEQJR3E5BVMQYSNCHPO6NPP3KOT4VVZHIOLSRSNLE2GFY7EWVSLLTN"]]
 
     #this will have to wait for live net
   #params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"]]
@@ -68,9 +68,10 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
   params["profit_margin"]["default"] = 0.5
   params["profit_margin"]["XLM_USD"] = 2.5
   params["profit_margin"]["FUNT_XLM"] = 2.5
-  params["profit_margin"]["BTC_USD"] = 2.5
-  params["profit_margin"]["mBTC_USD"] = 2.5
-  params["profit_margin"]["mBTC_XLM"] = 2.5
+  params["profit_margin"]["BTC_USD"] = 5.0
+  params["profit_margin"]["mBTC_USD"] = 5.0
+  params["profit_margin"]["mBTC_XLM"] = 5.0
+  params["profit_margin"]["BTC_THB"] = 5.0
   params["exchange_feed_key"] = Utils.configs["openexchangerates_key"]  
   params["min_liquid"] = 0
   params["loop_time_sec"] = 3600
@@ -88,7 +89,7 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
   params["trade_on_buy_side"] = true
   params["min_diff_trade_pct"] = 0.10
   #params["min_diff_trade_pct"] = 0.0
-  params["min_diff_margin_mult_trade"] = 0.25
+  params["min_diff_margin_mult_trade"] = 0.1
   #params["min_diff_margin_mult_trade"] = 0.0
   #params["mss_server_url"] = "http://www.funtracker.site:9495"
   params["mss_server_url"] = "http://b.funtracker.site:9495"
@@ -1378,10 +1379,14 @@ def record_ticker(data)
   end
   if data["ask"]["price"].nil? || data["bid"]["price"].nil?
     puts "ask or bid is nill so must be bad data?"
+    puts "ask nil?: #{data["ask"]["price"].nil?}"
+    puts "bid nil?: #{data["bid"]["price"].nil?}"
     return
   end
   if data["ask"]["price"].to_f == 0  && data["bid"]["price"].to_f == 0 
     puts "seems ask bid price are zero so must be bad data feed, will not record"
+    puts "ask price: #{data["ask"]["price"].to_f}"
+    puts "bid price: #{data["bid"]["price"].to_f}"
     return
   end
   if data["base"]["asset_code"] == "XLM" || data["base"]["asset_code"] == "native" || data["base"]["asset_type"] == "native"
@@ -1584,11 +1589,11 @@ def record_order_book(params)
     puts "no bids asks for asset, will not record"
     return nil
   end
-  #puts "input to record_order_book: #{result}"
+  puts "input to record_order_book: #{result}"
   result2 = orderbook_convert_str_to_polo(result)
-  #puts "result2: #{result2}"
+  puts "result2: #{result2}"
   result3 = convert_polo_to_liquid(result2,params["min_liquid"])
-  #puts "recorded to mysql db: #{result3}"
+  puts "recorded to mysql db: #{result3}"
   record_ticker(result3)
 end
 
@@ -1622,6 +1627,7 @@ def record_order_book_set(params)
 end
 
 def record_order_book_list(params)
+   backup_params = params.clone
    params["order_book_pairs"].each { |pair|
       puts "pair: #{pair}"
       params["sell_currency"] = pair[0]
@@ -1636,6 +1642,7 @@ def record_order_book_list(params)
       #params["amount"] = pair[2]
       #puts "params: #{params}"
       record_order_book_set(params)
+      params = backup_params.clone
     }
 end
 
@@ -1720,10 +1727,12 @@ backup_params = params.clone
 delete_offers(params["trader_account"],"all")
 #delete_offers(params["trader_account"], [["XLM", "FUNT"], ["USD", "XLM"]])
 #exit
+# first run we will set min_dif to zero to later set to orig param to start all trades
+params["min_diff_margin_mult_trade"] = 0
 
 while true  do
   puts "top of loop"
- #begin  
+ begin  
   
   #exit
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"XLM",10],["FUNT","THB",40,"THB",10],["mBTC","BTC",0.001,"USD",10]]
@@ -1832,10 +1841,11 @@ while true  do
     params = backup_params.clone
   end
   
- #rescue
-  #puts "something failed on this loop, will delete all orders and will try again later"
+ rescue
+  puts "something failed on this loop, will try again later"
   #delete_offers(params["trader_account"],"all")
- #end
+ end
+  params["min_diff_margin_mult_trade"] = backup_params["min_diff_margin_mult_trade"]
   puts "Time.now: " + Time.now.to_s
   puts "next loop run in: " + params["loop_time_sec"].to_s + " secounds or " + (params["loop_time_sec"]/60/60).to_s + " hour"
   sleep params["loop_time_sec"]
