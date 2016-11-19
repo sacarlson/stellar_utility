@@ -115,7 +115,11 @@ def get_db(query,full=0)
     if result.cmd_tuples == 0
       return nil
     else
-      return result[0]
+      if full == 1
+        return result
+      else
+        return result[0]
+      end
     end
   elsif @configs["mode"] == "horizon"
     puts "no db query for horizon mode error"
@@ -397,7 +401,7 @@ def get_sorted_holdings(params)
   elsif asset == "native"
     query = "SELECT * FROM accounts ORDER BY balance DESC LIMIT 30 OFFSET #{offset}"
   elsif !(issuer.nil?)
-    query = "SELECT * FROM trustlines WHERE assetcode = '#{asset}' AND issuer = #{issuer} ORDER BY balance DESC LIMIT 30 OFFSET #{offset}"
+    query = "SELECT * FROM trustlines WHERE assetcode = '#{asset}' AND issuer = '#{issuer}' ORDER BY balance DESC LIMIT 30 OFFSET #{offset}"
   else
     query = "SELECT * FROM trustlines WHERE assetcode = '#{asset}' ORDER BY balance DESC LIMIT 30 OFFSET #{offset}"
   end
@@ -405,6 +409,7 @@ def get_sorted_holdings(params)
   result = get_db(query,1)  
   index = offset
   result.each do |row|
+    puts "row: #{row}"
     puts "index: #{index}"
     row["index"] = index
     if asset == "native"

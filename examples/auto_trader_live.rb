@@ -27,7 +27,7 @@
 # example #2 buy_currency or base_code of 1 THB we will sell currency_code  USD for 0.0286 USD or 2.8 cents
 #
 #
-# to start app: bundler exec ruby ./auto_trader.rb
+# to start app: bundler exec ruby ./auto_trader_live.rb
 #
 # plan to add GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM for jpy order_book_pair listing
 
@@ -45,7 +45,7 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
   params["trade_peg_pairs"] = [["mBTC","BTC",0.001,"XLM",5],["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
   #params["order_book_pairs"] = [["USD","THB"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
-  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["XLM","mBTC"],["BTC","USD"],["EQD","XLM","GCGEQJR3E5BVMQYSNCHPO6NPP3KOT4VVZHIOLSRSNLE2GFY7EWVSLLTN"]]
+  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["XLM","mBTC"],["BTC","USD"],["EQD","XLM","GCGEQJR3E5BVMQYSNCHPO6NPP3KOT4VVZHIOLSRSNLE2GFY7EWVSLLTN"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"],["CNY","XLM","GAREELUB43IRHWEASCFBLKHURCGMHE5IF6XSE7EXDLACYHGRHM43RFOX"],["BTC","XLM","GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH"]]
 
     #this will have to wait for live net
   #params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"]]

@@ -603,7 +603,10 @@ def read_ticker(params)
   
   if limit.nil?
     #30 days at 1 sample per hour
-    limit = 721
+    # can't use this in ascend mode or it will not output the most recent events so set to 10k instead as default
+    # we will use timestamp_end instead to limit data points
+    # limit = 720
+    limit = 10000
   end
 
   #timestamp_end=0,timestamp_start=0,asset_code="THB", base_asset_code=""
@@ -615,6 +618,7 @@ def read_ticker(params)
 
     if timestamp_end.to_i < 365
       if timestamp_end.to_i > 0
+         puts "timestamp_end here: #{timestamp_end}"
          timestamp_end = timestamp_start.to_i - (timestamp_end.to_i * 24 * 60 * 60)
       end
     end
@@ -634,11 +638,7 @@ def read_ticker(params)
     #  rs = con.query("SELECT * FROM ticker ORDER BY timestamp " + desc_asc + " LIMIT " + limit.to_s )
     #else
       if (!asset_code.nil? && !base_asset_code.nil?)
-        puts "got here"
-        #order acending
-        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `base_asset_code` = '" + base_asset_code + "' AND  `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp " + desc_asc +" LIMIT " + limit.to_s
-        #order decending
-        #query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `base_asset_code` = '" + base_asset_code + "' AND  `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp DESC LIMIT " + limit.to_s
+        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `base_asset_code` = '" + base_asset_code + "' AND  `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp " + desc_asc +" LIMIT " + limit.to_s        
       elsif (!asset_code.nil?)
         query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ") ORDER BY timestamp " + desc_asc +" LIMIT " + limit.to_s
       else
