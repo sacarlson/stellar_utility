@@ -425,6 +425,42 @@ def get_sorted_holdings(params)
   return hash
 end
 
+def get_issuer_list(params)  
+  #this will return a full list of issuers and each of there assets 
+  # posible future addition, if asset is set will return only list of issuers that issue that asset
+  # params is hash example {"assetcode"=>"USD"}
+  # returns hash with list of issuers and each of it's issuerd assets with the number of accounts that have trust set on each
+  
+  if params["assetcode"].nil? 
+    query = "SELECT * FROM trustlines "
+  else
+    assetcode = params["assetcode"]
+    query = "SELECT * FROM trustlines WHERE assetcode = '#{assetcode}' "
+  end
+
+  result = get_db(query,1)  
+ 
+  hash = {"issuers"=>{}}  
+  result.each do |row|
+    puts "row: #{row}"
+   
+    if hash["issuers"][row["issuer"]].nil?
+      hash["issuers"][row["issuer"]] = {}
+      hash["issuers"][row["issuer"]][row["assetcode"]]=1
+    elsif
+      if hash["issuers"][row["issuer"]][row["assetcode"]].nil?
+         hash["issuers"][row["issuer"]][row["assetcode"]] = 1
+      elsif
+         hash["issuers"][row["issuer"]][row["assetcode"]] = hash["issuers"][row["issuer"]][row["assetcode"]] + 1
+      end
+    end
+    
+  end
+  hash["action"] = "get_issuer_list"
+  hash["status"] = "success"
+  return hash
+end
+
 def get_pool_members(params)  
   # this will return a list of the stellar inflation destination pool members and there account details
   # it will later be modified to return a sorted list from top lumens balance pool members on top of list

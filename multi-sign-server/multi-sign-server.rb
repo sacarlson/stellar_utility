@@ -244,6 +244,7 @@ EM.run {
       end  
       puts "payload: #{request_payload}"
  
+     begin
       case request_payload["action"]
       when "create_acc"
         result = mult_sig.add_acc(request_payload)
@@ -319,6 +320,9 @@ EM.run {
         ws.send results.to_json
       when "get_sorted_holdings"
         results = mult_sig.Utils.get_sorted_holdings(request_payload)
+        ws.send results.to_json
+      when "get_issuer_list"
+        results = mult_sig.Utils.get_issuer_list(request_payload)
         ws.send results.to_json
       when "get_pool_members"
         results = mult_sig.Utils.get_pool_members(request_payload)
@@ -433,6 +437,10 @@ EM.run {
         #'error bad action code in json: #{request_payload["action"]}'
         ws.send '{"error":"bad_action_code", "action":"'+request_payload["action"]+'"}'
       end #end case
+     rescue
+        ws.send '{"error":"unknown", "action":"'+request_payload["action"]+'"}'
+     end
+
     }#end ws.onmessage
   end #end EM::WebSocket.run
 
