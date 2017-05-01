@@ -1048,6 +1048,12 @@ def get_set_stellar_core_network()
   if (@configs["default_network"] == "auto") and (@configs["mode"] != "horizon")
     puts "auto network mode active"
     info = get_stellar_core_status(true)
+    if info["info"].nil?
+      puts "stellar-core info returned nil, setting testnet mode"
+      Stellar.default_network = eval("Stellar::Networks::TESTNET")
+      puts "present network setting: #{Stellar.current_network}"
+      return
+    end
     network = info["info"]["network"]
     #puts "network now running: #{network}"
     Stellar.default_network = network

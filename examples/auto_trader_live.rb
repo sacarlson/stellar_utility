@@ -40,12 +40,12 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
 
   params = {}
   #params["trade_pairs"] = [["THB","USD",340],["XLM","USD",1000],["XLM","BTC",2000],["BTC","USD",0.001]]
-  params["trade_pairs"] = [["THB","USD",340],["XLM","USD",4000],["BTC","USD",0.001]]
+  params["trade_pairs"] = [["THB","USD",340],["XLM","USD",4000],["BTC","USD",0.01],["ETH","BTC",2.0,"GDIR44J6EE3SVP4OAOAF7FAJGBXIHELRKHGC3RFAYXDE4I73S6ZNNW2F","GBUYUAI75XXWDZEKLY66CFYKQPET5JR4EENXZBUZ3YXZ7DS56Z4OKOFU"]]
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
   params["trade_peg_pairs"] = [["mBTC","BTC",0.001,"XLM",5],["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
   #params["order_book_pairs"] = [["USD","THB"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
-  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["XLM","mBTC"],["BTC","USD"],["EQD","XLM","GCGEQJR3E5BVMQYSNCHPO6NPP3KOT4VVZHIOLSRSNLE2GFY7EWVSLLTN"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"],["CNY","XLM","GAREELUB43IRHWEASCFBLKHURCGMHE5IF6XSE7EXDLACYHGRHM43RFOX"],["BTC","XLM","GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH"],["PHP","XLM","GBUQWP3BOUZX34TOND2QV7QQ7K7VJTG6VSE7WMLBTMDJLLAW7YKGU6EP"]]
+  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["XLM","mBTC"],["BTC","USD"],["EQD","XLM","GCGEQJR3E5BVMQYSNCHPO6NPP3KOT4VVZHIOLSRSNLE2GFY7EWVSLLTN"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"],["CNY","XLM","GAREELUB43IRHWEASCFBLKHURCGMHE5IF6XSE7EXDLACYHGRHM43RFOX"],["BTC","XLM","GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH"],["PHP","XLM","GBUQWP3BOUZX34TOND2QV7QQ7K7VJTG6VSE7WMLBTMDJLLAW7YKGU6EP"],["ETH","BTC","GDIR44J6EE3SVP4OAOAF7FAJGBXIHELRKHGC3RFAYXDE4I73S6ZNNW2F","GBUYUAI75XXWDZEKLY66CFYKQPET5JR4EENXZBUZ3YXZ7DS56Z4OKOFU"],["EURT","XLM","GAP5LETOV6YIE62YAM56STDANPRDO7ZFDBGSNHJQIYGGKSMOZAHOOS2S"]]
 
     #this will have to wait for live net
   #params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"]]
@@ -72,17 +72,22 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
   params["profit_margin"]["mBTC_USD"] = 5.0
   params["profit_margin"]["mBTC_XLM"] = 5.0
   params["profit_margin"]["BTC_THB"] = 5.0
+  params["profit_margin"]["BTC_ETH"] = 1.0
   params["exchange_feed_key"] = Utils.configs["openexchangerates_key"]  
   params["min_liquid"] = 0
-  params["loop_time_sec"] = 3600
+  params["loop_time_sec"] = 360
+  params["loop_count_threshold"] = 10
+  params["reset_loop_count_threshold"] = false
   #params["loop_time_sec"] = 12
-  params["feed_poloniex"] = ["BTC","XLM","USDT","USD"]
+  params["feed_poloniex"] = ["BTC","XLM","USDT","USD","ETH"]
   params["feed_other"] = ["THB","USD"]
   params["tx_mode"] = true
+
   params["disable_trade"] = false
   params["disable_record_ticker"] = false
   params["disable_record_feed"] = false
   params["disable_delete_offers"] = true
+
   params["disable_trade_peg"] = false
   params["dual_trader"] = false
   params["trade_on_sell_side"] = true
@@ -98,11 +103,19 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
 # presently compares yahoo and openexchange 
 $max_diff = 0.008
 
+#params["loop_count_threshold"] is the number of time loops before trading takes place, this set at 10 means that loop_time_sec * 10 will
+# be required before trading takes place.  This allows changes in the bot_config.yml file to influence changes within a smaller window of time. 
+
+#params["reset_loop_count_threshold"] when set to true will restart the loop_count_threshold to zero and force trades to take place ahead
+# of time, after the reset_loop event the value of this param will be again force set to false in the config file to prevent the next loop reset. 
+
 #trade_pairs and the amount to trade this pair, this array controls what order sets the bot will setup in a group of orders on each loop
 # first currency code is sell_currency also known as the base currency code, second is the currency to buy or counter asset or currency
 #[base_code,currency_code,amount]
 # params["trade_pairs"] = [["USD","THB",100],["BTC","XLM",1]]
 # added options now added in array for changing  params["sell_issuer"] and params["buy_issuer"]:  [sell_asset,buy_asset,amount,sell_issuer,buy_issuer]
+# [sell_currency,buy_currency,amount,sell_issuer,buy_issuer]
+# example: ["ETH","BTC",0.1,"GDIR44J6EE3SVP4OAOAF7FAJGBXIHELRKHGC3RFAYXDE4I73S6ZNNW2F","GBUYUAI75XXWDZEKLY66CFYKQPET5JR4EENXZBUZ3YXZ7DS56Z4OKOFU"]
 
 #order_book_pairs is an asset pair array that is a list of what is recorded in the local mysql database of what is seen on 
 # the orderbook of stellar for these assets at the time. [base_asset,currency]. it records both buy and sell side
@@ -210,6 +223,11 @@ $disable_record_feed = params["disable_record_feed"]
 
 #puts "Utils version: #{Utils.version}"
 #puts "configs: #{Utils.configs}"
+
+#File.open("./bot_config.yml", "w") {|f| f.write(params.to_yaml) }
+params = YAML.load(File.open("./bot_config.yml"))
+puts "params: #{params}"
+
 
 def percent_diff(x,y)
   #return percent difference between two numbers
@@ -1377,6 +1395,7 @@ def record_ticker(data)
     puts "$disable_record set true so no data saved to mysql for record_ticker data."
     return
   end
+  
   if data["ask"]["price"].nil? || data["bid"]["price"].nil?
     puts "ask or bid is nill so must be bad data?"
     puts "ask nil?: #{data["ask"]["price"].nil?}"
@@ -1669,10 +1688,131 @@ def send_tx_array(params,array=nil)
   b64 = tx_all.to_envelope(params["trader_account"]).to_xdr(:base64)
   puts "sending batch of tx"
   result = Utils.send_tx(b64)
+  puts ("sent_tx result: #{result}")  
+  puts ("decoded_error: #{result["decoded_error"]}")
+  puts ("decoded_error.nil?: #{result["decoded_error"].nil?}")
+  if !(result["decoded_error"].nil?)
+    puts "must have error must have cross trade clear offers"
+    delete_offers(params["trader_account"],"all")
+  end
   #rescue
   #  puts "send_tx_array failed,  try again next loop"
   #end
 end
+
+def trade_funtion_loop(params,backup_params)
+  begin  
+    
+  params["next_seq"] = Utils.next_sequence(params["trader_account"])
+
+  result = Utils.get_account_offers_horizon(params["trader_account"])
+  params["offers"] = result["_embedded"]["records"]
+
+  if params["disable_delete_offers"] != true
+    if (result["_embedded"]["records"][0].nil?)
+      puts "no offers to delete, so won't add one to next_seq"
+    else
+      # need next_seq + 1 since we are going to delete before we transact these so delete tx will need the number before this
+      params["next_seq"] = params["next_seq"] + 1
+    end
+  end
+
+  params["traded"] = []
+
+  if params["disable_trade_peg"] != true
+    params["tx_array_in"] = []
+    params["tx_buy_array_in"] = []
+    params["tx_sell_array_in"] = []
+    params["trade_peg_pairs"].each { |pair|
+      params["sell_currency"] = pair[0]
+      params["peg_base_asset"] = pair[1]
+      params["peg_multiple"] = pair[2]
+      params["buy_currency"] = pair[3]      
+      params["amount"] = pair[4]
+      if !pair[5].nil?
+        params["sell_issuer"] = pair[5]
+      end
+      if !pair[6].nil?
+        params["buy_issuer"] = pair[6]
+      end    
+      
+      trade_peg(params)
+    }
+    puts "tx_array_in length #{params["tx_array_in"].length}"
+    puts "tx_array_in[0]: #{params["tx_array_in"][0]}"
+    #puts "params: #{params}"
+    #params = backup_params.clone
+  end
+
+  if params["trade_pairs"].nil? 
+    puts " trade_pairs nil will trade params[sell_currency]  instead (if not also nil)"
+    if !params["sell_currency"].nil?
+      trade_offer_set(params)
+      record_order_book_set(params)
+    end
+  else
+    
+    #params = backup_params.clone
+    #params["tx_array_in"] = []
+    #params["tx_buy_array_in"] = []
+    #params["tx_sell_array_in"] = []
+    params["market_ask_price"] = nil
+
+    params["trade_pairs"].each { |pair|
+      puts "pair: #{pair}"
+      params["sell_currency"] = pair[0]
+      params["buy_currency"] = pair[1]
+      params["amount"] = pair[2]
+      if !pair[3].nil?    
+        params["sell_issuer"] = pair[3]
+      else
+        params["sell_issuer"] = backup_params["sell_issuer"].clone
+      end
+      if !pair[4].nil?
+        params["buy_issuer"] = pair[4]
+      else 
+        params["buy_issuer"] = backup_params["buy_issuer"].clone
+      end
+      #puts "params: #{params}"
+      trade_offer_set(params)
+    }
+
+    puts "traded: #{params["traded"]}"
+
+    if params["tx_mode"] == true
+      puts "tx_array_in length #{params["tx_array_in"].length}"
+      puts "tx_array_in[0]: #{params["tx_array_in"][0]}"
+      if params["dual_trader"] == true
+        if params["disable_delete_offers"] != true
+          puts "delete_offers disabled, nothing done"
+          delete_offers(params["trader_account_buy"], params["traded"])
+          delete_offers(params["trader_account_sell"], params["traded"])
+        end 
+        params["trader_account"] = params["trader_account_sell"]
+        send_tx_array(params,params["tx_sell_array_in"])
+        params["trader_account"] = params["trader_account_buy"]
+        send_tx_array(params,params["tx_buy_array_in"])               
+      else
+        if params["disable_delete_offers"] != true
+          puts "delete_offers disabled, nothing done"
+          delete_offers(params["trader_account"], params["traded"])
+        end        
+        send_tx_array(params)
+      end
+    end
+    params = backup_params.clone
+    puts "params at rec: #{params}"
+    record_order_book_list(params)
+    params = backup_params.clone
+  end
+  
+ rescue
+  puts "something failed on this loop, will try again later"
+  #delete_offers(params["trader_account"],"all")
+ end
+  params["min_diff_margin_mult_trade"] = backup_params["min_diff_margin_mult_trade"]
+end
+
 
 
 #https://poloniex.com/public?command=returnOrderBook&currencyPair=BTC_STR
@@ -1721,14 +1861,54 @@ puts "profit_margin: #{ params["profit_margin"]["default"]}"
 puts "amount: #{params["amount"]}"
 puts "min_liquid: #{params["min_liquid"]}"
 
-
 backup_params = params.clone
+puts "backup_params: #{backup_params}"
+
 #record_order_book_list(params)
 delete_offers(params["trader_account"],"all")
 #delete_offers(params["trader_account"], [["XLM", "FUNT"], ["USD", "XLM"]])
 #exit
 # first run we will set min_dif to zero to later set to orig param to start all trades
 params["min_diff_margin_mult_trade"] = 0
+
+
+#params["loop_count_threshold"] is the number of time loops before trading takes place, this set at 10 means that loop_time_sec * 10 will
+# be required before trading takes place.  This allows changes in the bot_config.yml file to influence changes within a smaller window of time. 
+
+#params["reset_loop_count"] when set to true will restart the loop_count_threshold to zero and force trades to take place ahead
+# of time, after the reset_loop event the value of this param will be again force set to false in the config file to prevent the next loop reset. 
+
+loop_count = 0
+while true  do  
+  puts "top of test loop"
+  if loop_count == 0
+    puts "trading starts now" 
+    trade_funtion_loop(params,backup_params)
+  end
+  puts "Time.now: " + Time.now.to_s
+  puts "next loop in: " + params["loop_time_sec"].to_s + " secounds or " + (params["loop_time_sec"]/60/60).to_s + " hour"
+  puts "loop_count_threshold: #{params["loop_count_threshold"]}"
+  sleep params["loop_time_sec"]
+  params = YAML.load(File.open("./bot_config.yml"))
+  puts "params: #{params}"
+  puts "reset_loop_count: #{params["reset_loop_count"]}"
+  loop_count = loop_count + 1
+  puts "loop_count: #{loop_count}"
+  if loop_count > params["loop_count_threshold"] || params["reset_loop_count"]    
+    loop_count = 0
+    if params["reset_loop_count"] = true
+      params["reset_loop_count"] = false
+      puts "reset_loop_count detected"
+      #save params to yml to fix reset_loop_count value
+      File.open("./bot_config.yml", "w") {|f| f.write(params.to_yaml) }
+      backup_params = params.clone
+      params["min_diff_margin_mult_trade"] = 0
+    end    
+  end
+end
+
+exit
+
 
 while true  do
   puts "top of loop"
