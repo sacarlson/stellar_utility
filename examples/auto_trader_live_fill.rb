@@ -27,40 +27,87 @@
 # example #2 buy_currency or base_code of 1 THB we will sell currency_code  USD for 0.0286 USD or 2.8 cents
 #
 #
-# to start app: bundler exec ruby ./auto_trader_live.rb
+# to start app: bundler exec ruby ./auto_trader_live_fill.rb
 #
-# plan to add GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM for jpy order_book_pair listing
+
 
 require '../lib/stellar_utility/stellar_utility.rb'
 require "mysql"
 
-Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
+Utils = Stellar_utility::Utils.new("./livenet_bot_trade_fill.cfg")
 
 
 
   params = {}
   
-  
+  #trade_pairs is a pair of assets to auto trade with 3 values it's trade asset 1 trade asset 2 and third item is how much to setup trades for in the first items value
   #params["trade_pairs"] = [["THB","USD",340],["XLM","USD",1000],["XLM","BTC",2000],["BTC","USD",0.001]]
-  params["trade_pairs"] = [["THB","USD",6000],["XLM","USD",2000],["INR","USD",2000]]
+  #params["trade_pairs"] = [["THB","USD",6000],["XLM","USD",2000],["INR","USD",2000]]
+  params["trade_pairs"] = [["USD","XLM",0.01],["USD","THB",0.01],["USD","INR",0.01]]
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10],["mBTC","BTC",0.001,"USD",10]]
   #params["trade_peg_pairs"] = [["mBTC","BTC",0.001,"XLM",5],["FUNT","THB",40,"THB",500],["FUNT","THB",40,"XLM",1000],["BTC","BTC",1,"BTC",0.0001,"GBUYUAI75XXWDZEKLY66CFYKQPET5JR4EENXZBUZ3YXZ7DS56Z4OKOFU","GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH"]]
   #params["trade_peg_pairs"] = [["mBTC","BTC",0.001,"XLM",5],["FUNT","THB",40,"XLM",1000],["BTC","BTC",1,"BTC",0.0001,"GBUYUAI75XXWDZEKLY66CFYKQPET5JR4EENXZBUZ3YXZ7DS56Z4OKOFU","GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH"]]
   #params["trade_peg_pairs"] = [["mBTC","BTC",0.001,"XLM",5],["FUNT","THB",40,"XLM",500],["BEER","THB",40,"XLM",0.01,"GDW3CNKSP5AOTDQ2YCKNGC6L65CE4JDX3JS5BV427OB54HCF2J4PUEVG"]]
-  params["trade_peg_pairs"] = [["FUNT","THB",40,"XLM",200],["BEER","THB",40,"XLM",0.01,"GDW3CNKSP5AOTDQ2YCKNGC6L65CE4JDX3JS5BV427OB54HCF2J4PUEVG"]]
+  params["trade_peg_pairs"] = [["FUNT","THB",40,"XLM",0.01]]
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
   #params["order_book_pairs"] = [["USD","THB"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
-  params["order_book_pairs"] = [["USD","THB"],["USD","XLM"],["FUNT","XLM"]]
+  params["order_book_pairs"] = []
 
-    #this will have to wait for live net
-  #params["order_book_pairs"] = [["USD","THB"],["BTC","XLM"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"],["JPY","XLM","GBVAOIACNSB7OVUXJYC5UE2D4YK2F7A24T7EE5YOMN4CE6GCHUTOUQXM"]]
+  # trade_count is the number of fill trades we put on each asset pair on each side buy and sell
+  # this now expanded to new model that has different trade_count for each asset pair
+  #params["trade_count"] = 5
+  params["trade_count"] = {}
+  params["trade_count"]["USD_XLM"] = 4
+  params["trade_count"]["FUNT_XLM"] = 4
+  params["trade_count"]["USD_THB"] = 1
+  params["trade_count"]["USD_INR"] = 1
+  # trade_increment is the distance price between each of the fill trades
+  #if this not defined nil then we use profit margin as increment value
+  # at present this is my prefered method, I stoped development on original profit_margin steps in price
+  # I feel it's more important as a sycalogical perspective to see movements in price in a human readable form of steps when looking at historic data
+  params["trade_increment"] = {}
+  params["trade_increment"]["USD_XLM"] = 0.1 
+  params["trade_increment"]["FUNT_XLM"] = 0.1 
+  params["trade_increment"]["USD_THB"] = 0.1 
+  params["trade_increment"]["USD_INR"] = 0.1 
+  #example with trade_count 2 and trade_increment  0.1 and FUNT_XLM center price of 10 we would have order prices of 9.9, 9.8 on buys and  10.1, 10.2 on sells
+  
+  #trade_decimal_round will round all trades to precision past the decimal point example 2 would return for 1.12345 as trade would become 1.12
+  # we now added individual setting for each asset pair, if not set will pass original trade value will all digits
+  params["trade_decimal_round"] = {}
+  params["trade_decimal_round"]["USD_XLM"] = 2
+  params["trade_decimal_round"]["FUNT_XLM"] = 2
+  params["trade_decimal_round"]["USD_THB"] = 2 
+  params["trade_decimal_round"]["USD_INR"] = 2 
 
-    #GBURK32BMC7XORYES62HDKY7VTA5MO7JYBDH7KTML4EPN4BV2MIRQOVR
+  # new optional amount calculation based on parabola formula  as seen in xls spreadsheet simulation with this quadratic equation
+  # amount_sell = (((sell_price-market_ask_price)**2)*params["scale_parabola"][asset_pair].to_f)+ amount.to_f
+  # if no scale_parabola exists for asset pair then original amount that is set in params above is used in all this groups trades
+ 
+   params["scale_parabola"] = {}
+   params["scale_parabola"]["FUNT_XLM"] = 0.9
+   params["scale_parabola"]["USD_XLM"] = 0.9
+
+  params["trade_increment_mult"] = 1
+  # if trade_increment = 0 then we use trade_increment_mult instead
+  # for trade_increment_mult we will use it as a multiple of the profit margin setting for each progresive trade above and bellow last trade price record   
+  # this method is no longer supported in development see trade_increment instead, we might come back to this at some point if we see a need
+
+  #trade_spread_offset is the percentage from center market price to start filling orders
+  # this adds some space from center price to begin putting in the fill orders
+  # if we use trade_increment we can just set profit_margin to perform this same function, but if if trade_increment for the asset pair is zero then this can take it's place
+  # as noted above this is no longer supported
+  params["trade_spread_offset"] = 0
+
+  #GA4MTVSH2TRB4XBWPLY5ET6SXEQPFXHD6CKX55AFF3Y4FJYGQEUVKY7K
   params["trader_account"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account"])
-    #GBURK32BMC7XORYES62HDKY7VTA5MO7JYBDH7KTML4EPN4BV2MIRQOVR
-  params["trader_account_sell"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account_sell"])
-    #GBURK32BMC7XORYES62HDKY7VTA5MO7JYBDH7KTML4EPN4BV2MIRQOVR
-  params["trader_account_buy"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account_buy"])
+  # temp test account GA4MTVSH2TRB4XBWPLY5ET6SXEQPFXHD6CKX55AFF3Y4FJYGQEUVKY7K (now funded with 100XLM. 10 USD, 10FUNT, 300 THB, ?? INR)
+  #params["trader_account"] = Stellar::KeyPair.from_seed("SBK...")
+
+  #GBURK32BMC7XORYES62HDKY7VTA5MO7JYBDH7KTML4EPN4BV2MIRQOVR
+  #params["trader_account_sell"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account_sell"])
+  #GBURK32BMC7XORYES62HDKY7VTA5MO7JYBDH7KTML4EPN4BV2MIRQOVR
+  #params["trader_account_buy"] = Stellar::KeyPair.from_seed(Utils.configs["trader_account_buy"])
   params["sell_issuer"] = "GBUYUAI75XXWDZEKLY66CFYKQPET5JR4EENXZBUZ3YXZ7DS56Z4OKOFU"
   params["buy_issuer"] = params["sell_issuer"]
 
@@ -72,21 +119,24 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
   params["profit_margin"] = {}
   params["profit_margin"]["default"] = 0.5
   #params["profit_margin"]["XLM_USD"] = 2.5
-  params["profit_margin"]["XLM_USD"] = 2.5
+  params["profit_margin"]["XLM_USD"] = 0.1
   #params["profit_margin"]["FUNT_XLM"] = 2.5
-  params["profit_margin"]["FUNT_XLM"] = 0.5
+  params["profit_margin"]["FUNT_XLM"] = 0.1
   params["profit_margin"]["BEER_XLM"] = 4.0
   params["profit_margin"]["BTC_USD"] = 5.0
   params["profit_margin"]["mBTC_USD"] = 5.0
   params["profit_margin"]["mBTC_XLM"] = 5.0
   params["profit_margin"]["BTC_THB"] = 5.0
   params["profit_margin"]["BTC_ETH"] = 1.0
-  params["profit_margin"]["INR_USD"] = 0.15
-  params["profit_margin"]["THB_USD"] = 0.15
+  params["profit_margin"]["INR_USD"] = 0.05
+  params["profit_margin"]["THB_USD"] = 0.05
+  params["profit_margin"]["USD_THB"] = 0.05
+  params["profit_margin"]["USD_INR"] = 0.05
+  params["profit_margin"]["USD_XLM"] = 0.1
   params["exchange_feed_key"] = Utils.configs["openexchangerates_key"]  
   params["min_liquid"] = 0
   params["loop_time_sec"] = 60
-  # loop time now in minutes (why was it 6 min?) also cut loop time to 30 min instead of 60 min to try faster tradeing
+  # loop time now in minutes (why was it 6 min?) also cut loop time to 30 min instead of 60 min to try faster tradeing loop
   params["loop_count_threshold"] = 30
   params["reset_loop_count_threshold"] = false
   #params["loop_time_sec"] = 12
@@ -94,12 +144,17 @@ Utils = Stellar_utility::Utils.new("./livenet_read_ticker.cfg")
   params["feed_other"] = ["THB","USD","NGN","XOF","INR"]
   params["tx_mode"] = true
 
+  # for fill orders I don't think we need ticker any more.  I'm looking at removing it from all this bot trading as we no longer need to track prices here anymore
+  # we have good trade tracking on the stellar.org network apps now so price tracking here will be removed entirely here soon
   params["disable_trade"] = false
   params["disable_record_ticker"] = true
   params["disable_record_feed"] = false
   params["disable_delete_offers"] = true
 
   params["disable_trade_peg"] = false
+  #i'm not sure I will keep dual_trader in the future.  this allowed to buy and sell with two different accounts.  at present I just use one account for both
+  # I guess the cool think is you can go bankrupt selling or buying but still trade on the other side.  with a single trader if one side goes broke both sides stop trading
+  # as it only requires one failure in a group of opperations in a transaction for them all to fail
   params["dual_trader"] = false
   params["trade_on_sell_side"] = true
   params["trade_on_buy_side"] = true
@@ -237,8 +292,8 @@ $disable_record_feed = params["disable_record_feed"]
 #puts "Utils version: #{Utils.version}"
 #puts "configs: #{Utils.configs}"
 
-File.open("./bot_config.yml", "w") {|f| f.write(params.to_yaml) }
-#params = YAML.load(File.open("./bot_config.yml"))
+File.open("./bot_config_fill.yml", "w") {|f| f.write(params.to_yaml) }
+#params = YAML.load(File.open("./bot_config_fill.yml"))
 puts "params: #{params}"
 
 
@@ -246,6 +301,19 @@ def percent_diff(x,y)
   #return percent difference between two numbers
   # number will always return positive or zero
   return (100*(y.to_f - x.to_f) / x.to_f).abs
+end
+
+
+def send_tx(b64)
+  puts "send_tx"
+  if true
+    puts "#{b64}"
+    return Utils.send_tx(b64)
+  else
+    puts "send_tx disabled"
+    puts "b64"
+    puts "#{b64}"
+  end
 end
 
 
@@ -274,7 +342,10 @@ def trade_offer_set(params)
     # this is so we can collect all the tx and then perform a single transaction on all of them (much faster)
   #params["market_ask_price"] if not nil? will use this value instead of values from get_any_exchangerate
     #begin
+  puts "start trade_offer_set"
   trader_account = params["trader_account"]
+  trade_increment_mult = params["trade_increment_mult"]
+  trade_spread_offset = params["trade_spread_offset"]
   sell_issuer = params["sell_issuer"]
   sell_currency = params["sell_currency"]
   buy_issuer = params["buy_issuer"]
@@ -308,36 +379,34 @@ def trade_offer_set(params)
   end
   # this returns what the last ask price was set on stellar.org network 
   # this already had profit margin added so must remove profit margit to compare to present market_ask_price
-  last_rate = get_funtracker_exchangerate_min(currency_code,base_code).to_f
+  #last_rate = get_funtracker_exchangerate_min(currency_code,base_code).to_f
   #last_real_rate = last_rate - (last_rate * (profit_margin.to_f/100.0)) #no longer needed with mod in get_funt...
-  min_diff = params["min_diff_margin_mult_trade"].to_f * profit_margin.to_f
+  #min_diff = params["min_diff_margin_mult_trade"].to_f * profit_margin.to_f
  
   puts "asset_pair: #{asset_pair}"
   puts "profit_margin: #{profit_margin}"
-  puts "last_rate: #{last_rate}"
-  puts "min_diff_margin_mult: #{params["min_diff_margin_mult_trade"]}"
-  puts "min_diff: #{min_diff}"
-  puts "percent_diff: #{percent_diff(last_rate,market_ask_price)}"
+  #puts "last_rate: #{last_rate}"
+  #puts "min_diff_margin_mult: #{params["min_diff_margin_mult_trade"]}"
+  #puts "min_diff: #{min_diff}"
+  #puts "percent_diff: #{percent_diff(last_rate,market_ask_price)}"
 
-  if min_diff > percent_diff(last_rate,market_ask_price).to_f && min_diff > 0 && last_rate.to_f > 0
-    puts " min_diff > percient_diff so will skip trading this set on this loop"
-    return
-  end
+  #if min_diff > percent_diff(last_rate,market_ask_price).to_f && min_diff > 0 && last_rate.to_f > 0
+  #  puts " min_diff > percient_diff so will skip trading this set on this loop"
+  #  return
+  #end
   params["traded"].push([currency_code,base_code])
-  sell_price = sprintf('%.8f',(market_ask_price + (market_ask_price * (profit_margin.to_f/100.0))))
-  buy_price = sprintf('%.8f',(1/market_ask_price) + ((1/market_ask_price) * (profit_margin.to_f/100.0)))
-  #sell_price = sprintf('%.8f',(market_ask_price - (market_ask_price * (profit_margin.to_f/100.0))))
-  #buy_price = sprintf('%.8f',(1/market_ask_price) - ((1/market_ask_price) * (profit_margin.to_f/100.0)))
-  amount_sell = sprintf('%.8f',amount.to_f)
-  amount_buy = sprintf('%.8f',amount_sell.to_f * sell_price.to_f)
-  #amount_buy = sprintf('%.8f',amount_sell.to_f * buy_price.to_f)
+  sell_price = sprintf('%.7f',(market_ask_price + (market_ask_price * (profit_margin.to_f/100.0))))
+  buy_price = sprintf('%.7f',(1/market_ask_price) + ((1/market_ask_price) * (profit_margin.to_f/100.0)))
+  amount_sell = sprintf('%.7f',amount.to_f)
+  amount_buy = sprintf('%.7f',amount_sell.to_f * sell_price.to_f)
+  
   
   puts "trader_account: #{trader_account.address}"
   puts "profit margin percent: #{profit_margin.to_f}"
   puts "profit margin dec: #{profit_margin.to_f/100.0}"
   puts ""
-  puts "market_ask_price: #{sprintf('%.8f',market_ask_price.to_f)}"
-  puts "margin difference: #{sprintf('%.8f',(market_ask_price.to_f * (profit_margin.to_f/100.0)))}"
+  puts "market_ask_price: #{sprintf('%.7f',market_ask_price.to_f)}"
+  puts "margin difference: #{sprintf('%.7f',(market_ask_price.to_f * (profit_margin.to_f/100.0)))}"
   puts "sell_currency: #{sell_currency}"
   puts "sell_issuer: #{sell_issuer}"
   puts "sell_price.to_s: #{sell_price.to_s}"
@@ -365,28 +434,82 @@ def trade_offer_set(params)
     trader_account_buy = params["trader_account"]
   end
   if params["tx_mode"] == "true" || params["tx_mode"] == true
-     if params["trade_on_sell_side"] == true
-       #offer_id = get_offer_id(sell_issuer,sell_currency, buy_issuer, buy_currency,offers = nil,sellers_account = nil)
-       offer_id = get_offer_id(sell_issuer,sell_currency, buy_issuer, buy_currency,params["offers"])
-       tx1 = send_offer_tx(trader_account_sell, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s,offer_id,params["next_seq"])
-       #params["tx_array_in"].push(tx1)
-       if params["dual_trader"] == true
-         params["tx_sell_array_in"].push(tx1)
-       else
-         puts "push to tx_array_in"
-         params["tx_array_in"].push(tx1)
+     
+       #offer_id = get_offer_id(sell_issuer,sell_currency, buy_issuer, buy_currency,params["offers"])
+       offer_id = ""
+       puts "start first trade_count loop"
+       puts "asset_pair #{asset_pair}"
+       #puts "scale_parabola: #{params["scale_parabola"][asset_pair]}"
+       params["trade_count"][asset_pair].times do |i|
+         puts "market_ask_price: #{market_ask_price}"
+         puts "amount: #{amount.to_f}"
+         if i!=0        
+           if params["trade_increment"][asset_pair].nil?
+             sell_price = sell_price.to_f + ((profit_margin.to_f/100)*sell_price.to_f )
+           else
+             #puts "trade_increment not nil"
+             sell_price = sell_price.to_f + (params["trade_increment"][asset_pair].to_f) 
+           end
+         end
+         if !params["trade_decimal_round"][asset_pair].nil?
+            sell_price = sell_price.to_f.round(params["trade_decimal_round"][asset_pair])
+         end
+         if !params["scale_parabola"][asset_pair].nil?
+           #puts "sell_price-market_ask_price: #{sell_price-market_ask_price}"
+           #puts "**2:  #{(sell_price-market_ask_price)**2}"
+           #puts "scaled: #{((sell_price-market_ask_price)**2)*params["scale_parabola"][asset_pair].to_f}"
+           amount_sell = (((sell_price-market_ask_price)**2)*params["scale_parabola"][asset_pair].to_f)+ amount.to_f
+           #puts "amount_sell: #{amount_sell}   i:#{i}"
+         end 
+         puts "sell_price: #{sell_price} i: #{i}"
+         puts "amount_sell: #{amount_sell}"
+         if params["trade_on_sell_side"] == true
+           tx1 = send_offer_tx(trader_account_sell, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s,offer_id,params["next_seq"])
+         
+           if params["dual_trader"] == true
+             params["tx_sell_array_in"].push(tx1)
+           else
+             #puts "push to tx_array_in"
+             params["tx_array_in"].push(tx1)
+           end
+         end
+       
+
+            
+         #offer_id = get_offer_id(buy_issuer, buy_currency, sell_issuer, sell_currency,params["offers"])
+         offer_id = ""
+      
+         #puts "scale_parabola: #{params["scale_parabola"][asset_pair]}  i:#{i}"
+         if i!=0
+           if params["trade_increment"][asset_pair].nil? 
+             buy_price = buy_price.to_f + ((profit_margin.to_f/100) * buy_price.to_f )
+           else
+             buy_price = 1/((1/buy_price.to_f) - params["trade_increment"][asset_pair].to_f) 
+           end
+         end    
+           
+         if !params["trade_decimal_round"][asset_pair].nil?            
+            buy_price = 1/((1/buy_price.to_f).round(params["trade_decimal_round"][asset_pair]))          
+         end        
+         if !params["scale_parabola"][asset_pair].nil? 
+           # the above amount_sell might work but I can't figure this one out           
+           amount_buy = amount_sell * 1/buy_price
+         end 
+         puts "buy_price: #{buy_price} i: #{i}"
+         puts "buy_priceR: #{1/buy_price.to_f}"
+         puts "amount_buy: #{amount_buy}"
+         puts "amount_buyR: #{amount_buy.to_f/sell_price.to_f}"
+         if params["trade_on_buy_side"] == true  
+           tx2 = send_offer_tx(trader_account_buy, buy_issuer, buy_currency, sell_issuer, sell_currency, amount_buy.to_s, buy_price.to_s,offer_id,params["next_seq"])
+           if params["dual_trader"] == true
+             params["tx_buy_array_in"].push(tx2)
+           else
+             params["tx_array_in"].push(tx2)
+           end           
+         end     
        end
-     end
-     if params["trade_on_buy_side"] == true       
-       offer_id = get_offer_id(buy_issuer, buy_currency, sell_issuer, sell_currency,params["offers"])
-       tx2 = send_offer_tx(trader_account_buy, buy_issuer, buy_currency, sell_issuer, sell_currency, amount_buy.to_s, buy_price.to_s,offer_id,params["next_seq"])
-       if params["dual_trader"] == true
-         params["tx_buy_array_in"].push(tx2)
-       else
-         params["tx_array_in"].push(tx2)
-       end     
-     end     
-     return params["tx_array_in"]
+       
+       return params["tx_array_in"]
   else
     send_offer(trader_account, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s)
 
@@ -486,7 +609,7 @@ def trade_peg(params)
   #params["feed_poloniex"] = ["BTC","XLM","USDT","USD"]
   #params["feed_other"] = ["THB","USD"]
   #params["disable_record_feed"] = true
-  begin 
+  #begin 
 
   if params["disable_trade_peg"] == true
     puts "disable_trade_get set true will not be trading here"
@@ -525,14 +648,14 @@ def trade_peg(params)
     params["trader_account"] = params["trader_account_sell"]
     send_tx_array(params,params["tx_sell_array_in"])              
   else
-    #send_tx_array(params)
+    send_tx_array(params)
   end
 
   return 
 
-  rescue
-    puts "trade_peg failed, better luck next loop"
-  end
+  #rescue
+  #  puts "trade_peg failed, better luck next loop"
+  #end
 end
 
 def check_feedable(currency,base,feed_array)
@@ -569,10 +692,10 @@ def get_any_exchangerate(currency_code, base_code,params)
   timestamp = (Time.now.to_i - 240).to_s
   puts "timestamp: #{timestamp}"
   # check to see if we already collected this data within the last 60 sec (now 240 sec 4 min), if so give us that
-  result = get_mss_server_feed_exchangerate_min(currency_code,base_code,timestamp )
-  if result.to_f > 0
-    return result.to_f
-  end
+  #result = get_mss_server_feed_exchangerate_min(currency_code,base_code,timestamp )
+  #if result.to_f > 0
+  #  return result.to_f
+  #end
   #return the rate of currency_code exchange with base_code 
   # will auto pick needed feed determined by lists in params["feed_poloniex"] and params["feed_other"]
   $disable_record_feed = params["disable_record_feed"]
@@ -1093,7 +1216,8 @@ def send_offer(sellers_account,sell_issuer,sell_currency, buy_issuer, buy_curren
   
   tx = send_offer_tx(sellers_account,sell_issuer,sell_currency, buy_issuer, buy_currency,amount,price,offerid)
   b64 = tx.to_envelope(sellers_account).to_xdr(:base64)
-  result = Utils.send_tx(b64)
+  #result = Utils.send_tx(b64)
+  result = send_tx(b64)
   #puts "send_tx result #{result}"
 end
 
@@ -1250,7 +1374,7 @@ def get_stellar_exchange_liquid(params,min_liquid_shares)
   return result3
 end
 
-
+ $try_count = 4
 def delete_offers(account,delete_sets = "all")
   #if asset_code left blank or nil it will delete all open orders on this account
  begin
@@ -1317,13 +1441,20 @@ def delete_offers(account,delete_sets = "all")
   #  puts "disable_trade is set true will not be trading b"
   #  return
   #end
-  result = Utils.send_tx(b64)
+  #result = Utils.send_tx(b64)
+  result = send_tx(b64)
   return result
  rescue
-   puts "delete_offers send_tx_array or other failed  "
+   puts "delete_offers send_tx_array or other failed, will try again in 30 sec"
+   $try_count = $try_count -1
+   if $try_count == 0
+     puts "delete_offers try_count exeeded, will exit to have admin check why"
+     exit
+   end
+   sleep 30
+   delete_offers(account,delete_sets)
  end
 end
-
 
 
 def orderbook_convert_str_to_polo(str_data_in)
@@ -1776,12 +1907,14 @@ def send_tx_array(params,array=nil)
   end
   b64 = tx_all.to_envelope(params["trader_account"]).to_xdr(:base64)
   puts "sending batch of tx"
-  result = Utils.send_tx(b64)
-  #puts ("sent_tx result: #{result}")  
-  puts ("decoded_error: #{result["decoded_error"]}")
-  puts ("decoded_error.nil?: #{result["decoded_error"].nil?}")
+  #result = Utils.send_tx(b64)
+  result = send_tx(b64)
+  #puts ("sent_tx result: #{result}") 
+      
   if !(result["decoded_error"].nil?)
     puts "must have error must have cross trade clear offers"
+    puts ("decoded_error.nil?: #{result["decoded_error"].nil?}") 
+    puts ("decoded_error: #{result["decoded_error"]}")
     delete_offers(params["trader_account"],"all")
   end
   #rescue
@@ -1790,21 +1923,10 @@ def send_tx_array(params,array=nil)
 end
 
 def trade_funtion_loop(params,backup_params)
-  begin  
+  #begin  
     
   params["next_seq"] = Utils.next_sequence(params["trader_account"])
-
-  result = Utils.get_account_offers_horizon(params["trader_account"])
-  params["offers"] = result["_embedded"]["records"]
-
-  if params["disable_delete_offers"] != true
-    if (result["_embedded"]["records"][0].nil?)
-      puts "no offers to delete, so won't add one to next_seq"
-    else
-      # need next_seq + 1 since we are going to delete before we transact these so delete tx will need the number before this
-      params["next_seq"] = params["next_seq"] + 1
-    end
-  end
+  #params["next_seq"] = 1
 
   params["traded"] = []
 
@@ -1830,8 +1952,7 @@ def trade_funtion_loop(params,backup_params)
     }
     puts "tx_array_in length #{params["tx_array_in"].length}"
     puts "tx_array_in[0]: #{params["tx_array_in"][0]}"
-    #puts "params: #{params}"
-    #params = backup_params.clone
+
   end
 
   if params["trade_pairs"].nil? 
@@ -1885,22 +2006,22 @@ def trade_funtion_loop(params,backup_params)
       else
         if params["disable_delete_offers"] != true
           puts "delete_offers disabled, nothing done"
-          delete_offers(params["trader_account"], params["traded"])
+          #delete_offers(params["trader_account"], params["traded"])
         end        
         send_tx_array(params)
       end
     end
-    params = backup_params.clone
+    #params = backup_params.clone
     #puts "params at rec: #{params}"
-    record_order_book_list(params)
-    params = backup_params.clone
+    #record_order_book_list(params)
+    #params = backup_params.clone
   end
   
- rescue
-  puts "something failed on this loop, will try again later"
+ #rescue
+ # puts "something failed on this loop, will try again later"
   #delete_offers(params["trader_account"],"all")
- end
-  params["min_diff_margin_mult_trade"] = backup_params["min_diff_margin_mult_trade"]
+ #end
+ # params["min_diff_margin_mult_trade"] = backup_params["min_diff_margin_mult_trade"]
 end
 
 
@@ -1952,60 +2073,20 @@ puts "amount: #{params["amount"]}"
 puts "min_liquid: #{params["min_liquid"]}"
 
 backup_params = params.clone
-puts "backup_params: #{backup_params}"
-
-#currency_code = "USD"
-#base_code = "XLM"
-#get_coinbase_exchangerate(currency_code,base_code)
-#puts ""
-#get_poloniex_exchangerate(currency_code,base_code)
-#puts "test complete"
-#exit(0)
-
-#record_order_book_list(params)
-#delete_offers(params["trader_account"],"all")
-#delete_offers(params["trader_account"], [["XLM", "FUNT"], ["USD", "XLM"]])
-#exit
-# first run we will set min_dif to zero to later set to orig param to start all trades
-params["min_diff_margin_mult_trade"] = 0
+#puts "backup_params: #{backup_params}"
 
 
-#params["loop_count_threshold"] is the number of time loops before trading takes place, this set at 10 means that loop_time_sec * 10 will
-# be required before trading takes place.  This allows changes in the bot_config.yml file to influence changes within a smaller window of time. 
 
-#params["reset_loop_count"] when set to true will restart the loop_count_threshold to zero and force trades to take place ahead
-# of time, after the reset_loop event the value of this param will be again force set to false in the config file to prevent the next loop reset. 
 
-loop_count = 0
-while true  do  
-  puts "top of test loop"
-  if loop_count == 0
+
     puts "trading starts now" 
     delete_offers(params["trader_account"],"all")
+    sleep 7
+    puts "start trade_funtcion_loop"
     trade_funtion_loop(params,backup_params)
-  end
-  puts "Time.now: " + Time.now.to_s
-  puts "next loop in: " + params["loop_time_sec"].to_s + " secounds or " + (params["loop_time_sec"]/60/60).to_s + " hour"
-  puts "loop_count_threshold: #{params["loop_count_threshold"]}"
-  sleep params["loop_time_sec"]
-  params = YAML.load(File.open("./bot_config.yml"))
-  #puts "params: #{params}"
-  puts "reset_loop_count: #{params["reset_loop_count"]}"
-  loop_count = loop_count + 1
-  puts "loop_count: #{loop_count}"
-  if loop_count > params["loop_count_threshold"] || params["reset_loop_count"]    
-    loop_count = 0
-    if params["reset_loop_count"] = true
-      params["reset_loop_count"] = false
-      puts "reset_loop_count detected"
-      #save params to yml to fix reset_loop_count value
-      File.open("./bot_config.yml", "w") {|f| f.write(params.to_yaml) }
-      params["tx_array_in"] = []
-      backup_params = params.clone
-      params["min_diff_margin_mult_trade"] = 0
-    end    
-  end
-end
+    puts "trade_function_loop exited"
+
+    
 
 
 

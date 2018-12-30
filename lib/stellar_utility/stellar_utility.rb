@@ -946,7 +946,7 @@ def get_account_offers_horizon(account)
     params = '/accounts/'
     url = @configs["url_horizon"]
     #puts "url_horizon:  #{url}"
-    send = url + params + account + "/offers?limit=30"
+    send = url + params + account + "/offers?limit=50"
     #puts "sending:  #{send}"
     begin
     postdata = RestClient.get send
