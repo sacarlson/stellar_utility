@@ -48,7 +48,7 @@ Utils = Stellar_utility::Utils.new("./livenet_bot_trade_fill.cfg")
   #params["trade_peg_pairs"] = [["mBTC","BTC",0.001,"XLM",5],["FUNT","THB",40,"THB",500],["FUNT","THB",40,"XLM",1000],["BTC","BTC",1,"BTC",0.0001,"GBUYUAI75XXWDZEKLY66CFYKQPET5JR4EENXZBUZ3YXZ7DS56Z4OKOFU","GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH"]]
   #params["trade_peg_pairs"] = [["mBTC","BTC",0.001,"XLM",5],["FUNT","THB",40,"XLM",1000],["BTC","BTC",1,"BTC",0.0001,"GBUYUAI75XXWDZEKLY66CFYKQPET5JR4EENXZBUZ3YXZ7DS56Z4OKOFU","GATEMHCCKCY67ZUCKTROYN24ZYT5GK4EQZ65JJLDHKHRUZI3EUEKMTCH"]]
   #params["trade_peg_pairs"] = [["mBTC","BTC",0.001,"XLM",5],["FUNT","THB",40,"XLM",500],["BEER","THB",40,"XLM",0.01,"GDW3CNKSP5AOTDQ2YCKNGC6L65CE4JDX3JS5BV427OB54HCF2J4PUEVG"]]
-  params["trade_peg_pairs"] = [["FUNT","THB",40,"XLM",0.01]]
+  params["trade_peg_pairs"] = [["FUNT","THB",40,"XLM",0.1]]
   #params["trade_peg_pairs"] = [["FUNT","THB",40,"THB",10],["FUNT","THB",40,"XLM",10]]
   #params["order_book_pairs"] = [["USD","THB"],["BTC","USD"],["USD","XLM"],["FUNT","XLM"],["FUNT","THB"],["mBTC","USD"]]
   params["order_book_pairs"] = []
@@ -58,7 +58,7 @@ Utils = Stellar_utility::Utils.new("./livenet_bot_trade_fill.cfg")
   #params["trade_count"] = 5
   params["trade_count"] = {}
   params["trade_count"]["USD_XLM"] = 4
-  params["trade_count"]["FUNT_XLM"] = 4
+  params["trade_count"]["FUNT_XLM"] = 6
   params["trade_count"]["USD_THB"] = 1
   params["trade_count"]["USD_INR"] = 1
   # trade_increment is the distance price between each of the fill trades
@@ -85,8 +85,14 @@ Utils = Stellar_utility::Utils.new("./livenet_bot_trade_fill.cfg")
   # if no scale_parabola exists for asset pair then original amount that is set in params above is used in all this groups trades
  
    params["scale_parabola"] = {}
-   params["scale_parabola"]["FUNT_XLM"] = 0.9
+   params["scale_parabola"]["FUNT_XLM"] = 200.0
    params["scale_parabola"]["USD_XLM"] = 0.9
+
+
+  # if this value is set then there will be two different scale values used scale_parabola will be used for sell scale_parabola_buy will be the 
+  # value used on the buy side.  if not set then scale_parabola will be used on both buy and sell. this can be used if we have more of one asset to sell then the other
+  params["scale_parabola_buy"] = {}
+  params["scale_parabola_buy"]["FUNT_XLM"] = 100.0
 
   params["trade_increment_mult"] = 1
   # if trade_increment = 0 then we use trade_increment_mult instead
@@ -164,6 +170,10 @@ Utils = Stellar_utility::Utils.new("./livenet_bot_trade_fill.cfg")
   #params["min_diff_margin_mult_trade"] = 0.0
   #params["mss_server_url"] = "http://www.funtracker.site:9495"
   params["mss_server_url"] = "http://b.funtracker.site:9495"
+
+  # last_price is an attempt to not have to lookup the same asset pair more than one time per run 
+  # values for example params["last_price"][asset_pair] or params["last_price"]["USD_XLM"] if seen before will be set at exchange lookup
+  params["last_price"] = {}
 
   puts "trade account: #{params["trader_account"].address}"
 
@@ -440,6 +450,8 @@ def trade_offer_set(params)
        puts "start first trade_count loop"
        puts "asset_pair #{asset_pair}"
        #puts "scale_parabola: #{params["scale_parabola"][asset_pair]}"
+       total_amount_sell = 0
+       total_amount_buy = 0
        params["trade_count"][asset_pair].times do |i|
          puts "market_ask_price: #{market_ask_price}"
          puts "amount: #{amount.to_f}"
@@ -463,6 +475,7 @@ def trade_offer_set(params)
          end 
          puts "sell_price: #{sell_price} i: #{i}"
          puts "amount_sell: #{amount_sell}"
+         total_amount_sell = total_amount_sell.to_f + amount_sell.to_f
          if params["trade_on_sell_side"] == true
            tx1 = send_offer_tx(trader_account_sell, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s,offer_id,params["next_seq"])
          
@@ -492,9 +505,13 @@ def trade_offer_set(params)
             buy_price = 1/((1/buy_price.to_f).round(params["trade_decimal_round"][asset_pair]))          
          end        
          if !params["scale_parabola"][asset_pair].nil? 
-           # the above amount_sell might work but I can't figure this one out           
+           # the above amount_sell might work but I can't figure this one out
+           if !params["scale_parabola_buy"][asset_pair].nil?
+             amount_sell = (((sell_price-market_ask_price)**2)*params["scale_parabola_buy"][asset_pair].to_f)+ amount.to_f
+           end           
            amount_buy = amount_sell * 1/buy_price
-         end 
+         end
+         total_amount_buy = total_amount_buy.to_f + amount_buy.to_f 
          puts "buy_price: #{buy_price} i: #{i}"
          puts "buy_priceR: #{1/buy_price.to_f}"
          puts "amount_buy: #{amount_buy}"
@@ -508,7 +525,8 @@ def trade_offer_set(params)
            end           
          end     
        end
-       
+       puts "total_amount_buy: #{total_amount_buy}"
+       puts "total_amount_sell: #{total_amount_sell}"
        return params["tx_array_in"]
   else
     send_offer(trader_account, sell_issuer, sell_currency, buy_issuer, buy_currency, amount_sell.to_s, sell_price.to_s)
@@ -691,6 +709,12 @@ def get_any_exchangerate(currency_code, base_code,params)
   end
   timestamp = (Time.now.to_i - 240).to_s
   puts "timestamp: #{timestamp}"
+  asset_pair = base_code + "_" + currency_code
+  puts "asset_pair: #{asset_pair}"
+  if !params["last_price"][asset_pair].nil?
+    puts "we already had exchange rate for this asset pair of: #{params["last_price"][asset_pair]}"
+    return params["last_price"][asset_pair]
+  end
   # check to see if we already collected this data within the last 60 sec (now 240 sec 4 min), if so give us that
   #result = get_mss_server_feed_exchangerate_min(currency_code,base_code,timestamp )
   #if result.to_f > 0
@@ -727,6 +751,7 @@ def get_any_exchangerate(currency_code, base_code,params)
     puts "get_exchangerate status OK,  will trade"
   end
   #puts "last_rate: #{$last_rate}"
+  params["last_price"][asset_pair] = result["rate"].to_f
   return result["rate"].to_f
 end
 
