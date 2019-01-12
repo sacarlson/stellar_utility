@@ -32,7 +32,7 @@
 
 
 require '../lib/stellar_utility/stellar_utility.rb'
-require "mysql"
+#require "mysql"
 
 Utils = Stellar_utility::Utils.new("./livenet_bot_trade_fill.cfg")
 
@@ -94,6 +94,17 @@ Utils = Stellar_utility::Utils.new("./livenet_bot_trade_fill.cfg")
   params["scale_parabola_buy"] = {}
   params["scale_parabola_buy"]["FUNT_XLM"] = 100.0
 
+  #scale_to_holdings will set the above scale_parabola values depending on how much of each asset we have to sell times this value
+  # so 0.5 should setup trades on buy and sell side of half of what's available to sell of each asset
+  # if not set (nil) then we go with the values set in scale_parabola above, this value overrides scale_parabola...
+  # at present it's not trading the scale I had hoped but it does change depending on holdings.  you must trail and error to find the aprox values you want to trade to start
+  params["scale_to_holdings"] = {}
+  params["scale_to_holdings"]["FUNT_XLM"] = 0.6
+
+  #example trade pair FUNT_XLM  sell_currency = FUNT buy_currency = XLM 
+  params["scale_to_holdings_buy"] = {} 
+  params["scale_to_holdings_buy"]["FUNT_XLM"] = 0.06
+
   params["trade_increment_mult"] = 1
   # if trade_increment = 0 then we use trade_increment_mult instead
   # for trade_increment_mult we will use it as a multiple of the profit margin setting for each progresive trade above and bellow last trade price record   
@@ -146,7 +157,7 @@ Utils = Stellar_utility::Utils.new("./livenet_bot_trade_fill.cfg")
   params["loop_count_threshold"] = 30
   params["reset_loop_count_threshold"] = false
   #params["loop_time_sec"] = 12
-  params["feed_poloniex"] = ["BTC","XLM","USDT","USD","ETH","XRP"]
+  params["feed_crypto"] = ["BTC","XLM","USDT","USD","ETH","XRP"]
   params["feed_other"] = ["THB","USD","NGN","XOF","INR"]
   params["tx_mode"] = true
 
@@ -156,6 +167,8 @@ Utils = Stellar_utility::Utils.new("./livenet_bot_trade_fill.cfg")
   params["disable_record_ticker"] = true
   params["disable_record_feed"] = false
   params["disable_delete_offers"] = true
+
+  params["disable_send_tx"] = false
 
   params["disable_trade_peg"] = false
   #i'm not sure I will keep dual_trader in the future.  this allowed to buy and sell with two different accounts.  at present I just use one account for both
@@ -169,7 +182,7 @@ Utils = Stellar_utility::Utils.new("./livenet_bot_trade_fill.cfg")
   params["min_diff_margin_mult_trade"] = 0.1
   #params["min_diff_margin_mult_trade"] = 0.0
   #params["mss_server_url"] = "http://www.funtracker.site:9495"
-  params["mss_server_url"] = "http://b.funtracker.site:9495"
+  #params["mss_server_url"] = "http://b.funtracker.site:9495"
 
   # last_price is an attempt to not have to lookup the same asset pair more than one time per run 
   # values for example params["last_price"][asset_pair] or params["last_price"]["USD_XLM"] if seen before will be set at exchange lookup
@@ -178,8 +191,9 @@ Utils = Stellar_utility::Utils.new("./livenet_bot_trade_fill.cfg")
   puts "trade account: #{params["trader_account"].address}"
 
 # max_diff is the max difference bettween two currency api feeds that are compared to verify that data is acurate within reason
-# presently compares yahoo and openexchange 
-$max_diff = 0.008
+# presently compares yahoo and openexchange and now coinbase and polonix 
+#$max_diff = 0.008
+$max_diff = 0.035
 
 #params["loop_count_threshold"] is the number of time loops before trading takes place, this set at 10 means that loop_time_sec * 10 will
 # be required before trading takes place.  This allows changes in the bot_config.yml file to influence changes within a smaller window of time. 
@@ -213,7 +227,7 @@ $max_diff = 0.008
 # [sell_asset,peg_asset,peg_asset_multiple,buy_asset,sell_amount,sell_issuer,buy_issuer]
 #["BTC","BTC",1,BTC,0.01,
 #$mss_server_url is the mss-server we use to get stellar ticker data from at this time
-$mss_server_url = params["mss_server_url"]
+#$mss_server_url = params["mss_server_url"]
 
 # all recorders and trading are now active
 #disable setting up trade orders and canceling/deleting them on stellar.org network for test
@@ -313,6 +327,13 @@ def percent_diff(x,y)
   return (100*(y.to_f - x.to_f) / x.to_f).abs
 end
 
+def split_assetpair(assetpair)
+   array = assetpair.split("_")
+   puts "base_code sell asset: #{array[0]}"
+   puts "currency_code buy asset: #{array[1]}"
+   return array
+end
+
 
 def send_tx(b64)
   puts "send_tx"
@@ -344,7 +365,7 @@ def trade_offer_set(params)
   #params["amount"]
   #params["profit_margin"]
   #params["exchange_feed_key"]
-  #params["feed_poloniex"]
+  #params["feed_crypto"]
   #params["feed_other"]
   #params["min_liquid"]
   #params["tx_array_in"]  ; an empty array or an array of other tx we will add to and return with added tx from this run
@@ -368,6 +389,17 @@ def trade_offer_set(params)
   currency_code = buy_currency
   asset_pair = base_code + "_" + currency_code
   puts "asset_pair #{asset_pair}"
+  #split_assetpair(asset_pair)
+  puts "trader_account: #{trader_account.address}"
+  if !params["scale_to_holdings"][asset_pair].nil?
+    #example trade pair FUNT_XLM  sell_currency = FUNT buy_currency = XLM 
+    sell_currency_bal = Utils.get_lines_balance(trader_account.address,sell_issuer,sell_currency)
+    #sell_currency_bal = 100
+    buy_currency_bal = Utils.get_lines_balance(trader_account.address,buy_issuer,buy_currency)
+    #buy_currency_bal = 100.0
+    puts "sell_currency_bal: #{sell_currency_bal} #{base_code}"
+    puts "buy_currency_bal: #{buy_currency_bal} #{currency_code}"
+  end
   if params["profit_margin"][asset_pair].nil?
     profit_margin = params["profit_margin"]["default"]
   else
@@ -471,7 +503,11 @@ def trade_offer_set(params)
            #puts "**2:  #{(sell_price-market_ask_price)**2}"
            #puts "scaled: #{((sell_price-market_ask_price)**2)*params["scale_parabola"][asset_pair].to_f}"
            amount_sell = (((sell_price-market_ask_price)**2)*params["scale_parabola"][asset_pair].to_f)+ amount.to_f
-           #puts "amount_sell: #{amount_sell}   i:#{i}"
+           puts "amount_sell: #{amount_sell}   i:#{i}"
+         end
+         if !params["scale_to_holdings"][asset_pair].nil?
+           amount_sell = (((sell_price-market_ask_price)**2)*(params["scale_to_holdings"][asset_pair].to_f*sell_currency_bal.to_f))+ amount.to_f
+           puts "amount_sell with scale_to_holdings: #{amount_sell}  of asset: #{sell_currency}"
          end 
          puts "sell_price: #{sell_price} i: #{i}"
          puts "amount_sell: #{amount_sell}"
@@ -505,11 +541,17 @@ def trade_offer_set(params)
             buy_price = 1/((1/buy_price.to_f).round(params["trade_decimal_round"][asset_pair]))          
          end        
          if !params["scale_parabola"][asset_pair].nil? 
-           # the above amount_sell might work but I can't figure this one out
            if !params["scale_parabola_buy"][asset_pair].nil?
              amount_sell = (((sell_price-market_ask_price)**2)*params["scale_parabola_buy"][asset_pair].to_f)+ amount.to_f
            end           
            amount_buy = amount_sell * 1/buy_price
+         end
+
+         if !params["scale_to_holdings_buy"][asset_pair].nil?
+           amount_sell = (((sell_price-market_ask_price)**2)*(params["scale_to_holdings_buy"][asset_pair].to_f)*buy_currency_bal.to_f)+ amount.to_f
+           amount_buy = amount_sell * 1/buy_price
+           puts "amount_buy with scale_to_holdings: #{amount_buy}"
+           puts "amount_buyR: #{amount_sell}"
          end
          total_amount_buy = total_amount_buy.to_f + amount_buy.to_f 
          puts "buy_price: #{buy_price} i: #{i}"
@@ -624,7 +666,7 @@ def trade_peg(params)
   #params["tx_array_in"]  = []; an empty array or an array of other tx we will add to and return with added tx from this run
   #params["tx_mode"] = true  ; don't perform the transaction just return a set to tx in an array [tx1,tx2], default is false
     # this is so we can collect all the tx and then perform a single transaction on all of them (much faster)
-  #params["feed_poloniex"] = ["BTC","XLM","USDT","USD"]
+  #params["feed_crypto"] = ["BTC","XLM","USDT","USD"]
   #params["feed_other"] = ["THB","USD"]
   #params["disable_record_feed"] = true
   #begin 
@@ -721,9 +763,9 @@ def get_any_exchangerate(currency_code, base_code,params)
   #  return result.to_f
   #end
   #return the rate of currency_code exchange with base_code 
-  # will auto pick needed feed determined by lists in params["feed_poloniex"] and params["feed_other"]
+  # will auto pick needed feed determined by lists in params["feed_crypto"] and params["feed_other"]
   $disable_record_feed = params["disable_record_feed"]
-  if check_feedable(currency_code,base_code,params["feed_poloniex"])
+  if check_feedable(currency_code,base_code,params["feed_crypto"])
     #puts "poloniex feed selected"
     puts "coinbase feed selected"
     #result_exch = get_poloniex_exchangerate(currency_code,base_code)
@@ -731,7 +773,9 @@ def get_any_exchangerate(currency_code, base_code,params)
     #result = get_poloniex_exchange_liquid(currency_code,base_code,params["min_liquid"])
     #result = get_poloniex_exchangerate(currency_code,base_code)
      #been having problems with poloniex feed will try coinbase but not sure how accurate coinbase is so add profit margin to 5% also instead of 2.5%
-    result = get_coinbase_exchangerate(currency_code,base_code)
+    #result = get_coinbase_exchangerate(currency_code,base_code)
+    # get_crypto has feed from coinbase and polonix to verify they are close match
+    result = get_crypto_exchangerate(currency_code,base_code)
   else
     if check_feedable(currency_code,base_code,params["feed_other"])
       puts "feed_other: #{params["feed_other"]}"
@@ -782,7 +826,7 @@ def get_exchangerate3(currency_code,base_code,key="")
   #puts "diff: " + diff.to_s
   data_2["diff"] = diff
   #data_2["status"] = "pass"
-  record_feed(data_2)
+  #record_feed(data_2)
   if diff > $max_diff
     data_2["status"] = "fail"
   else
@@ -791,13 +835,47 @@ def get_exchangerate3(currency_code,base_code,key="")
   return data_2
 end
 
+ def get_crypto_exchangerate(currency_code,base_code)
+    #get the best 2 crypto feed prices and verify they are a close match
+    # if rate returned from each is different more than our spec then return 0 and fail status
+    #get_exchangerate result: {"service"=>"coinbase", "status"=>"pass", "rate"=>"0.10735542", "base"=>"XLM", "currency_code"=>"USD", "last_updated"=>1547257829}
+    # preference returned is now polonex due to the 10% spike detected on coinbase the day before that wasn't seen on kraken 
+    # $max_diff was .008
+    result_polo = get_poloniex_exchangerate(currency_code,base_code)
+    result_coinbase = get_coinbase_exchangerate(currency_code,base_code)
+    max_diff = $max_diff
+
+    if result_coinbase["status"] == "fail"
+      result_polo["status"] = "pass1"
+      return result_polo
+    end
+    rat = result_coinbase["rate"].to_f/result_polo["rate"].to_f
+    if rat > 1
+      diff = (rat -1)
+    else
+      diff = (1 - rat)
+    end
+  
+    puts "diff: " + diff.to_s
+    result_polo["diff"] = diff
+    #result_polo["status"] = "pass"
+    if diff > $max_diff
+      result_polo["status"] = "fail"
+      puts "$max_diff rate exeded at: #{diff}"
+    else
+      result_polo["status"] = "pass"      
+    end 
+    result_polo["diff"] = diff
+    return result_polo
+  end
+
 def get_exchangerate(currency_code,base_code,key="")
   # this is used to get fiat currency rates from two sources, checks to verify they are close match with returned status
   # this is not used for crypto price lookups
   # set to default exchange rate feed source
   #  this version disables yahoo feed as it seems yahoo feed is broken at the moment
   data_2 = get_openexchangerates(currency_code,base_code,key)
-  record_feed(data_2)
+  #record_feed(data_2)
   data_2["status"] = "pass"
   return data_2
 end
@@ -877,98 +955,9 @@ def get_currencylayer_exchangerate(currency_code,key)
     return data
 end
 
-def get_funtracker_exchangerate(currency_code,base_code)
-  #this gets the stellar.org exchange rate feed from funtracker.sites mss-server
-  #{"action":"get_ticker_list","asset_pair":"THB_USD"}
-  #curl -X POST b.funtracker.site:9495 -d '{"action":"get_ticker_list","asset_pair":"THB_USD"}'
-  #RestClient.post 'http://b.funtracker.site:9495', '{"action":"get_ticker_list","asset_pair":"THB_USD"}'
-  #{"action":"get_ticker_list","status":"success","asset_pairs":["THB","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","USD","GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF","34.80315"]}
-  #send = "http://b.funtracker.site:9495"
-  send = $mss_server_url
-  post_package = '{"action":"get_ticker_list","asset_pair":"' + base_code + "_" +currency_code + '"}'
-    puts "sending:  #{send}"
-    begin
-      postdata = RestClient.post send , post_package
-    rescue => e
-      puts "fail in get_funtracker_exchangerate at RestClient.get  error: #{e}"
-      data_out = {}
-      data_out["service"] = "funtracker.site"
-      data_out["status"] = "fail"
-      return  data_out
-    end
-    puts "postdata: " + postdata
-    data = JSON.parse(postdata)
-    #data["status"] = "pass"
-    data["service"] = "funtracker.site"
-    return data
-end
 
-def get_mss_server_feed_exchangerate(currency_code,base_code,before_timestamp = 0)
-  #this gets the exchange rate feed data that was last recorded on the mss_server_url
-  # with this we can reduce lookups on our feed services if we need the feed data more than one time in each loop.
-  # with before_timestamp set to value other than 0 will return 0 if no marked data stamped before that time
-  #  wtih this we can enter before_timestamp = (Time.now.to_i - 60).to_s that will return a value of >0 if we have new data less than 60 sec old
-  #{"action":"get_feed_list","asset_pair":"THB_USD"}
-  #curl -X POST b.funtracker.site:9495 -d '{"action":"get_feed_list","asset_pair":"THB_USD"}'
-  #RestClient.post 'http://b.funtracker.site:9495', '{"action":"get_feed_list","asset_pair":"THB_USD"}'
-  #{"action":"get_feed_list","status":"success","asset_pairs":["USD","THB","1475788307","0.028704898146409908","0.028704898146409908"]}
-  #send = "http://b.funtracker.site:9495"
-  send = $mss_server_url
-  
-    post_package = '{"action":"get_feed_list","asset_pair":"' + base_code + "_" +currency_code + '"}'
 
-    puts "sending:  #{send}"
-    begin
-      postdata = RestClient.post send , post_package
-    rescue => e
-      puts "fail in get_funtracker_exchangerate at RestClient.get  error: #{e}"
-      data_out = {}
-      data_out["service"] = "mss_server"
-      data_out["status"] = "fail"
-      return  data_out
-    end
-    puts "postdata: " + postdata
-    data = JSON.parse(postdata)
-    if data["asset_pairs"].nil?
-      data["asset_pairs"] = []
-      data["status"] = "fail"
-      data["asset_pairs"][3] = 0
-      data["asset_pairs"][4] = 0
-      return data
-    end
-    puts "json: #{data}"
-    if data["asset_pairs"][2].to_i < before_timestamp.to_i && before_timestamp.to_i > 0
-     data["status"] = "fail"
-     data["asset_pairs"][3] = 0
-     data["asset_pairs"][4] = 0
-     return data
-   end
-    #data["status"] = "pass"
-    data["service"] = "mss_server"
-    return data
-end
 
-def get_mss_server_feed_exchangerate_min(currency_code,base_code,before_timestamp = 0)
-  #min returns just last bid price,  if bad data status returns 0
-  result = get_mss_server_feed_exchangerate(currency_code,base_code,before_timestamp)
-  if result["status"] == "error" || result["status"] == "fail" || result["asset_pairs"].nil?
-   return 0
-  else
-   return result["asset_pairs"][4]
-  end 
-end
-
-  def get_funtracker_exchangerate_min(currency_code,base_code)
-    result = get_funtracker_exchangerate(currency_code,base_code)
-    if result["status"] == "error" || result["status"] == "fail" || result["asset_pairs"].nil?
-     return 0
-    else
-     #averge bid ask price to return center bettween them
-     avg =  (result["asset_pairs"][4].to_f + result["asset_pairs"][5].to_f)/2.0
-     #return result["asset_pairs"][4] ; was just returning ask
-     return avg
-    end 
-  end
 
 def get_coinbase_exchangerate(currency_code,base_code)
   #note at present this only works with base_code = USD or BTC or must have USD or BTC as currency_code
@@ -1111,7 +1100,7 @@ def get_poloniex_exchangerate(currency_code,base_code)
   data_ret["currency_code"] = currency_code
   data_ret["datetime"] = Time.now.to_s
   puts "data_ret: #{data_ret}"
-  record_feed(data_ret)
+  #record_feed(data_ret)
   return data_ret
 end
 
@@ -1379,11 +1368,8 @@ def get_poloniex_exchange_liquid(currency_code,base_code,min_liquid)
   to_record_feed["rate"] = result_lqd["ask"]["price"]
   to_record_feed["ask"] = result_lqd["ask"]["price"]
   to_record_feed["bid"] = result_lqd["bid"]["price"]
-  to_record_feed["service"] = "poloniex.com"
-  #to_record_feed["timestamp"] = Time.now.to_i
+  to_record_feed["service"] = "poloniex.com" 
   to_record_feed["datetime"] = Time.now.to_s
-  #puts "to_record_feed: #{to_record_feed}"
-  record_feed(to_record_feed)
   return to_record_feed
 end 
 
@@ -1532,383 +1518,13 @@ def orderbook_convert_str_to_polo(str_data_in)
   
 end
 
-def read_ticker()
-  # read_ticker(params)
-  # all values are in params for example params["timestamp_start"]
-  #if timestamp_end = 0 or default undefined that is also seen as start of now() to the end of time or max number or record pulls in the past
-  #if timestamp_start = 0 or default undefined that is seen as start of Now() start time is present
-  # if timestamp_end is less than 365 then the value is looked at as days back from timestamp_start - 24 hours/day
-  # you can specify a start and stop range of timestamps on each that is in standard int seconds since Jan 01 1970. (UTC) if timestamp_end > 365
-  # if asset_code is left blank default, we will return all asset_codes that have been recorded on the server
-  # if you enter an asset_code with base_asset_code left blank, it will return all ask, bids on all matches of asset_code
-  # with all other base_asset_code pairs found and returned.
-  # if both asset_code and base_asset_code are entered, of course they must both match to be returned in query
-  # in the return data the asset_code = counter_asset_code and base_asset_code = base_asset_code, sorry that's just how it ended up
-  # I might consider rename of counter_asset_code to just asset_code in return at some point but not today
-  params = {}
-  timestamp_end = params["timestamp_end"]
-  timestamp_start = params["timestamp_start"]
-  asset_code = params["asset_code"]
-  asset_code_issuer = params["asset_issuer"]
-  base_asset_code = params["base_asset_code"]
-  base_asset_issuer = params["base_asset_issuer"]
 
-  #timestamp_end=0,timestamp_start=0,asset_code="THB", base_asset_code=""
-
-  begin
-    if timestamp_start == 0
-      timestamp_start = Time.now.to_i
-    end
-
-    if timestamp_end < 365
-      if timestamp_end > 0
-         timestamp_end = timestamp_start - (timestamp_end * 24 * 60 * 60)
-      end
-    end
-
-    #puts "timestamp_start: #{timestamp_start}"
-    #puts "timestamp_end:  #{timestamp_end}"
-  
-    con = Mysql.new(Utils.configs["mysql_host"], Utils.configs["mysql_user"],Utils.configs["mysql_password"], Utils.configs["mysql_db"])
- 
-    if timestamp_end == 0
-      rs = con.query("SELECT * FROM ticker")
-    else
-      if (asset_code.length > 0 && base_asset_code.length > 0)
-        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `base_asset_code` = '" + base_asset_code + "' AND  `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ")"
-      elsif (asset_code.length > 0)
-        query_string = "SELECT * FROM ticker WHERE `counter_asset_code` = '" + asset_code + "' AND `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ")"
-      else
-        query_string = "SELECT * FROM ticker WHERE `timestamp` BETWEEN FROM_UNIXTIME(" + timestamp_end.to_s + ") AND FROM_UNIXTIME(" + timestamp_start.to_s + ")"
-      end
-      #puts "query_string: #{query_string}" 
-      rs = con.query(query_string)
-    end
-
-    n_rows = rs.num_rows    
-    #puts "There are #{n_rows} rows in the result set"
-
-    array = []
-    n_rows.times do
-        #puts rs.fetch_row.join("\s")
-        #puts "fetch_row: #{rs.fetch_hash}"
-        row["timestamp"] = row["timestamp"].to_time.to_i.to_s
-        #puts "row[timestamp]: #{row["timestamp"].to_time.to_i}"
-        array.push(row)
-        #array.push(rs.fetch_hash)
-    end
-
-    #puts "array: #{array}"
- 
-  rescue Mysql::Error => e
-    puts e.errno
-    puts e.error
-    
-  ensure
-    con.close if con
-  end
-
-end
-
-
-def record_ticker(data)
-  # record_ticker(data)
-  # This will be writen to allow modifications to the data hash contents without need to modify the mysql sql part of this code.
-  # it will parse the values in the data hash and create the needed sql create insert into the mysql database
-  # it will only iterate one level into the data hash at this time with added pre data to add Time.now and timestamp on each entry
-  # data hash seen for the first time will insert fields and will modify the mysql table on the fly if later data format changes
-  # also note if the contents of the first level hash are not a hash in a hash it will be ignored and not added to the table at this time
-  #
-  # this will take a data_hash formated output from our convert_polo_to_liquid(data_hash_in)
-  # that can get feeds from several different sources
-  # that come in looking like this if from polo:
-  # {"ask"=>{"price"=>"0.00000383", "volume"=>"578679.19417415", "avg_price"=>"0.00000383", "offer_count"=>3, "total_volume"=>"10683552.18423253", "total_avg_price"=>"0.00000408", "total_offers"=>50}, "bid"=>{"price"=>"0.00000372", "volume"=>"333182.73763676", "avg_price"=>"0.00000372", "offer_count"=>2, "total_volume"=>"18066738.30346057", "total_avg_price"=>"0.00000341", "total_offers"=>50}}
-  #   to be compatible with the stallar.org feed you would have to manually add base and counter to this feeds data object
-  #
-  # or this if from stellar exchange (note added asset_code and asset_issuer info if from this source):
-  # {"ask"=>{"price"=>"35.66433570", "volume"=>"5.84460000", "avg_price"=>"35.60209427", "offer_count"=>2, "total_volume"=>"5.84460000", "total_avg_price"=>"35.60209427", "total_offers"=>2}, "bid"=>{"price"=>"34.27944600", "volume"=>"100.00000000", "avg_price"=>"34.27944600", "offer_count"=>1, "total_volume"=>"200.00000000", "total_avg_price"=>"34.21972575", "total_offers"=>2}, "base"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"USD", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "counter"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"THB", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}}
-
-  # this data will then be writen to a mysql database that will later be used in stellar.org custom api data feeds from the mss-server
-  # or can be read with read_ticker() function.
-  #data = {"ask"=>{"price"=>"35.66433570", "volume"=>"0.0", "avg_price"=>"35.60209427", "offer_count"=>2, "total_volume"=>0, "total_avg_price"=>"35.60209427", "total_offers"=>2}, "bid"=>{"price"=>"34.27944600", "volume"=>"100.00000000", "avg_price"=>"34.27944600", "offer_count"=>1, "total_volume"=>"200.00000000", "total_avg_price"=>"34.21972575", "total_offers"=>2}, "base"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"USD", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "counter"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"THB", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "array"=>[1,2,3,4]}
-
-  puts "record_ticker start"
-  #puts "data keys: #{data.keys}"
-  #puts "data: #{data}"
-
-  if $disable_record
-    puts "$disable_record set true so no data saved to mysql for record_ticker data."
-    return
-  end
-  
-  if data["ask"]["price"].nil? || data["bid"]["price"].nil?
-    puts "ask or bid is nill so must be bad data?"
-    puts "ask nil?: #{data["ask"]["price"].nil?}"
-    puts "bid nil?: #{data["bid"]["price"].nil?}"
-    return
-  end
-  if data["ask"]["price"].to_f == 0  && data["bid"]["price"].to_f == 0 
-    puts "seems ask bid price are zero so must be bad data feed, will not record"
-    puts "ask price: #{data["ask"]["price"].to_f}"
-    puts "bid price: #{data["bid"]["price"].to_f}"
-    return
-  end
-  if data["base"]["asset_code"] == "XLM" || data["base"]["asset_code"] == "native" || data["base"]["asset_type"] == "native"
-    data["base"]["asset_issuer"] = "..."
-  end
-  if data["counter"]["asset_code"] == "XLM" || data["base"]["asset_code"] == "native" || data["counter"]["asset_type"] == "native"
-    data["counter"]["asset_issuer"] = "..."
-  end
-  #puts "data: #{data}"
-  begin
-    con = Mysql.new(Utils.configs["mysql_host"], Utils.configs["mysql_user"],Utils.configs["mysql_password"], Utils.configs["mysql_db"])
-    field_string = 'datetime'
-    value_string = "'" + Time.now.to_s + "'"   
-    prep_value = '?'
-    #prep_value = '?,?,?...'
-    start_sql = 'insert into ticker ('
-    mid_sql = ') values ('
-    end_sql = ')' 
-    create_table_string = "CREATE TABLE IF NOT EXISTS `ticker` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `datetime` text NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)"
-    data.each do |key, array|
-      #puts "key: #{key}"
-      #puts "array: #{array}"
-      #puts " respond_to?(:each)  #{data[key].respond_to?(:each)}"
-      #puts " respond_to?(:keys):  #{data[key].respond_to?(:keys)}"
-      if data[key].respond_to?(:keys)
-        data[key].each do |key2, array2|
-          #puts "sub key: #{key2}"
-          #puts "sub array: #{array2}"
-          #puts " planed mysql field name: #{key + "_"+key2}"
-          #puts " planed mysql field value: #{data[key][key2]}"
-          field_string = field_string + "," + key + "_" + key2 
-          value_string = value_string + "," +data[key][key2].to_s
-          prep_value = prep_value + ",?"
-          if (true if Float(data[key][key2]) rescue false)         
-            #puts "type double"
-            type = "double NOT NULL"
-          else
-            #puts "type text"
-            type = "text NOT NULL"
-          end
-          create_table_string = create_table_string + ",`" + key + "_" + key2 + "` " + type
-        end
-      end    
-    end
-    create_table_string = create_table_string + ")"
-    #puts "field_string: #{field_string}"
-    #puts "value_string: #{value_string}"
-    #puts "prep_value: #{prep_value}"
-    #puts "create_table_string:  #{create_table_string}"
-   
-    sql = start_sql + field_string + mid_sql + prep_value + end_sql
-    #puts " sql: #{sql}"
-    con.query(create_table_string)
-    pst = con.prepare(sql)
-    array_execute = value_string.split(',')
-    # puts "array_execute: #{array_execute}"
-    pst.execute(*array_execute)
-       
-  rescue Mysql::Error => e
-    puts e.errno
-    puts e.error
-    
-  ensure
-    con.close if con
-    pst.close if pst
-  end
-
-end
-
-def record_feed(data)
-  # record_feed(data)
-  # This will be writen to allow modifications to the data hash contents without need to modify the mysql sql part of this code.
-  # it will parse the values in the data hash and create the needed sql create insert into the mysql database
-  # it will only iterate one level into the data hash at this time with added pre data to add Time.now and timestamp on each entry
-  # data hash seen for the first time will insert fields and will modify the mysql table on the fly if later data format changes
-  # also note if the contents of the first level hash are not a hash in a hash it will be ignored and not added to the table at this time
-  #
-  # this will take a data_hash formated output from our currency api data feeds in stellar exchange format seen bellow
-  # and record it into a table of mysql
-  # the data we can get from feeds from several different sources
-  # that come in looking like this if from polo:
-  # {"ask"=>{"price"=>"0.00000383", "volume"=>"578679.19417415", "avg_price"=>"0.00000383", "offer_count"=>3, "total_volume"=>"10683552.18423253", "total_avg_price"=>"0.00000408", "total_offers"=>50}, "bid"=>{"price"=>"0.00000372", "volume"=>"333182.73763676", "avg_price"=>"0.00000372", "offer_count"=>2, "total_volume"=>"18066738.30346057", "total_avg_price"=>"0.00000341", "total_offers"=>50}}
-  #   to be compatible with the stallar.org feed you would have to manually add base and counter to this feeds data object
-  #
-  # or this if from stellar exchange (note added asset_code and asset_issuer info if from this source):
-  # {"ask"=>{"price"=>"35.66433570", "volume"=>"5.84460000", "avg_price"=>"35.60209427", "offer_count"=>2, "total_volume"=>"5.84460000", "total_avg_price"=>"35.60209427", "total_offers"=>2}, "bid"=>{"price"=>"34.27944600", "volume"=>"100.00000000", "avg_price"=>"34.27944600", "offer_count"=>1, "total_volume"=>"200.00000000", "total_avg_price"=>"34.21972575", "total_offers"=>2}, "base"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"USD", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "counter"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"THB", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}}
-  # we will also add a feed name in the json object to ID the data source.
-
-  # this data will then be writen to a mysql database that will later may be used into stellar.org custom api data feeds from the mss-server
-  # or can be read with the read_feed() function.
-  #data = {"ask"=>{"price"=>"35.66433570", "volume"=>"0.0", "avg_price"=>"35.60209427", "offer_count"=>2, "total_volume"=>0, "total_avg_price"=>"35.60209427", "total_offers"=>2}, "bid"=>{"price"=>"34.27944600", "volume"=>"100.00000000", "avg_price"=>"34.27944600", "offer_count"=>1, "total_volume"=>"200.00000000", "total_avg_price"=>"34.21972575", "total_offers"=>2}, "base"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"USD", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "counter"=>{"asset_type"=>"credit_alphanum4", "asset_code"=>"THB", "asset_issuer"=>"GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"}, "array"=>[1,2,3,4]}
-
-  puts "record_feed start"
-  #puts "data: #{data.keys}"
-   
-  begin
-    con = Mysql.new(Utils.configs["mysql_host"], Utils.configs["mysql_user"],Utils.configs["mysql_password"], Utils.configs["mysql_db"])
-    field_string = 'datetime'
-    value_string = "'" + Time.now.to_s + "'"   
-    prep_value = '?'
-    #prep_value = '?,?,?...'
-    start_sql = 'insert into feed ('
-    mid_sql = ') values ('
-    end_sql = ')' 
-    create_table_string = "CREATE TABLE IF NOT EXISTS `feed` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `datetime` text NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)"
-    data.each do |key, array|
-      #puts "key: #{key}"
-      #puts "array: #{array}"
-      #puts " respond_to?(:each)  #{data[key].respond_to?(:each)}"
-      #puts " respond_to?(:keys):  #{data[key].respond_to?(:keys)}"
-      #puts " respond_to?(:to_str) #{data[key].respond_to?(:to_str)}"
-      #puts " check_float(data) : #{check_float(data[key])}"
-      if key=="datetime"
-        key_db = "datetime_feed"
-      elsif
-        key_db = key
-      end
-      if check_float(data[key])        
-        type = "double NOT NULL"
-        create_table_string = create_table_string + ",`" + key_db  + "` " + type
-        prep_value = prep_value + ",?"
-        field_string = field_string + "," + key_db  
-        value_string = value_string + "," +data[key].to_s
-      elsif data[key].respond_to?(:to_str)
-        type = "text NOT NULL"
-        create_table_string = create_table_string + ",`" + key_db  + "` " + type
-        prep_value = prep_value + ",?"
-        field_string = field_string + "," + key_db  
-        value_string = value_string + "," + "'" + data[key].to_s + "'"
-      elsif data[key].respond_to?(:keys)
-        data[key].each do |key2, array2|
-          #puts "sub key: #{key2}"
-          #puts "sub array: #{array2}"
-          #puts " planed mysql field name: #{key + "_"+key2}"
-          #puts " planed mysql field value: #{data[key][key2]}"
-          field_string = field_string + "," + key + "_" + key2 
-          value_string = value_string + "," +data[key][key2].to_s
-          prep_value = prep_value + ",?"
-          if (true if Float(data[key][key2]) rescue false)         
-            #puts "type double"
-            type = "double NOT NULL"
-          else
-            #puts "type text"
-            type = "text NOT NULL"
-          end
-          create_table_string = create_table_string + ",`" + key + "_" + key2 + "` " + type
-        end
-      end    
-    end
-    create_table_string = create_table_string + ")"
-    #puts "field_string: #{field_string}"
-    #puts "value_string: #{value_string}"
-    #puts "prep_value: #{prep_value}"
-    #puts "create_table_string:  #{create_table_string}"
-   
-    sql = start_sql + field_string + mid_sql + prep_value + end_sql
-    #puts " sql: #{sql}"
-    if $disable_record_feed
-      puts "$disable_record_feed set true so no data saved to mysql for record_feed data."
-      return
-    end
-    con.query(create_table_string)
-    pst = con.prepare(sql)
-    array_execute = value_string.split(',')
-    pst.execute(*array_execute)
-       
-  rescue Mysql::Error => e
-    puts e.errno
-    puts e.error
-    
-  ensure
-    con.close if con
-    pst.close if pst
-  end
-
-end
 
 def check_float(data)
   return true if Float(data) rescue false
 end
 
-def record_order_book(params)
-  #params["sell_asset"] = "USD"
-  #params["sell_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
-  #params["buy_asset_type"] = "native"
-  #params["buy_asset"] = "THB"
-  #params["buy_issuer"] = "GAX4CUJEOUA27MDHTLSQCFRGQPEXCC6GMO2P2TZCG7IEBZIEGPOD6HKF"
-  #params["min_liquid"] = 0
-  #puts "book_horizon params: #{params}"
-  result = Utils.get_order_book_horizon(params)
-  if result["bids"].nil? && result["asks"].nil?
-    puts "no bids asks for asset, will not record"
-    return nil
-  end
-  #puts "input to record_order_book: #{result}"
-  result2 = orderbook_convert_str_to_polo(result)
-  #puts "result2: #{result2}"
-  result3 = convert_polo_to_liquid(result2,params["min_liquid"])
-  #puts "recorded to mysql db: #{result3}"
-  record_ticker(result3)
-end
 
-def record_order_book_set(params)
-  puts "record_order_book_set start"
-  params_rec = {}
-  params_rec["min_liquid"] = params["min_liquid"]
-  params_rec["sell_asset"] =   params["sell_currency"]
-  params_rec["sell_issuer"] =  params["sell_issuer"]
-  params_rec["buy_asset"] =   params["buy_currency"]
-  params_rec["buy_issuer"] =  params["buy_issuer"]
-  #puts "params A: #{params_rec}"
-  #puts "record data"
-  #begin
-    record_order_book(params_rec)
-  #rescue
-   # puts " record_order_book failed not sure why, check mysql user and passwords"
-  #end
-
-  params_rec["sell_asset"] =   params["buy_currency"]
-  params_rec["sell_issuer"] =  params["buy_issuer"]
-  params_rec["buy_asset"] =   params["sell_currency"]
-  params_rec["buy_issuer"] =  params["sell_issuer"]
-  #puts "params B: #{params_rec}"
-  #puts "record data"
-  #begin
-    record_order_book(params_rec)
-  #rescue
-   # puts " record_order_book failed not sure why, check mysql user and passwords"
-  #end
-end
-
-def record_order_book_list(params)
-   backup_params = params.clone
-   params["order_book_pairs"].each { |pair|
-      puts "pair: #{pair}"
-      params["sell_currency"] = pair[0]
-      params["buy_currency"] = pair[1]
-      if !pair[2].nil?    
-        params["sell_issuer"] = pair[2]
-        params["buy_issuer"] = pair[2]
-      end
-      if !pair[3].nil?
-        params["buy_issuer"] = pair[3]
-      end
-      #params["amount"] = pair[2]
-      #puts "params: #{params}"
-      record_order_book_set(params)
-      params = backup_params.clone
-    }
-end
 
 def send_tx_array(params,array=nil)
   puts "send_tx_array"
@@ -1933,7 +1549,13 @@ def send_tx_array(params,array=nil)
   b64 = tx_all.to_envelope(params["trader_account"]).to_xdr(:base64)
   puts "sending batch of tx"
   #result = Utils.send_tx(b64)
-  result = send_tx(b64)
+  if !params["disable_send_tx"]
+    result = send_tx(b64)
+  else
+    puts "disable_send_tx set true, not sending b64"
+    puts "b64: #{b64}"
+    return
+  end
   #puts ("sent_tx result: #{result}") 
       
   if !(result["decoded_error"].nil?)
@@ -2071,7 +1693,7 @@ end
   #params["exchange_feed_key"] = Utils.configs["openexchangerates_key"]  
   #params["min_liquid"] = 0
   #params["loop_time_sec"] = 3600
-  #params["feed_poloniex"] = ["BTC","XLM"]
+  #params["feed_crypto"] = ["BTC","XLM"]
   #params["feed_other"] = ["THB","USD"]
   #params["trade_single_side_pair"] = false  ; not supported yet
   #params["tx_mode"] = true  ; is set true will run all transactions pairs as a single transaction , default is false
@@ -2105,17 +1727,16 @@ backup_params = params.clone
 
 
     puts "trading starts now" 
-    delete_offers(params["trader_account"],"all")
-    sleep 7
+    if !params["disable_send_tx"]
+      delete_offers(params["trader_account"],"all")
+      sleep 6
+    end
     puts "start trade_funtcion_loop"
     trade_funtion_loop(params,backup_params)
     puts "trade_function_loop exited"
 
-    
-
-
-
-
-
-
+   currency_code = "USD"
+   base_code = "XLM"      
+   #puts "get_any: #{ get_any_exchangerate(currency_code, base_code,params)}"
+   #puts "get_crypto: #{get_crypto_exchangerate(currency_code,base_code)}"
 

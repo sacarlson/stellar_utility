@@ -1156,12 +1156,17 @@ end
 def get_lines_balance_horizon(account,issuer,currency)
   #will only work on go-horizon
   data = get_account_info_horizon(account)
+  #puts "get_lines data: #{data}"
+  if currency == "XLM"
+    currency = "native"
+  end
   if data["balances"]==nil
     return 0
   end
   data["balances"].each{ |row|
-    if row["asset_code"] == currency
-      if row["issuer"] == issuer
+    #puts " row: #{row}"
+    if row["asset_code"] == currency || row["asset_type"] == currency
+      if row["asset_issuer"] == issuer || row["asset_type"] == "native"
         return row["balance"]
       end
     end
